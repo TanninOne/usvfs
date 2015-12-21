@@ -1,0 +1,35 @@
+#include "Winver.h"
+
+#define VER_FILEVERSION     0,0,1,0
+#define VER_FILEVERSION_STR "0,0,1,0\0"
+
+#define VER_PRODUCTVERSION     0,0,1,0
+#define VER_PRODUCTVERSION_STR "0,0,1,0\0"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     VER_FILEVERSION
+PRODUCTVERSION  VER_PRODUCTVERSION
+FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+FILEFLAGS       (0)
+FILEOS          VOS__WINDOWS32
+FILETYPE        VFT_DLL
+FILESUBTYPE     VFT2_UNKNOWN
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "FileVersion", VER_FILEVERSION_STR
+      VALUE "CompanyName", "Tannin\0"
+      VALUE "FileDescription",  "Windows OverlayFS\0"
+      VALUE "OriginalFilename", "usvfs.dll\0"
+      VALUE "ProductName",      "USVFS\0"
+      VALUE "ProductVersion", VER_PRODUCTVERSION_STR
+    END
+  END
+
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0409L, 1200
+  END
+END

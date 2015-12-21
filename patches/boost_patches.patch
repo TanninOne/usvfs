@@ -1,0 +1,42 @@
+Index: has_member_function_callable_with.hpp
+===================================================================
+--- boost/intrusive/detail/has_member_function_callable_with.hpp	(revision 86605)
++++ boost/intrusive/detail/has_member_function_callable_with.hpp	(working copy)
+@@ -219,10 +219,17 @@
+          struct BOOST_PP_CAT(BOOST_PP_CAT(has_member_function_callable_with_, BOOST_INTRUSIVE_HAS_MEMBER_FUNCTION_CALLABLE_WITH_FUNCNAME),_impl)
+             <Fun, true>
+          {
+-            template<class U>
+-            static BOOST_PP_CAT(zeroarg_checker_, BOOST_INTRUSIVE_HAS_MEMBER_FUNCTION_CALLABLE_WITH_FUNCNAME)
+-               <U> Test(BOOST_PP_CAT(zeroarg_checker_, BOOST_INTRUSIVE_HAS_MEMBER_FUNCTION_CALLABLE_WITH_FUNCNAME)<U>*);
+-
++            #ifdef BOOST_MSVC
++               template<class U>
++               static decltype( boost::move_detail::declval<Fun>().BOOST_INTRUSIVE_HAS_MEMBER_FUNCTION_CALLABLE_WITH_FUNCNAME()
++                              , boost_intrusive_has_member_function_callable_with::yes_type())
++                  Test(Fun*);
++            #else
++               template<class U>
++               static BOOST_PP_CAT(zeroarg_checker_, BOOST_INTRUSIVE_HAS_MEMBER_FUNCTION_CALLABLE_WITH_FUNCNAME)
++                  <U> Test(BOOST_PP_CAT(zeroarg_checker_, BOOST_INTRUSIVE_HAS_MEMBER_FUNCTION_CALLABLE_WITH_FUNCNAME)<U>*);
++            #endif
++			
+             template <class U>
+             static boost_intrusive_has_member_function_callable_with::no_type Test(...);
+ 
+diff --git a/boost/archive/iterators/transform_width.hpp b/boost/archive/iterators/transform_width.hpp
+index 3562144..f95c675 100644
+--- a/boost/archive/iterators/transform_width.hpp
++++ b/boost/archive/iterators/transform_width.hpp
+@@ -30,6 +30,8 @@
+ #include <boost/iterator/iterator_adaptor.hpp>
+ #include <boost/iterator/iterator_traits.hpp>
+ 
++#include <algorithm>
++
+ namespace boost { 
+ namespace archive {
+ namespace iterators {
+-- 
+1.8.3.msysgit.0
+
