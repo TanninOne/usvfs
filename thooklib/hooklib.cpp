@@ -468,16 +468,16 @@ enum EPreamble {
 
 EPreamble DeterminePreamble(LPBYTE address)
 {
-  if (*address == 0x48) {
-    // REX prefix
-    ++address;
-  }
+  ud_set_input_buffer(disasm(), address, JUMP_SIZE);
+  ud_disassemble(disasm());
 
-  spdlog::get("usvfs")->info("preamble: {0:x}", *address);
-  if ((*address == 0x8b) && (*(address + 1) == 0xff)) {
-    // 8bff = mov edi, edi
+  if ((ud_insn_mnemonic(disasm()) == UD_Imov)
+      && (ud_insn_opr(disasm(), 0) == ud_insn_opr(disasm(), 1))
+      && (ud_insn_opr(disasm(), 0)->type == UD_OP_REG)) {
+    // mov edi, edi
     return PRE_PATCHFREE;
-  } else if (*address == 0xeb) {
+  } else if ((ud_insn_mnemonic(disasm()) == UD_Ijmp)
+             && (ud_insn_len(disasm()) == 2)) {
     // determine target of the short jump
     LPBYTE shortTarget = JumpTarget(address);
 
@@ -494,7 +494,7 @@ EPreamble DeterminePreamble(LPBYTE address)
     } else {
       return PRE_UNKNOWN;
     }
-  } else if (*address == 0xe9) {
+  } else if (ud_insn_mnemonic(disasm()) == UD_Ijmp) {
     return PRE_FOREIGNHOOK;
   } else {
     return PRE_UNKNOWN;
