@@ -706,7 +706,7 @@ DWORD WINAPI usvfs::hooks::GetFullPathNameW(LPCWSTR lpFileName
   res = ::GetFullPathNameW(lpFileName, nBufferLength, lpBuffer,
                            lpFilePart);
   POST_REALCALL
-
+/*
   RerouteW reroute = RerouteW::create(HookContext::readAccess(),
                                       callContext, lpBuffer);
   if (reroute.wasRerouted()) {
@@ -734,7 +734,7 @@ DWORD WINAPI usvfs::hooks::GetFullPathNameW(LPCWSTR lpFileName
         .PARAM(lpBuffer)
         .PARAM(res);
   }
-
+*/
   HOOK_END
 
   return res;
