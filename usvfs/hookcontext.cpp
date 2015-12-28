@@ -51,7 +51,7 @@ HookContext::HookContext(const Parameters &params, HMODULE module)
   ++m_Parameters->userCount;
 
   spdlog::get("usvfs")->debug("context current shm: {0} (now {1} connections)",
-                              m_Parameters->currentSHMName,
+                              m_Parameters->currentSHMName.c_str(),
                               m_Parameters->userCount);
 
   s_Instance = this;
@@ -68,7 +68,7 @@ HookContext::~HookContext()
   s_Instance = nullptr;
 
   if (--m_Parameters->userCount == 0) {
-    spdlog::get("usvfs")->info("removing tree {}", m_Parameters->instanceName);
+    spdlog::get("usvfs")->info("removing tree {}", m_Parameters->instanceName.c_str());
     bi::shared_memory_object::remove(m_Parameters->instanceName.c_str());
   } else {
     spdlog::get("usvfs")->info("{} users left", m_Parameters->userCount);
