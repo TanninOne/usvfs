@@ -766,7 +766,7 @@ private:
       spdlog::get("usvfs")->info("{} opened in process {}",
                                  SHMName, ::GetCurrentProcessId());
     } catch (const bi::interprocess_exception&) {
-      newSHM = new SharedMemoryT(bi::create_only, SHMName, size);
+      newSHM = new SharedMemoryT(bi::create_only, SHMName, static_cast<unsigned int>(size));
       spdlog::get("usvfs")->info("{} created in process {}",
                                  SHMName, ::GetCurrentProcessId());
     }

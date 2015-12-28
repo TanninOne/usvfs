@@ -986,7 +986,7 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryAttributesFile(
   res = ::NtQueryAttributesFile(adjustedAttributes.get(), FileInformation);
   POST_REALCALL
 
-  if (true || redir.second) {
+  if (redir.second) {
     LOG_CALL()
         .addParam("source", ObjectAttributes)
         .addParam("rerouted", adjustedAttributes.get())

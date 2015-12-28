@@ -224,7 +224,7 @@ void HookManager::initHooks()
   installStub(kbaseMod, k32Mod, "MoveFileA");
   installStub(kbaseMod, k32Mod, "MoveFileExA");
   installStub(kbaseMod, k32Mod, "MoveFileW");
-  installStub(kbaseMod, k32Mod, "MoveFileExW");
+  installHook(kbaseMod, k32Mod, "MoveFileExW", uhooks::MoveFileExW);
 /*
   installStub(kbaseMod, k32Mod, "GetPrivateProfileStringA");
   installStub(kbaseMod, k32Mod, "GetPrivateProfileStringW");

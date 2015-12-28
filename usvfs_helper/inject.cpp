@@ -77,7 +77,7 @@ void usvfs::injectProcess(const std::wstring &applicationPath
       }
     }
   }
-  boost::filesystem::path binPath = boost::filesystem::path(applicationPath).parent_path();
+  boost::filesystem::path binPath = boost::filesystem::path(applicationPath);
   spdlog::get("usvfs")->info("injecting to process {} with {} bitness",
                              ::GetProcessId(processHandle), sameBitness ? "same" : "different");
 

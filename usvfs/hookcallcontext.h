@@ -38,8 +38,9 @@ enum class MutExHookGroup : int {
   FIND_FILES = 4,
   LOAD_LIBRARY = 5,
   FULL_PATHNAME = 6,
+  FILEOP_GROUP = 7,
 
-  NO_GROUP = 7,
+  NO_GROUP = 8,
   LAST = NO_GROUP,
 };
 

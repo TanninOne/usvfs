@@ -336,8 +336,8 @@ BOOL WINAPI usvfs::hooks::CreateProcessA(LPCSTR lpApplicationName
   if (!blacklisted) {
     try {
       injectProcess(context->dllPath()
-                           , context->callParameters()
-                           , *lpProcessInformation);
+                    , context->callParameters()
+                    , *lpProcessInformation);
     } catch (const std::exception &e) {
       spdlog::get("hooks")->error("failed to inject into {0}: {1}",
         log::wrap(applicationReroute.fileName()), e.what());
@@ -412,8 +412,10 @@ BOOL WINAPI usvfs::hooks::CreateProcessW(LPCWSTR lpApplicationName
                            , context->callParameters()
                            , *lpProcessInformation);
     } catch (const std::exception &e) {
-      spdlog::get("hooks")->error("failed to inject into {0}: {1}",
-        log::wrap(applicationReroute.fileName()), e.what());
+      spdlog::get("hooks")->error("failed to inject into {0}: {1}"
+                                  , lpApplicationName != nullptr ? log::wrap(applicationReroute.fileName())
+                                                                 : log::wrap(static_cast<LPCWSTR>(lpCommandLine))
+                                  , e.what());
     }
   }
 
@@ -527,7 +529,7 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
 #pragma message("need to clean up this handle in CloseHandle call")
   }
 
-  if (true || reroute.wasRerouted()) {
+  if (reroute.wasRerouted()) {
     LOG_CALL()
         .PARAM(lpFileName)
         .PARAM(reroute.fileName())
@@ -557,7 +559,7 @@ BOOL WINAPI usvfs::hooks::GetFileAttributesExW(
                                lpFileInformation);
   POST_REALCALL
 
-  if (true || reroute.wasRerouted()) {
+  if (reroute.wasRerouted()) {
     LOG_CALL()
         .PARAMWRAP(lpFileName)
         .PARAMWRAP(reroute.fileName())
@@ -612,6 +614,36 @@ DWORD WINAPI usvfs::hooks::SetFileAttributesW(LPCTSTR lpFileName
       .PARAMWRAP(reroute.fileName())
       .PARAM(res)
       ;
+  }
+
+  HOOK_END
+
+
+
+  return res;
+}
+
+BOOL WINAPI usvfs::hooks::MoveFileExW(LPCWSTR lpExistingFileName,
+                                      LPCWSTR lpNewFileName,
+                                      DWORD dwFlags)
+{
+  BOOL res = FALSE;
+
+  HOOK_START_GROUP(MutExHookGroup::FILEOP_GROUP)
+
+  auto context = HookContext::readAccess();
+
+  RerouteW readReroute  = RerouteW::create(context, callContext, lpExistingFileName);
+  RerouteW writeReroute = RerouteW::createNew(context, callContext, lpNewFileName);
+  PRE_REALCALL
+  res = ::MoveFileExW(readReroute.fileName(), writeReroute.fileName(), dwFlags);
+  POST_REALCALL
+
+  if (readReroute.wasRerouted() || writeReroute.wasRerouted()) {
+    LOG_CALL()
+        .PARAMWRAP(readReroute.fileName())
+        .PARAMWRAP(writeReroute.fileName())
+        .PARAM(res);
   }
 
   HOOK_END
