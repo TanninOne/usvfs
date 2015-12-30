@@ -110,7 +110,7 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  logger->info("a - {} - {e - {}",
+  logger->info("a - {} - {} - {}",
                (void*)&params.first->test,
                (void*)&params.first->test[0],
                (void*)params.first);
