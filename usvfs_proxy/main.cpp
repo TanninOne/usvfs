@@ -110,6 +110,16 @@ int main(int argc, char **argv)
     return 1;
   }
 
+  logger->info("a");
+  for (const usvfs::shared::StringT &blacklist : params.first->processBlacklist) {
+    logger->info("bl: {}", blacklist.c_str());
+  }
+
+  for (DWORD procId : params.first->processList) {
+    logger->info("process: {}", procId);
+  }
+  logger->info("b");
+
   usvfs::Parameters par = static_cast<usvfs::Parameters>(*(params.first));
 
   if (executable.empty()) {
