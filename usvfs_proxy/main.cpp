@@ -110,11 +110,12 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  logger->info("a - {} - {}",
-               (void*)&params.first->processBlacklist,
+  logger->info("a - {} - {e - {}",
+               (void*)&params.first->test,
+               (void*)&params.first->test[0],
                (void*)params.first);
-  for (const usvfs::shared::StringT &blacklist : params.first->processBlacklist) {
-    logger->info("bl: {}", blacklist.c_str());
+  for (const uint32_t &blacklist : params.first->test) {
+    logger->info("bl: {}", blacklist);
   }
 
   for (DWORD procId : params.first->processList) {
