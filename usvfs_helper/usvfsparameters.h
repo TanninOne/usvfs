@@ -64,7 +64,7 @@ struct Parameters {
 typedef shared::VoidAllocatorT::rebind<DWORD>::other DWORDAllocatorT;
 typedef shared::VoidAllocatorT::rebind<shared::StringT>::other StringAllocatorT;
 
-__declspec(align(8)) struct SharedParameters {
+struct SharedParameters {
 
   SharedParameters() = delete;
 

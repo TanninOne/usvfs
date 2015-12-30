@@ -110,19 +110,6 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  logger->info("a - {} - {} - {}",
-               (void*)&params.first->test,
-               (void*)&params.first->test[0],
-               (void*)params.first);
-  for (const uint32_t &blacklist : params.first->test) {
-    logger->info("bl: {}", blacklist);
-  }
-
-  for (DWORD procId : params.first->processList) {
-    logger->info("process: {}", procId);
-  }
-  logger->info("b");
-
   usvfs::Parameters par = static_cast<usvfs::Parameters>(*(params.first));
 
   if (executable.empty()) {
