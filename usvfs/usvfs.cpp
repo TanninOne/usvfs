@@ -91,7 +91,6 @@ void InitLoggingInternal(bool toConsole, bool connectExistingSHM)
     // a temporary logger was created in DllMain
     spdlog::drop("usvfs");
     #pragma message("need a customized name for the shm")
-
     auto logger = spdlog::get("usvfs");
     if (logger.get() == nullptr) {
       logger = toConsole ? spdlog::create<spdlog::sinks::stdout_sink_mt>("usvfs")
