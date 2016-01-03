@@ -99,5 +99,13 @@ public:
   }
 };
 
+template <>
+class string_cast_impl<std::wstring, const wchar_t*> {
+public:
+  static std::wstring cast(const wchar_t * const &source, CodePage, size_t) {
+    return std::wstring(source);
+  }
+};
+
 }
 }

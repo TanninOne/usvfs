@@ -132,16 +132,12 @@ findCreateTarget(const usvfs::HookContext::ConstPtr &context,
       [&](const usvfs::RedirectionTree::NodePtrT &node) { visitor(node); };
   context->redirectionTable()->visitPath(lookupPath, visitorWrapper);
   if (visitor.target.get() != nullptr) {
-spdlog::get("usvfs")->info("{} - {}", visitor.target->path().string(), lookupPath);
     bfs::path relativePath = ush::make_relative(visitor.target->path()
                                                 , bfs::path(lookupPath));
-
-spdlog::get("usvfs")->info("- {}", relativePath.string());
 
 //    result.second = UnicodeString(visitor.target->path().wstring().c_str());
     result.second = UnicodeString((bfs::path(visitor.target->data().linkTarget.c_str())
                                    / relativePath).wstring().c_str());
-spdlog::get("usvfs")->info("+ {}", ush::string_cast<std::string>(static_cast<LPCWSTR>(result.second)));
   }
   return result;
 }
@@ -769,6 +765,7 @@ NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
       && ((OpenOptions & FILE_OPEN_FOR_BACKUP_INTENT) != 0UL)) {
     // this may be an attempt to open a directory handle for iterating.
     // If so we need to treat it a little bit differently
+    usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FILE_ATTRIBUTES);
     FILE_BASIC_INFORMATION dummy;
     storePath = FAILED(NtQueryAttributesFile(ObjectAttributes, &dummy));
   }
@@ -886,8 +883,8 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
       redir.first = createTarget.second/*.appendPath(
           static_cast<PUNICODE_STRING>(relative))*/;
 
-spdlog::get("hooks")->info("reroute write access: {}",
-                           ush::string_cast<std::string>(static_cast<LPCWSTR>(redir.first)).c_str());
+      spdlog::get("hooks")->info("reroute write access: {}",
+                                 ush::string_cast<std::string>(static_cast<LPCWSTR>(redir.first)).c_str());
     }
   }
 
@@ -963,7 +960,7 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryAttributesFile(
 {
   NTSTATUS res = STATUS_SUCCESS;
 
-  HOOK_START
+  HOOK_START_GROUP(MutExHookGroup::FILE_ATTRIBUTES)
 
   if (!callContext.active()) {
     return ::NtQueryAttributesFile(ObjectAttributes, FileInformation);

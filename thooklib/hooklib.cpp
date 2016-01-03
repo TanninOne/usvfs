@@ -31,14 +31,13 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <shmlogger.h>
 #include <addrtools.h>
 #include <windows_error.h>
+#include <winapi.h>
 
 #if BOOST_ARCH_X86_64
 #pragma message("64bit build")
 #define JUMP_SIZE	13
-//using namespace asmjit::x64;
 #elif BOOST_ARCH_X86_32
 #define JUMP_SIZE 5
-//using namespace asmjit::x86x64;
 #else
 #error "unsupported architecture"
 #endif
@@ -57,8 +56,7 @@ struct THookInfo {
   LPVOID replacementFunction;
   LPVOID detour;     // detour to call the original function after hook was installed.
   LPVOID trampoline; // code fragment that decides whether the replacement function or detour is executed (preventing endless loops)
-  std::vector<uint8_t> preamble;
-//  size_t preambleSize;  // part of the detour that needs to be re-inserted into the original function to return it to vanilla state
+  std::vector<uint8_t> preamble; // part of the detour that needs to be re-inserted into the original function to return it to vanilla state
   bool stub;         // if this is true, the trampoline calls the "replacement"-function that before the original function, not instead of it
   enum {
     TYPE_HOTPATCH,   // official hot-patch variant as used on 32-bit windows
@@ -88,7 +86,7 @@ void ResumePausedThreads()
 
 
 // not using the disassembler because this is simpler
-LPBYTE JumpTarget(LPBYTE address)
+LPBYTE ShortJumpTarget(LPBYTE address)
 {
   int8_t off = *(address + 1);
   return address + 2 + off;
@@ -219,7 +217,7 @@ BOOL HookHotPatch(THookInfo &hookInfo, HookError *error)
 uintptr_t followJumps(THookInfo &hookInfo)
 {
   LPBYTE original = reinterpret_cast<LPBYTE>(hookInfo.originalFunction);
-  LPBYTE shortTarget = JumpTarget(original);
+  LPBYTE shortTarget = ShortJumpTarget(original);
 
   // disassemble the long jump
   disasm().setInputBuffer(shortTarget, JUMP_SIZE);
@@ -354,7 +352,7 @@ BOOL HookChainHook(THookInfo &hookInfo, HookError *error)
 BOOL HookChainPatch(THookInfo &hookInfo, HookError *error)
 {
   LPBYTE original = reinterpret_cast<LPBYTE>(hookInfo.originalFunction);
-  LPBYTE shortTarget = JumpTarget(original);
+  LPBYTE shortTarget = ShortJumpTarget(original);
 
   return HookChainHook(hookInfo, shortTarget, error);
 }
@@ -479,7 +477,7 @@ EPreamble DeterminePreamble(LPBYTE address)
   } else if ((ud_insn_mnemonic(disasm()) == UD_Ijmp)
              && (ud_insn_len(disasm()) == 2)) {
     // determine target of the short jump
-    LPBYTE shortTarget = JumpTarget(address);
+    LPBYTE shortTarget = ShortJumpTarget(address);
 
     // test if that short jump leads to a long jump
     ud_set_input_buffer(disasm(), shortTarget, JUMP_SIZE);
@@ -635,14 +633,13 @@ void HookLib::RemoveHook(HOOKHANDLE handle)
       *reinterpret_cast<uintptr_t*>(res) = reinterpret_cast<uintptr_t>(info.originalFunction);
       VirtualProtect(reinterpret_cast<LPVOID>(res), JUMP_SIZE, oldProtect, &oldProtect);
     } else {
-      printf("can't remove hook, unknown hook type!\n");
+      spdlog::get("usvfs")->critical("can't remove hook, unknown hook type!");
     }
 
     s_Hooks.erase(iter);
     ResumePausedThreads();
   } else {
-    // TODO: report error!
-    printf("handle unknown: %x\n", handle);
+    spdlog::get("usvfs")->info("handle unknown: {0:x}", handle);
   }
 }
 

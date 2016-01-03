@@ -39,8 +39,9 @@ namespace bi = boost::interprocess;
 namespace usvfs {
 namespace shared {
 
-
-typedef bi::offset_ptr<void, std::int32_t, std::uint64_t, 4> VoidPointerT;
+template <typename T>
+using OffsetPtrT = bi::offset_ptr<T, std::int32_t, std::uint64_t, 4>;
+typedef OffsetPtrT<void> VoidPointerT;
 
 
 #ifdef BOOST_OS_WINDOWS

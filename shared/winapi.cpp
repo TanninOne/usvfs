@@ -378,12 +378,12 @@ std::vector<FileResult> quickFindFiles(LPCWSTR directoryName, LPCWSTR pattern)
   static const unsigned int BUFFER_SIZE = 1024;
 
   HANDLE hdl = CreateFileW(directoryName
-                             , GENERIC_READ
-                             , FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE
-                             , nullptr
-                             , OPEN_EXISTING
-                             , FILE_FLAG_BACKUP_SEMANTICS
-                             , nullptr);
+                           , GENERIC_READ
+                           , FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE
+                           , nullptr
+                           , OPEN_EXISTING
+                           , FILE_FLAG_BACKUP_SEMANTICS
+                           , nullptr);
 
   uint8_t buffer[BUFFER_SIZE];
 
@@ -392,16 +392,16 @@ std::vector<FileResult> quickFindFiles(LPCWSTR directoryName, LPCWSTR pattern)
     IO_STATUS_BLOCK status;
 
     res = NtQueryDirectoryFile(hdl
-                                 , nullptr
-                                 , nullptr
-                                 , nullptr
-                                 , &status
-                                 , buffer
-                                 , BUFFER_SIZE
-                                 , FileFullDirectoryInformation
-                                 , FALSE
-                                 , static_cast<PUNICODE_STRING>(usvfs::UnicodeString(pattern))
-                                 , FALSE);
+                               , nullptr
+                               , nullptr
+                               , nullptr
+                               , &status
+                               , buffer
+                               , BUFFER_SIZE
+                               , FileFullDirectoryInformation
+                               , FALSE
+                               , static_cast<PUNICODE_STRING>(usvfs::UnicodeString(pattern))
+                               , FALSE);
     if (res == STATUS_SUCCESS) {
       FILE_FULL_DIR_INFORMATION *info = reinterpret_cast<FILE_FULL_DIR_INFORMATION*>(buffer);
       void *endPos = buffer + status.Information;

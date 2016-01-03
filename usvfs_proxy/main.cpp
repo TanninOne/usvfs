@@ -81,6 +81,7 @@ int main(int argc, char **argv)
     return 1;
   }
 
+  try {
   std::string executable = getParameter<std::string>(arguments, "executable", "", true);
   int pid = getParameter<int>(arguments, "pid", 0, true);
   int tid = getParameter<int>(arguments, "tid", 0, true);
@@ -139,5 +140,8 @@ int main(int argc, char **argv)
   }
 
   return 0;
+  } catch (const std::exception &e) {
+    logger->critical("unhandled exception: {}", e.what());
+  }
 }
 

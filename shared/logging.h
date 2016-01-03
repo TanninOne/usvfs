@@ -21,6 +21,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include <ostream>
+#include <cstdint>
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -29,7 +30,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 
 #undef ERROR
 
-enum class LogLevel {
+enum class LogLevel : uint8_t {
   Debug,
   Info,
   Warning,

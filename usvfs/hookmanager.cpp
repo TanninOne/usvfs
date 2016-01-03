@@ -98,9 +98,14 @@ void HookManager::removeHook(const std::string &functionName)
 {
   auto iter = m_Hooks.find(functionName);
   if (iter != m_Hooks.end()) {
-    RemoveHook(iter->second);
-    m_Hooks.erase(iter);
-    spdlog::get("usvfs")->info("removed hook for {}", functionName);
+    try {
+      RemoveHook(iter->second);
+      m_Hooks.erase(iter);
+      spdlog::get("usvfs")->info("removed hook for {}", functionName);
+    } catch (const std::exception &e) {
+      spdlog::get("usvfs")->critical("failed to remove hook of {}: {}",
+                                     functionName, e.what());
+    }
   } else {
     spdlog::get("usvfs")->info("{} wasn't hooked", functionName);
   }
@@ -154,10 +159,10 @@ void HookManager::installHook(HMODULE module1, HMODULE module2, const std::strin
   } else {
     m_Stubs.insert(make_pair(funcAddr, functionName));
     m_Hooks.insert(make_pair(std::string(functionName), handle));
-    spdlog::get("usvfs")->info("hooked {0} in {1} type {2}",
-      functionName, winapi::ansi::getModuleFileName(usedModule), GetHookType(handle));
+    spdlog::get("usvfs")->info(
+        "hooked {0} ({1}) in {2} type {3}", functionName, funcAddr,
+        winapi::ansi::getModuleFileName(usedModule), GetHookType(handle));
   }
-
 }
 
 void HookManager::installStub(HMODULE module1, HMODULE module2, const std::string &functionName)
@@ -188,8 +193,9 @@ void HookManager::installStub(HMODULE module1, HMODULE module2, const std::strin
   } else {
     m_Stubs.insert(make_pair(funcAddr, functionName));
     m_Hooks.insert(make_pair(std::string(functionName), handle));
-    spdlog::get("usvfs")->info("stubbed {0} in {1} type {2}",
-      functionName, winapi::ansi::getModuleFileName(usedModule), GetHookType(handle));
+    spdlog::get("usvfs")->info(
+        "stubbed {0} ({1}) in {2} type {3}", functionName, funcAddr,
+        winapi::ansi::getModuleFileName(usedModule), GetHookType(handle));
   }
 }
 
@@ -301,8 +307,14 @@ void HookManager::removeHooks()
 {
   while (m_Hooks.size() > 0) {
     auto iter = m_Hooks.begin();
-    spdlog::get("usvfs")->debug("remove hook {}", iter->first);
-    RemoveHook(iter->second);
+    try {
+      RemoveHook(iter->second);
+      spdlog::get("usvfs")->debug("removed hook {}", iter->first);
+    } catch (const std::exception &e) {
+      spdlog::get("usvfs")->critical("failed to remove hook: {}", e.what());
+    }
+
+    // remove either way, otherwise this is an endless loop
     m_Hooks.erase(iter);
   }
 }

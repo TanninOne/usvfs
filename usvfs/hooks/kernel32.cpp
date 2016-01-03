@@ -6,6 +6,7 @@
 #include "../hookcallcontext.h"
 #include <inject.h>
 #include <winapi.h>
+#include <shellapi.h>
 #include <stringutils.h>
 #include <stringcast.h>
 #include <set>
@@ -56,14 +57,14 @@ public:
   }
 
   static RerouteW create(const usvfs::HookContext::ConstPtr &context
-                         , const usvfs::HookCallContext &callContext
-                         , LPCWSTR inPath)
+                        , const usvfs::HookCallContext &callContext
+                        , const wchar_t *inPath)
   {
     RerouteW result;
     if ((inPath != nullptr)
         && (inPath[0] != L'\0')
         && !ush::startswith(inPath, L"hid#")) {
-      result.m_Buffer = std::wstring(inPath);
+      result.m_Buffer   = std::wstring(inPath);
       result.m_Rerouted = false;
 
       if (callContext.active()) {
@@ -79,7 +80,8 @@ public:
         if (!absolute) {
           usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FULL_PATHNAME);
           auto fullPath = winapi::wide::getFullPathName(inPath);
-          lookupPath = string_cast<std::string>(fullPath.first, CodePage::UTF8);
+          lookupPath
+              = string_cast<std::string>(fullPath.first, CodePage::UTF8);
         } else {
           lookupPath = string_cast<std::string>(inPath, CodePage::UTF8);
         }
@@ -292,9 +294,10 @@ BOOL WINAPI usvfs::hooks::CreateProcessA(LPCSTR lpApplicationName
 
   HOOK_START_GROUP(MutExHookGroup::CREATE_PROCESS)
   if (!callContext.active()) {
-    return ::CreateProcessA(lpApplicationName, lpCommandLine, lpProcessAttributes,
-                            lpThreadAttributes, bInheritHandles, dwCreationFlags,
-                            lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
+    return ::CreateProcessA(
+        lpApplicationName, lpCommandLine, lpProcessAttributes,
+        lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment,
+        lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
   }
 
   HookContext::ConstPtr context = HookContext::readAccess();
@@ -388,16 +391,32 @@ BOOL WINAPI usvfs::hooks::CreateProcessW(LPCWSTR lpApplicationName
   BOOL susp = dwCreationFlags & CREATE_SUSPENDED;
   dwCreationFlags |= CREATE_SUSPENDED;
 
-  RerouteW applicationReroute = RerouteW::create(context, callContext, lpApplicationName);
-  RerouteW cwdReroute = RerouteW::create(context, callContext, lpCurrentDirectory);
+  std::wstring cmdline;
+  if (lpCommandLine != nullptr) {
+    // decompose command line
+    int argc = 0;
+    LPWSTR *argv = ::CommandLineToArgvW(lpCommandLine, &argc);
+    ON_BLOCK_EXIT([argv] () { LocalFree(argv); });
 
-  // TODO apply rerouting on command line
+    RerouteW cmdReroute = RerouteW::create(context, callContext, argv[0]);
+
+    // recompose command line
+    std::wstringstream stream;
+    stream << "\"" << cmdReroute.fileName() << "\"";
+    for (int i = 1; i < argc; ++i) {
+      stream << " " << argv[i];
+    }
+    cmdline = stream.str();
+  }
+
+  RerouteW applicationReroute = RerouteW::create(context, callContext, lpApplicationName);
 
   PRE_REALCALL
-  res = ::CreateProcessW(applicationReroute.fileName(), lpCommandLine,
+  res = ::CreateProcessW(applicationReroute.fileName(),
+                         lpCommandLine != nullptr ? &cmdline[0] : nullptr,
                          lpProcessAttributes, lpThreadAttributes,
                          bInheritHandles, dwCreationFlags,
-                         lpEnvironment, cwdReroute.fileName(),
+                         lpEnvironment, lpCurrentDirectory,
                          lpStartupInfo, lpProcessInformation);
   POST_REALCALL
 
@@ -426,7 +445,7 @@ BOOL WINAPI usvfs::hooks::CreateProcessW(LPCWSTR lpApplicationName
   }
 
   LOG_CALL().PARAM(applicationReroute.fileName())
-            .PARAM(lpCommandLine)
+            .PARAM(cmdline)
             .PARAM(blacklisted)
             .PARAM(res);
 

@@ -236,8 +236,10 @@ LONG WINAPI VEHandler(PEXCEPTION_POINTERS exceptionPtrs)
 //      exceptionHandler = ::AddVectoredExceptionHandler(0, VEHandler);
       return EXCEPTION_CONTINUE_SEARCH;
     } else {
+      // exception in usvfs. damn
       if (logger.get() != nullptr) {
-        logger->warn("windows exception {0:x}", exceptionPtrs->ExceptionRecord->ExceptionCode);
+        logger->critical("windows exception {0:x}",
+                         exceptionPtrs->ExceptionRecord->ExceptionCode);
       }
     }
   } catch (const std::exception &e) {
@@ -564,10 +566,10 @@ BOOL WINAPI CreateProcessHooked(LPCWSTR lpApplicationName
   DWORD flags = dwCreationFlags | CREATE_SUSPENDED;
 
   BOOL res = CreateProcessW(lpApplicationName, lpCommandLine
-                              , lpProcessAttributes, lpThreadAttributes
-                              , bInheritHandles, flags
-                              , lpEnvironment, lpCurrentDirectory
-                              , lpStartupInfo, lpProcessInformation);
+                            , lpProcessAttributes, lpThreadAttributes
+                            , bInheritHandles, flags
+                            , lpEnvironment, lpCurrentDirectory
+                            , lpStartupInfo, lpProcessInformation);
   if (!res) {
     spdlog::get("usvfs")->error("failed to spawn {}", ush::string_cast<std::string>(lpCommandLine));
     return FALSE;

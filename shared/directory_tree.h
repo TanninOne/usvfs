@@ -634,7 +634,7 @@ private:
       : tree(segmentManager->construct<TreeT>(bi::anonymous_instance)(
              "", true, TreeT::NodePtrT(), data, VoidAllocatorT(segmentManager)))
     { }
-    bi::offset_ptr<TreeT, std::int32_t, std::uint64_t, 4> tree;
+    OffsetPtrT<TreeT> tree;
     long referenceCount { 0 }; // reference count only set on top level node
     bool outdated { false };
 
@@ -662,11 +662,6 @@ private:
         , TreeT::NodePtrT()
         , createData<TreeT::DataT, T>(data, allocator)
         , manager);
-
-    // this seems to cause slightly less overhead but causes crashes on
-    // x64 builds during drestruction of the TreeT
-/*    void *mem = manager->allocate(sizeof(TreeT));
-    return new(mem) TreeT(name, flags, TreeT::NodePtrT(), createData<TreeT::DataT, T>(data, allocator), manager);*/
   }
 
   typename TreeT::NodePtrT createSubPtr(TreeT *subNode)
@@ -775,8 +770,6 @@ private:
 
   TreeMeta *activateSHM(SharedMemoryT *shm, const char *SHMName)
   {
-    spdlog::get("usvfs")->info("name: {0} - {2:p} -> {1:p}", SHMName, (void*)shm, (void*)m_SHM.get());
-
     std::shared_ptr<SharedMemoryT> oldSHM = m_SHM;
 
     m_SHM.reset(shm);

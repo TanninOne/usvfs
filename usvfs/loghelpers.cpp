@@ -67,6 +67,7 @@ static void writeToStream(std::ostream &os, LPCWSTR str)
   }
 }
 
+
 std::ostream &usvfs::log::operator<<(std::ostream &os, const Wrap<LPWSTR> &str)
 {
   try {

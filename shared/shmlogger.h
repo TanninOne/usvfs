@@ -48,27 +48,6 @@ public:
 }
 }
 
-/*
-class shm_sink_backend
-    : public boost::log::sinks::basic_formatted_sink_backend<
-        char,
-        boost::log::sinks::combine_requirements<
-            boost::log::sinks::synchronized_feeding
-        >::type
-      > {
-public:
-  shm_sink_backend(const char *queueName);
-  void consume(boost::log::record_view const& record, const string_type
-&message);
-
-private:
-
-  message_queue_interop m_LogQueue;
-
-  std::atomic<int> m_DroppedMessages;
-
-};
-*/
 
 class SHMLogger {
 

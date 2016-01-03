@@ -52,6 +52,11 @@ struct Parameters {
   LogLevel logLevel { LogLevel::Debug };
 };
 
+
+typedef shared::VoidAllocatorT::rebind<DWORD>::other DWORDAllocatorT;
+typedef shared::VoidAllocatorT::rebind<shared::StringT>::other StringAllocatorT;
+
+
 struct SharedParameters {
 
   SharedParameters() = delete;
@@ -66,23 +71,14 @@ struct SharedParameters {
     , debugMode(reference.debugMode)
     , logLevel(reference.logLevel)
     , userCount(1)
+    , processBlacklist(allocator)
     , processList(allocator)
-   {
-    /*
-   for (const auto &name : reference.processBlacklist) {
-      processBlacklist.push_back(shared::StringT(name.c_str(), allocator));
-    }
-    */
+  {
   }
 
   explicit operator Parameters()
   {
     Parameters result(instanceName.c_str(), currentSHMName.c_str(), debugMode, logLevel);
-    /*
-    for (const auto &name : processBlacklist) {
-      result.processBlacklist.push_back(name.c_str());
-    }
-    */
     return result;
   }
 
@@ -90,9 +86,8 @@ struct SharedParameters {
   shared::StringT currentSHMName;
   bool debugMode;
   LogLevel logLevel;
-  int userCount;
-  boost::container::vector<shared::StringT> processBlacklist;
-  typedef shared::VoidAllocatorT::rebind<DWORD>::other DWORDAllocatorT;
+  uint32_t userCount;
+  boost::container::vector<shared::StringT, StringAllocatorT> processBlacklist;
   boost::container::set<DWORD, std::less<DWORD>, DWORDAllocatorT> processList;
 };
 

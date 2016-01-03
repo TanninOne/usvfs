@@ -38,7 +38,7 @@ HookContext *HookContext::s_Instance = nullptr;
 
 
 HookContext::HookContext(const Parameters &params, HMODULE module)
-  : m_ConfigurationSHM(bi::open_or_create, params.instanceName, 1024)
+  : m_ConfigurationSHM(bi::open_or_create, params.instanceName, 8192)
   , m_Parameters(retrieveParameters(params))
   , m_Tree(m_Parameters->currentSHMName.c_str(), 4096)
   , m_DebugMode(params.debugMode)
@@ -81,12 +81,14 @@ SharedParameters *HookContext::retrieveParameters(const Parameters &params)
       = m_ConfigurationSHM.find<SharedParameters>("parameters");
   if (res.first == nullptr) {
     // not configured yet
-    spdlog::get("usvfs")->info("not configured yet");
+    spdlog::get("usvfs")->info("create config in {}", ::GetCurrentProcessId());
     res.first = m_ConfigurationSHM.construct<SharedParameters>("parameters")(
-        params, m_ConfigurationSHM.get_allocator<VoidAllocatorT>());
+        params, VoidAllocatorT(m_ConfigurationSHM.get_segment_manager()));
     if (res.first == nullptr) {
       USVFS_THROW_EXCEPTION(bi::bad_alloc());
     }
+  } else {
+    spdlog::get("usvfs")->info("access existing config in {}", ::GetCurrentProcessId());
   }
   return res.first;
 }
