@@ -65,8 +65,6 @@ private:
   bool m_Active;
   MutExHookGroup m_Group;
 
-  std::vector<unsigned char> m_Buffer;
-
 };
 
 class FunctionGroupLock {

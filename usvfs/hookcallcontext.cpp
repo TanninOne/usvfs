@@ -70,12 +70,6 @@ HookCallContext::HookCallContext()
   , m_Group(MutExHookGroup::NO_GROUP)
 {
   updateLastError();
-
-  void *buf;
-  size_t size;
-  HookContext::readAccess()->redirectionTable().getBuffer(buf, size);
-  m_Buffer.resize(size);
-  memcpy(&m_Buffer[0], buf, size);
 }
 
 HookCallContext::HookCallContext(MutExHookGroup group)
@@ -83,12 +77,6 @@ HookCallContext::HookCallContext(MutExHookGroup group)
   , m_Group(group)
 {
   updateLastError();
-
-  void *buf;
-  size_t size;
-  HookContext::readAccess()->redirectionTable().getBuffer(buf, size);
-  m_Buffer.resize(size);
-  memcpy(&m_Buffer[0], buf, size);
 }
 
 
@@ -98,21 +86,14 @@ HookCallContext::~HookCallContext()
     HookStack::instance().unsetGroup(m_Group);
   }
   SetLastError(m_LastError);
-
-  void *buf;
-  size_t size;
-  HookContext::readAccess()->redirectionTable().getBuffer(buf, size);
-  if (memcmp(buf, &m_Buffer[0], size) != 0) {
-    spdlog::get("usvfs")->info("tree changed");
-  } else {
-    spdlog::get("usvfs")->info("unchanged");
-  }
 }
+
 
 void HookCallContext::updateLastError()
 {
   m_LastError = GetLastError();
 }
+
 
 bool HookCallContext::active() const
 {

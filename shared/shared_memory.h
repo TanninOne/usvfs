@@ -61,7 +61,6 @@ typedef boost::interprocess::managed_shared_memory SharedMemoryT;
 
 typedef SharedMemoryT::segment_manager SegmentManagerT;
 typedef boost::container::scoped_allocator_adaptor<boost::interprocess::allocator<void, SegmentManagerT>> VoidAllocatorT;
-//typedef boost::interprocess::allocator<void, SegmentManagerT> VoidAllocatorT;
 typedef VoidAllocatorT::rebind<char>::other CharAllocatorT;
 
 typedef bi::basic_string<char, std::char_traits<char>, CharAllocatorT> StringT;

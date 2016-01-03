@@ -85,10 +85,9 @@ public:
         } else {
           lookupPath = string_cast<std::string>(inPath, CodePage::UTF8);
         }
-
         auto node = context->redirectionTable()->findNode(lookupPath.c_str());
 
-        if ((node.get() != nullptr) && !node->data().linkTarget.empty()) {
+        if (node.get() && !node->data().linkTarget.empty()) {
           result.m_Buffer = string_cast<std::wstring>(
               node->data().linkTarget.c_str(), CodePage::UTF8);
           result.m_Rerouted = true;
