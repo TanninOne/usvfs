@@ -295,6 +295,18 @@ BOOL HookChainHook(THookInfo &hookInfo, LPBYTE jumpPos, HookError *error)
   }
 
   uintptr_t chainTarget = disasm().jumpTarget();
+
+  size_t size = ud_insn_len(disasm());
+
+   // save the original code for the preamble so we can restore it later
+  hookInfo.preamble.resize(size);
+  memcpy(&hookInfo.preamble[0], jumpPos, size);
+
+  spdlog::get("usvfs")
+      ->info("existing hook to {0:x} in {1}", chainTarget,
+             shared::string_cast<std::string>(
+                 winapi::ex::wide::getSectionName((void *)chainTarget)));
+
   if (hookInfo.stub) {
     hookInfo.trampoline = TrampolinePool::instance().storeStub(
                             hookInfo.replacementFunction
@@ -308,13 +320,13 @@ BOOL HookChainHook(THookInfo &hookInfo, LPBYTE jumpPos, HookError *error)
   }
 
   DWORD oldProtect = 0;
-  if (!VirtualProtect(jumpPos, 2, PAGE_EXECUTE_WRITECOPY, &oldProtect)) {
+  if (!VirtualProtect(jumpPos, size, PAGE_EXECUTE_WRITECOPY, &oldProtect)) {
     throw std::runtime_error("failed to change virtual protection");
   }
 
   WriteLongJump(jumpPos, hookInfo.trampoline);
 
-  if (!VirtualProtect(jumpPos, 2, oldProtect, &oldProtect)) {
+  if (!VirtualProtect(jumpPos, size, oldProtect, &oldProtect)) {
     throw std::runtime_error("failed to change virtual protection");
   }
 
@@ -617,13 +629,29 @@ void HookLib::RemoveHook(HOOKHANDLE handle)
       memcpy(address, &info.preamble[0], info.preamble.size());
       VirtualProtect(address, info.preamble.size(), oldProtect, &oldProtect);
     } else if (info.type == THookInfo::TYPE_CHAINPATCH) {
-      LPBYTE shortTarget = JumpTarget(reinterpret_cast<LPBYTE>(info.originalFunction));
+      // we could attempt to restore the original function preamble but I'm not
+      // sure we can reliably write the jump with same (or lower) size.
+      // Instead overwrite our own trampoline
+      disasm().setInputBuffer(static_cast<uint8_t*>(info.originalFunction),
+                              JUMP_SIZE);
+      ud_disassemble(disasm());
+      if (ud_insn_mnemonic(disasm()) != UD_Ijmp) {
+        // this shouldn't happen, we only call this if the jump was discovered before
+        throw std::runtime_error("failed to find jump in patch");
+      }
+
+      LPBYTE jumpPos = static_cast<LPBYTE>(info.originalFunction);
+      if (ud_insn_len(disasm()) == 2) {
+        jumpPos = reinterpret_cast<LPBYTE>(disasm().jumpTarget());
+      }
+
       DWORD oldProtect = 0;
-      if (!VirtualProtect(address, JUMP_SIZE, PAGE_EXECUTE_WRITECOPY, &oldProtect)) {
+      if (!VirtualProtect(jumpPos, info.preamble.size(),
+                          PAGE_EXECUTE_WRITECOPY, &oldProtect)) {
         throw shared::windows_error("failed to gain write access to remove hook");
       }
-      WriteLongJump(shortTarget, info.detour);
-      VirtualProtect(address, JUMP_SIZE, oldProtect, &oldProtect);
+      memcpy(jumpPos, info.preamble.data(), info.preamble.size());
+      VirtualProtect(jumpPos, info.preamble.size(), oldProtect, &oldProtect);
     } else if (info.type == THookInfo::TYPE_RIPINDIRECT) {
       uintptr_t res = followJumps(info);
       DWORD oldProtect = 0;
