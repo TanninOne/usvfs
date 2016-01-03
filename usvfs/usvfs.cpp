@@ -91,14 +91,20 @@ void InitLoggingInternal(bool toConsole, bool connectExistingSHM)
 
     // a temporary logger was created in DllMain
     spdlog::drop("usvfs");
-    #pragma message("need a customized name for the shm")
-    auto logger = toConsole ? spdlog::create<spdlog::sinks::stdout_sink_mt>("usvfs")
-                            : spdlog::create<spdlog::sinks::shm_sink>("usvfs", "usvfs");
-    logger->set_pattern("%H:%M:%S.%e [%L] %v");
+    #pragma message("eed a customized name for the shm")
+    auto logger = spdlog::get("usvfs");
+    if (logger.get() == nullptr) {
+      logger = toConsole ? spdlog::create<spdlog::sinks::stdout_sink_mt>("usvfs")
+                         : spdlog::create<spdlog::sinks::shm_sink>("usvfs", "usvfs");
+      logger->set_pattern("%H:%M:%S.%e [%L] %v");
+    }
 
-    logger = toConsole ? spdlog::create<spdlog::sinks::stdout_sink_mt>("hooks")
-                       : spdlog::create<spdlog::sinks::shm_sink>("hooks", "usvfs");
-    logger->set_pattern("%H:%M:%S.%e <%P:%t> [%L] %v");
+    logger = spdlog::get("hooks");
+    if (logger.get() == nullptr) {
+      logger = toConsole ? spdlog::create<spdlog::sinks::stdout_sink_mt>("hooks")
+                         : spdlog::create<spdlog::sinks::shm_sink>("hooks", "usvfs");
+      logger->set_pattern("%H:%M:%S.%e <%P:%t> [%L] %v");
+    }
   } catch (const std::exception&) {
     // TODO should really report this
     //OutputDebugStringA((boost::format("init exception: %1%\n") % e.what()).str().c_str());
