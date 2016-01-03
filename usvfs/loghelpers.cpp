@@ -79,6 +79,7 @@ std::ostream &usvfs::log::operator<<(std::ostream &os, const Wrap<LPWSTR> &str)
   return os;
 }
 
+
 std::ostream &usvfs::log::operator<<(std::ostream &os, const Wrap<LPCWSTR> &str)
 {
   try {

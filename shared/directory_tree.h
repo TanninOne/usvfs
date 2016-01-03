@@ -627,6 +627,11 @@ public:
     }
   }
 
+  void getBuffer(void *&buffer, size_t &bufferSize) const {
+    buffer = m_SHM->get_address();
+    bufferSize = m_SHM->get_size();
+  }
+
 private:
 
   struct TreeMeta {

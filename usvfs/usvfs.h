@@ -124,6 +124,12 @@ extern "C" DLLEXPORT bool WINAPI GetLogMessages(LPSTR buffer, size_t size, bool 
  */
 extern "C" DLLEXPORT BOOL WINAPI CreateVFSDump(LPSTR buffer, size_t *size);
 
+/**
+ * print debugging info about the vfs. The format is currently not fixed and may
+ * change between usvfs versions
+ */
+extern "C" DLLEXPORT VOID WINAPI PrintDebugInfo();
+
 //#if defined(UNITTEST) || defined(_WINDLL)
 extern "C" DLLEXPORT void __cdecl InitLogging(bool toLocal = false);
 //#endif

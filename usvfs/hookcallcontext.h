@@ -22,6 +22,8 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 
 #include "windows_sane.h"
 
+#include <vector>
+
 
 namespace usvfs {
 
@@ -62,6 +64,8 @@ private:
   DWORD m_LastError;
   bool m_Active;
   MutExHookGroup m_Group;
+
+  std::vector<unsigned char> m_Buffer;
 
 };
 

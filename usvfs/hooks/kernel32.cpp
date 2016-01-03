@@ -94,10 +94,6 @@ public:
           result.m_Rerouted = true;
         }
       }
-/*      if (*result.m_Buffer.rbegin() == L'\\') {
-        result.m_Buffer.resize(result.m_Buffer.length() - 1);
-      }
-      */
       result.m_FileName = result.m_Buffer.c_str();
     }
     return result;
