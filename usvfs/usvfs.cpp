@@ -359,14 +359,15 @@ void WINAPI DisconnectVFS()
 
 bool processStillActive(DWORD pid)
 {
-  HANDLE proc = OpenProcess(SYNCHRONIZE, FALSE, pid);
+  HANDLE proc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
   ON_BLOCK_EXIT([proc]() {
     ::CloseHandle(proc);
   });
 
   DWORD exitCode;
   if (!GetExitCodeProcess(proc, &exitCode)) {
-    spdlog::get("usvfs")->warn("failed to query exit code on process {}", pid);
+    spdlog::get("usvfs")->warn("failed to query exit code on process {}: {}",
+                               pid, ::GetLastError());
     return false;
   } else {
     return exitCode == STILL_ACTIVE;

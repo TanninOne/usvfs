@@ -359,7 +359,7 @@ std::wstring getSectionName(PVOID addressIn, HANDLE process)
   if (::EnumProcessModules(process, modules, sizeof(modules), &required)) {
     for (DWORD i = 0; i < (std::min<DWORD>(1024UL, required) / sizeof(HMODULE)); ++i) {
       std::pair<intptr_t, intptr_t> range = getSectionRange(modules[i]);
-      if ((address > range.first) || (address < range.second)) {
+      if ((address > range.first) && (address < range.second)) {
         try {
           return winapi::wide::getModuleFileName(modules[i], process);
         } catch (const std::exception&) {
