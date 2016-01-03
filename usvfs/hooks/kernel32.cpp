@@ -303,28 +303,37 @@ BOOL WINAPI usvfs::hooks::CreateProcessA(LPCSTR lpApplicationName
   BOOL susp = dwCreationFlags & CREATE_SUSPENDED;
   dwCreationFlags |= CREATE_SUSPENDED;
 
+  std::string cmdline;
+  if (lpCommandLine != nullptr) {
+    // decompose command line
+    int argc = 0;
+    std::wstring arglist = ush::string_cast<std::wstring>(lpCommandLine);
+    LPWSTR *argv = ::CommandLineToArgvW(arglist.c_str(), &argc);
+    ON_BLOCK_EXIT([argv] () { LocalFree(argv); });
+
+    RerouteW cmdReroute = RerouteW::create(context, callContext, argv[0]);
+
+    // recompose command line
+    std::stringstream stream;
+    stream << "\"" << cmdReroute.fileName() << "\"";
+    for (int i = 1; i < argc; ++i) {
+      stream << " " << argv[i];
+    }
+    cmdline = stream.str();
+  }
+
   RerouteW applicationReroute = RerouteW::create(
       context, callContext,
       lpApplicationName != nullptr
           ? ush::string_cast<std::wstring>(lpApplicationName).c_str()
           : nullptr);
-  RerouteW cwdReroute = RerouteW::create(
-      context, callContext,
-      lpCurrentDirectory != nullptr
-          ? ush::string_cast<std::wstring>(lpCurrentDirectory).c_str()
-          : nullptr);
-
-  // TODO apply rerouting on command line
 
   PRE_REALCALL
   res = ::CreateProcessA(
       ush::string_cast<std::string>(applicationReroute.fileName()).c_str(),
-      lpCommandLine, lpProcessAttributes, lpThreadAttributes, bInheritHandles,
-      dwCreationFlags, lpEnvironment,
-      lpCurrentDirectory != nullptr
-          ? ush::string_cast<std::string>(cwdReroute.fileName()).c_str()
-          : nullptr,
-      lpStartupInfo, lpProcessInformation);
+      lpCommandLine != nullptr ? &cmdline[0] : nullptr, lpProcessAttributes,
+      lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment,
+      lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
   POST_REALCALL
 
   // hook unless blacklisted
@@ -350,7 +359,7 @@ BOOL WINAPI usvfs::hooks::CreateProcessA(LPCSTR lpApplicationName
   }
 
   LOG_CALL().PARAM(applicationReroute.fileName())
-            .PARAM(lpCommandLine)
+            .PARAM(cmdline)
             .PARAM(blacklisted)
             .PARAM(res);
 
@@ -427,10 +436,12 @@ BOOL WINAPI usvfs::hooks::CreateProcessW(LPCWSTR lpApplicationName
                            , context->callParameters()
                            , *lpProcessInformation);
     } catch (const std::exception &e) {
-      spdlog::get("hooks")->error("failed to inject into {0}: {1}"
-                                  , lpApplicationName != nullptr ? log::wrap(applicationReroute.fileName())
-                                                                 : log::wrap(static_cast<LPCWSTR>(lpCommandLine))
-                                  , e.what());
+      spdlog::get("hooks")
+          ->error("failed to inject into {0}: {1}",
+                  lpApplicationName != nullptr
+                      ? log::wrap(applicationReroute.fileName())
+                      : log::wrap(static_cast<LPCWSTR>(lpCommandLine)),
+                  e.what());
     }
   }
 
