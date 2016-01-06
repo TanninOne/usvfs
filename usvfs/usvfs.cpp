@@ -656,7 +656,6 @@ BOOL APIENTRY DllMain(HMODULE module,
       dllModule = module;
     } break;
     case DLL_PROCESS_DETACH: {
-        DisconnectVFS();
     } break;
     case DLL_THREAD_ATTACH: {
     } break;
