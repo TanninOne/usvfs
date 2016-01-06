@@ -26,6 +26,9 @@ class RerouteW {
   std::wstring m_RealPath{};
   bool m_Rerouted{ false };
   LPCWSTR m_FileName{ nullptr };
+
+  usvfs::RedirectionTree::NodePtrT m_FileNode;
+
 private:
   RerouteW() = default;
 public:
@@ -51,9 +54,13 @@ public:
   bool wasRerouted() const { return m_Rerouted; }
 
   void insertMapping(const usvfs::HookContext::Ptr &context) {
-    context->redirectionTable().addFile(
-          m_RealPath
-          , usvfs::RedirectionDataLocal(string_cast<std::string>(m_FileName)));
+    m_FileNode = context->redirectionTable().addFile(
+        m_RealPath,
+        usvfs::RedirectionDataLocal(string_cast<std::string>(m_FileName)));
+  }
+
+  void removeMapping() {
+    m_FileNode->removeFromTree();
   }
 
   static RerouteW create(const usvfs::HookContext::ConstPtr &context
@@ -61,8 +68,7 @@ public:
                         , const wchar_t *inPath)
   {
     RerouteW result;
-    if ((inPath != nullptr)
-        && (inPath[0] != L'\0')
+    if ((inPath != nullptr) && (inPath[0] != L'\0')
         && !ush::startswith(inPath, L"hid#")) {
       result.m_Buffer   = std::wstring(inPath);
       result.m_Rerouted = false;
@@ -80,16 +86,17 @@ public:
         if (!absolute) {
           usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FULL_PATHNAME);
           auto fullPath = winapi::wide::getFullPathName(inPath);
-          lookupPath
-              = string_cast<std::string>(fullPath.first, CodePage::UTF8);
+          lookupPath    = string_cast<std::string>(fullPath.first, CodePage::UTF8);
         } else {
           lookupPath = string_cast<std::string>(inPath, CodePage::UTF8);
         }
-        auto node = context->redirectionTable()->findNode(lookupPath.c_str());
+        result.m_FileNode
+            = context->redirectionTable()->findNode(lookupPath.c_str());
 
-        if (node.get() && !node->data().linkTarget.empty()) {
+        if (result.m_FileNode.get()
+            && !result.m_FileNode->data().linkTarget.empty()) {
           result.m_Buffer = string_cast<std::wstring>(
-              node->data().linkTarget.c_str(), CodePage::UTF8);
+              result.m_FileNode->data().linkTarget.c_str(), CodePage::UTF8);
           result.m_Rerouted = true;
         }
       }
@@ -648,13 +655,42 @@ DWORD WINAPI usvfs::hooks::SetFileAttributesW(LPCTSTR lpFileName
   return res;
 }
 
+
+BOOL WINAPI usvfs::hooks::DeleteFileW(LPCWSTR lpFileName)
+{
+  BOOL res = FALSE;
+
+  HOOK_START_GROUP(MutExHookGroup::DELETE_FILE)
+
+  auto context = HookContext::readAccess();
+
+  RerouteW reroute = RerouteW::create(context, callContext, lpFileName);
+
+  PRE_REALCALL
+  res = ::DeleteFileW(reroute.fileName());
+  POST_REALCALL
+
+  if (reroute.wasRerouted()) {
+    LOG_CALL()
+        .PARAMWRAP(lpFileName)
+        .PARAMWRAP(reroute.fileName())
+        .PARAM(res)
+        ;
+  }
+
+  HOOK_END
+
+  return res;
+}
+
+
 BOOL WINAPI usvfs::hooks::MoveFileExW(LPCWSTR lpExistingFileName,
                                       LPCWSTR lpNewFileName,
                                       DWORD dwFlags)
 {
   BOOL res = FALSE;
 
-  HOOK_START_GROUP(MutExHookGroup::FILEOP_GROUP)
+  HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
 
   auto context = HookContext::readAccess();
 

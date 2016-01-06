@@ -18,6 +18,8 @@ DLLEXPORT DWORD WINAPI GetCurrentDirectoryW(DWORD nBufferLength, LPWSTR lpBuffer
 DLLEXPORT BOOL WINAPI SetCurrentDirectoryW(LPCWSTR lpPathName);
 DLLEXPORT DWORD WINAPI GetFullPathNameW(LPCWSTR lpFileName, DWORD nBufferLength, LPWSTR lpBuffer, LPWSTR *lpFilePart);
 
+DLLEXPORT BOOL WINAPI DeleteFileW(LPCWSTR lpFileName);
+
 DLLEXPORT BOOL WINAPI MoveFileExW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, DWORD dwFlags);
 
 DLLEXPORT HMODULE WINAPI LoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD dwFlags);

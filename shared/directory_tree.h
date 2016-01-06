@@ -249,8 +249,10 @@ public:
    * @brief setFlag change a flag for this node
    * @param enabled new state for the specified flag
    */
-  void setFlag(TreeFlags flag, bool enabled = true) { m_Flags = enabled ? m_Flags | flag
-                                                                        : m_Flags & ~flag; }
+  void setFlag(TreeFlags flag, bool enabled = true)
+  {
+    m_Flags = enabled ? m_Flags | flag : m_Flags & ~flag;
+  }
 
   /**
    * @return true if the specified flag is set, false otherwise
@@ -428,6 +430,11 @@ public:
    */
   void clear() {
     m_Nodes.clear();
+  }
+
+  void removeFromTree() {
+    auto selfIter = parent()->m_Nodes.find(m_Name);
+    parent()->erase(selfIter);
   }
 
 PRIVATE:
