@@ -27,6 +27,10 @@ SET(PROJ_ARCH x86 CACHE STRING "build architecture, has to be x86 or x64")
 
 ADD_DEFINITIONS(-DUNICODE -D_UNICODE -DASMJIT_STATIC -DPROJ_VERSION="${PROJ_VERSION}")
 
+# optimizations to spdlog
+# logger name isn't printed, loggers are created in advance
+ADD_DEFINITIONS(-DSPDLOG_NO_NAME -DSPDLOG_NO_REGISTRY_MUTEX)
+
 #ADD_DEFINITIONS(-DBOOST_EXCEPTION_DISABLE -DBOOST_NO_EXCEPTIONS)
 SET(default_project_path "${CMAKE_SOURCE_DIR}/..")
 GET_FILENAME_COMPONENT(${default_project_path} ${default_project_path} REALPATH)

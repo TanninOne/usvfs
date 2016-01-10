@@ -38,6 +38,9 @@ using namespace usvfs::shared;
 namespace HookLib {
 
 
+TrampolinePool *TrampolinePool::s_Instance = nullptr;
+
+
 TrampolinePool::TrampolinePool()
   : m_MaxTrampolineSize(0)
 {
@@ -466,7 +469,6 @@ void TrampolinePool::forceUnlockBarrier()
   } // else no barriers to unlock
 }
 
-
 void TrampolinePool::allocateBuffer(LPVOID addressNear)
 {
   // allocate a buffer that we can write to and that is executable
@@ -553,7 +555,6 @@ LPVOID TrampolinePool::releaseInt(LPVOID func)
 
   LPVOID res = (*m_ThreadGuards)[func];
   (*m_ThreadGuards)[func] = nullptr;
-
 
   return res;
 }

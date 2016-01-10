@@ -26,16 +26,13 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <usvfsparameters.h>
 #include <shared_memory.h>
 
-
 namespace bi = boost::interprocess;
 using usvfs::shared::SharedMemoryT;
 using usvfs::shared::VoidAllocatorT;
 
 using namespace usvfs;
 
-
 HookContext *HookContext::s_Instance = nullptr;
-
 
 HookContext::HookContext(const Parameters &params, HMODULE module)
   : m_ConfigurationSHM(bi::open_or_create, params.instanceName, 8192)
@@ -68,7 +65,8 @@ HookContext::~HookContext()
   s_Instance = nullptr;
 
   if (--m_Parameters->userCount == 0) {
-    spdlog::get("usvfs")->info("removing tree {}", m_Parameters->instanceName.c_str());
+    spdlog::get("usvfs")
+        ->info("removing tree {}", m_Parameters->instanceName.c_str());
     bi::shared_memory_object::remove(m_Parameters->instanceName.c_str());
   } else {
     spdlog::get("usvfs")->info("{} users left", m_Parameters->userCount);
@@ -88,25 +86,26 @@ SharedParameters *HookContext::retrieveParameters(const Parameters &params)
       USVFS_THROW_EXCEPTION(bi::bad_alloc());
     }
   } else {
-    spdlog::get("usvfs")->info("access existing config in {}", ::GetCurrentProcessId());
+    spdlog::get("usvfs")
+        ->info("access existing config in {}", ::GetCurrentProcessId());
   }
   return res.first;
 }
 
-HookContext::ConstPtr HookContext::readAccess()
+HookContext::ConstPtr HookContext::readAccess(const char *source)
 {
   BOOST_ASSERT(s_Instance != nullptr);
 
   // TODO: this should be a shared mutex!
-  s_Instance->m_Mutex.lock();
+  s_Instance->m_Mutex.wait(200);
   return ConstPtr(s_Instance, unlockShared);
 }
 
-HookContext::Ptr HookContext::writeAccess()
+HookContext::Ptr HookContext::writeAccess(const char *source)
 {
   BOOST_ASSERT(s_Instance != nullptr);
 
-  s_Instance->m_Mutex.lock();
+  s_Instance->m_Mutex.wait(200);
   return Ptr(s_Instance, unlock);
 }
 
@@ -159,13 +158,12 @@ std::vector<std::future<int>> &HookContext::delayed()
 
 void HookContext::unlock(HookContext *instance)
 {
-  instance->m_Mutex.unlock();
+  instance->m_Mutex.signal();
 }
 
 void HookContext::unlockShared(const HookContext *instance)
 {
-//  instance->m_Mutex.unlock_shared();
-  instance->m_Mutex.unlock();
+  instance->m_Mutex.signal();
 }
 
 HookContext *__cdecl CreateHookContext(const Parameters &params, HMODULE module)

@@ -31,7 +31,7 @@ namespace usvfs {
 class HookStack {
 public:
   static HookStack &instance() {
-    if (!s_Instance.get()) {
+    if (s_Instance.get() == nullptr) {
       s_Instance.reset(new HookStack());
     }
     return *s_Instance.get();

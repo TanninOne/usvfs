@@ -91,7 +91,8 @@ void InitLoggingInternal(bool toConsole, bool connectExistingSHM)
 
     // a temporary logger was created in DllMain
     spdlog::drop("usvfs");
-    #pragma message("eed a customized name for the shm")
+    #pragma message("need a customized name for the shm")
+
     auto logger = spdlog::get("usvfs");
     if (logger.get() == nullptr) {
       logger = toConsole ? spdlog::create<spdlog::sinks::stdout_sink_mt>("usvfs")
@@ -99,6 +100,7 @@ void InitLoggingInternal(bool toConsole, bool connectExistingSHM)
       logger->set_pattern("%H:%M:%S.%e [%L] %v");
     }
 
+    spdlog::drop("hooks");
     logger = spdlog::get("hooks");
     if (logger.get() == nullptr) {
       logger = toConsole ? spdlog::create<spdlog::sinks::stdout_sink_mt>("hooks")
@@ -281,10 +283,15 @@ spdlog::level::level_enum ConvertLogLevel(LogLevel level)
 
 void __cdecl InitHooks(LPVOID parameters, size_t)
 {
-  exceptionHandler = ::AddVectoredExceptionHandler(0, VEHandler);
-#pragma message("bug: if the ve handler is called, the process breaks")
-
   InitLoggingInternal(false, true);
+
+  if (exceptionHandler == nullptr) {
+    exceptionHandler = ::AddVectoredExceptionHandler(0, VEHandler);
+  } else {
+    spdlog::get("usvfs")->info("vectored exception handler already active");
+    // how did this happen??
+  }
+#pragma message("bug: if the ve handler is called, the process breaks")
 
   usvfs::Parameters *params = reinterpret_cast<usvfs::Parameters *>(parameters);
   spdlog::get("usvfs")->set_level(ConvertLogLevel(params->logLevel));
@@ -366,6 +373,11 @@ void WINAPI DisconnectVFS()
 bool processStillActive(DWORD pid)
 {
   HANDLE proc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+
+  if (proc == nullptr) {
+    return false;
+  }
+
   ON_BLOCK_EXIT([proc]() {
     ::CloseHandle(proc);
   });

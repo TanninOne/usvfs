@@ -504,7 +504,7 @@ struct Searches {
 
   Searches &operator=(const Searches &) = delete;
 
-  std::recursive_timed_mutex queryMutex;
+  std::recursive_mutex queryMutex;
 
   std::map<HANDLE, Info> info;
 };
@@ -534,9 +534,7 @@ void gatherVirtualEntries(const UnicodeString &dirName,
             ush::string_cast<std::wstring>(subNode->data().linkTarget), vName};
         info.virtualMatches.push_back(m);
         boost::algorithm::to_lower(vName);
-        //info.foundFiles.insert(vName);
-        auto res = info.foundFiles.insert(vName);
-        bool add = res.second;
+        info.foundFiles.insert(vName);
       }
     }
   }
@@ -623,27 +621,35 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
                                   FileName, RestartScan);
   }
 
-  HookContext::ConstPtr context = HookContext::readAccess();
-  Searches &activeSearches      = context->customData<Searches>(SearchInfo);
-  std::lock_guard<std::recursive_timed_mutex> lock(activeSearches.queryMutex);
+  std::unique_lock<std::recursive_mutex> queryLock;
+  std::map<HANDLE, Searches::Info>::iterator infoIter;
+  bool firstSearch = false;
 
-  if (RestartScan) {
-    auto iter = activeSearches.info.find(FileHandle);
-    if (iter != activeSearches.info.end()) {
-      activeSearches.info.erase(iter);
+  { // scope to limit context lifetime
+    HookContext::ConstPtr context = READ_CONTEXT();
+    Searches &activeSearches = context->customData<Searches>(SearchInfo);
+    queryLock = std::unique_lock<std::recursive_mutex>(activeSearches.queryMutex);
+
+    if (RestartScan) {
+      auto iter = activeSearches.info.find(FileHandle);
+      if (iter != activeSearches.info.end()) {
+        activeSearches.info.erase(iter);
+      }
     }
+
+    // see if we already have a running search
+    infoIter = activeSearches.info.find(FileHandle);
+    firstSearch = (infoIter == activeSearches.info.end());
   }
 
-  // see if we already have a running search
-  auto infoIter = activeSearches.info.find(FileHandle);
-
-  bool firstSearch = (infoIter == activeSearches.info.end());
   if (firstSearch) {
-    std::unique_lock<std::recursive_timed_mutex> lock(
-        activeSearches.queryMutex, std::chrono::milliseconds(50));
-    if (!lock.owns_lock()) {
-      spdlog::get("hooks")->warn("danger! couldn't acquire lock");
-    }
+    HookContext::Ptr context = WRITE_CONTEXT();
+    Searches &activeSearches = context->customData<Searches>(SearchInfo);
+    // tradeoff time: we store this search status even if no virtual results
+    // were found. This causes a little extra cost here and in NtClose every
+    // time a non-virtual dir is being searched. However if we don't,
+    // whenever NtQueryDirectoryFile is called another time on the same handle,
+    // this (expensive) block would be run again.
     infoIter = activeSearches.info.insert(std::make_pair(FileHandle,
                                                          Searches::Info()))
                    .first;
@@ -652,6 +658,7 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
     SearchHandleMap &searchMap
         = context->customData<SearchHandleMap>(SearchHandles);
     SearchHandleMap::iterator iter = searchMap.find(FileHandle);
+
     UnicodeString searchPath;
     if (iter != searchMap.end()) {
       searchPath = UnicodeString(iter->second.c_str());
@@ -661,6 +668,7 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
     gatherVirtualEntries(searchPath, context->redirectionTable(), FileName,
                          infoIter->second);
   }
+
   ULONG dataRead = Length;
 
   // add regular search results, skipping those files we have in a virtual
@@ -682,9 +690,6 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
       infoIter->second.foundFiles.clear();
     }
   }
-
-  // don't use the search pattern next iteration
-  //      infoIter->second.searchPattern.resize(0);
 
   if (!moreRegular) {
     // add virtual results
@@ -726,7 +731,7 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
   IoStatusBlock->Information = dataRead;
 
   size_t numVirtualFiles = infoIter->second.virtualMatches.size();
-  if (numVirtualFiles >= 0) {
+  if (numVirtualFiles > 0) {
     LOG_CALL()
         .addParam("path", UnicodeString(FileHandle))
         .PARAM(FileInformationClass)
@@ -781,8 +786,8 @@ NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
   }
 
   try {
-    HookContext::ConstPtr context        = HookContext::readAccess();
-    std::pair<UnicodeString, bool> redir = applyReroute(context, fullName);
+    std::pair<UnicodeString, bool> redir
+        = applyReroute(READ_CONTEXT(), fullName);
     std::shared_ptr<OBJECT_ATTRIBUTES> adjustedAttributes
         = makeObjectAttributes(redir.first, ObjectAttributes);
 
@@ -793,13 +798,13 @@ NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
 
     if (SUCCEEDED(res) && storePath) {
       // store the original search path for use during iteration
-      HookContext::ConstPtr context = HookContext::readAccess();
-      context->customData<SearchHandleMap>(SearchHandles)[*FileHandle]
+      READ_CONTEXT()
+          ->customData<SearchHandleMap>(SearchHandles)[*FileHandle]
           = static_cast<LPCWSTR>(fullName);
 #pragma message("need to clean up this handle in CloseHandle call")
     }
 
-    if (redir.second || context->debugMode()) {
+    if (redir.second) {
       LOG_CALL()
           .addParam("source", ObjectAttributes)
           .addParam("rerouted", adjustedAttributes.get())
@@ -847,8 +852,6 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
                           EaBuffer, EaLength);
   }
 
-  HookContext::ConstPtr context = HookContext::readAccess();
-
   UnicodeString inPath = CreateUnicodeString(ObjectAttributes);
 
   if (inPath.size() == 0) {
@@ -861,30 +864,37 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
                           EaBuffer, EaLength);
   }
 
-  std::pair<UnicodeString, bool> redir = applyReroute(context, inPath);
+  std::pair<UnicodeString, bool> redir;
 
-  // TODO would be neat if this could (optionally) reroute all potential write
-  // accesses to the create target.
-  //   This could be achived by copying the file to the target here in case the
-  //   createdisposition or the requested
-  //   access rights make that necessary
-  if (((CreateDisposition == FILE_SUPERSEDE)
-       || (CreateDisposition == FILE_CREATE)
-       || (CreateDisposition == FILE_OPEN_IF)
-       || (CreateDisposition == FILE_OVERWRITE_IF))
-      && !redir.second && !fileExists(inPath)) {
-    // the file will be created so now we need to know where
-    std::pair<UnicodeString, UnicodeString> createTarget
-        = findCreateTarget(context, inPath);
+  { // limit context scope
+    HookContext::ConstPtr context = READ_CONTEXT();
 
-    if (createTarget.second.size() != 0) {
-      // there is a reroute target for new files so adjust the path
-      //UnicodeString relative = inPath.subString(createTarget.first.size());
-      redir.first = createTarget.second/*.appendPath(
-          static_cast<PUNICODE_STRING>(relative))*/;
+    redir = applyReroute(context, inPath);
 
-      spdlog::get("hooks")->info("reroute write access: {}",
-                                 ush::string_cast<std::string>(static_cast<LPCWSTR>(redir.first)).c_str());
+    // TODO would be neat if this could (optionally) reroute all potential write
+    // accesses to the create target.
+    //   This could be achived by copying the file to the target here in case
+    //   the
+    //   createdisposition or the requested
+    //   access rights make that necessary
+    if (((CreateDisposition == FILE_SUPERSEDE)
+         || (CreateDisposition == FILE_CREATE)
+         || (CreateDisposition == FILE_OPEN_IF)
+         || (CreateDisposition == FILE_OVERWRITE_IF))
+        && !redir.second && !fileExists(inPath)) {
+      // the file will be created so now we need to know where
+      std::pair<UnicodeString, UnicodeString> createTarget
+          = findCreateTarget(context, inPath);
+
+      if (createTarget.second.size() != 0) {
+        // there is a reroute target for new files so adjust the path
+        redir.first = createTarget.second;
+
+        spdlog::get("hooks")->info(
+            "reroute write access: {}",
+            ush::string_cast<std::string>(static_cast<LPCWSTR>(redir.first))
+                .c_str());
+      }
     }
   }
 
@@ -898,7 +908,7 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
                        EaLength);
   POST_REALCALL
 
-  if (redir.second || context->debugMode()) {
+  if (redir.second) {
     LOG_CALL()
         .addParam("source", ObjectAttributes)
         .addParam("rerouted", adjustedAttributes.get())
@@ -916,27 +926,30 @@ NTSTATUS WINAPI usvfs::hooks::NtClose(HANDLE Handle)
 {
   NTSTATUS res = STATUS_NO_SUCH_FILE;
 
-  HOOK_START
+  HOOK_START_GROUP(MutExHookGroup::ALL_GROUPS)
   bool log = false;
-  HookContext::ConstPtr context = HookContext::readAccess();
 
-  { // clean up search data associated with this handle part 1
-    Searches &activeSearches = context->customData<Searches>(SearchInfo);
-    std::lock_guard<std::recursive_timed_mutex> lock(activeSearches.queryMutex);
-    auto iter = activeSearches.info.find(Handle);
-    if (iter != activeSearches.info.end()) {
-      activeSearches.info.erase(iter);
-      log = true;
+  if ((::GetFileType(Handle) == FILE_TYPE_DISK)) {
+    HookContext::Ptr context = WRITE_CONTEXT();
+
+    { // clean up search data associated with this handle part 1
+      Searches &activeSearches = context->customData<Searches>(SearchInfo);
+//      std::lock_guard<std::recursive_mutex> lock(activeSearches.queryMutex);
+      auto iter = activeSearches.info.find(Handle);
+      if (iter != activeSearches.info.end()) {
+        activeSearches.info.erase(iter);
+        log = true;
+      }
     }
-  }
 
-  {
-    SearchHandleMap &searchHandles
-        = context->customData<SearchHandleMap>(SearchHandles);
-    auto iter = searchHandles.find(Handle);
-    if (iter != searchHandles.end()) {
-      searchHandles.erase(iter);
-      log = true;
+    {
+      SearchHandleMap &searchHandles
+          = context->customData<SearchHandleMap>(SearchHandles);
+      auto iter = searchHandles.find(Handle);
+      if (iter != searchHandles.end()) {
+        searchHandles.erase(iter);
+        log = true;
+      }
     }
   }
 
@@ -945,7 +958,6 @@ NTSTATUS WINAPI usvfs::hooks::NtClose(HANDLE Handle)
   POST_REALCALL
 
   if (log) {
-    // this is a bit noisy
     LOG_CALL().PARAM(Handle).PARAMWRAP(res);
   }
 
@@ -966,8 +978,6 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryAttributesFile(
     return ::NtQueryAttributesFile(ObjectAttributes, FileInformation);
   }
 
-  HookContext::ConstPtr context = HookContext::readAccess();
-
   UnicodeString inPath;
   try {
     inPath = CreateUnicodeString(ObjectAttributes);
@@ -975,7 +985,7 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryAttributesFile(
     return ::NtQueryAttributesFile(ObjectAttributes, FileInformation);
   }
 
-  std::pair<UnicodeString, bool> redir = applyReroute(context, inPath);
+  std::pair<UnicodeString, bool> redir = applyReroute(READ_CONTEXT(), inPath);
   std::shared_ptr<OBJECT_ATTRIBUTES> adjustedAttributes
       = makeObjectAttributes(redir.first, ObjectAttributes);
 
@@ -1007,8 +1017,6 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryFullAttributesFile(
     return ::NtQueryFullAttributesFile(ObjectAttributes, FileInformation);
   }
 
-  HookContext::ConstPtr context = HookContext::readAccess();
-
   UnicodeString inPath;
   try {
     inPath = CreateUnicodeString(ObjectAttributes);
@@ -1016,7 +1024,7 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryFullAttributesFile(
     return ::NtQueryFullAttributesFile(ObjectAttributes, FileInformation);
   }
 
-  std::pair<UnicodeString, bool> redir = applyReroute(context, inPath);
+  std::pair<UnicodeString, bool> redir = applyReroute(READ_CONTEXT(), inPath);
   std::shared_ptr<OBJECT_ATTRIBUTES> adjustedAttributes
       = makeObjectAttributes(redir.first, ObjectAttributes);
 

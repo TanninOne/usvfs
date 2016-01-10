@@ -36,7 +36,6 @@ HRESULT WINAPI usvfs::hooks::CoCreateInstance(const IID &rclsid, LPUNKNOWN pUnkO
     if (SUCCEEDED(prodIdRes) && (pid != 0UL)) {
       HookCallContext createProcessCtx(MutExHookGroup::ALL_GROUPS);
       spdlog::get("hooks")->debug("COM started process, trying to inject to {}", pid);
-      HookContext::Ptr context = HookContext::writeAccess();
 
       /*
       HANDLE token;
@@ -68,6 +67,8 @@ HRESULT WINAPI usvfs::hooks::CoCreateInstance(const IID &rclsid, LPUNKNOWN pUnkO
           } catch (const std::exception &ex) {
             spdlog::get("hooks")->warn("failed to retrieve module name ({1}): {0}", ex.what(), processHandle);
           }
+
+          HookContext::Ptr context = WRITE_CONTEXT();
           // register this process early because when it registers itself may be too late
           context->registerProcess(pid);
 
@@ -77,7 +78,7 @@ HRESULT WINAPI usvfs::hooks::CoCreateInstance(const IID &rclsid, LPUNKNOWN pUnkO
             Sleep(100);
 #pragma message("the remote process seems to resume the hook-thread only after a not-yet-known event")
 #pragma message("update CoCreateInstanceEx once this works")
-            HookContext::ConstPtr context = HookContext::readAccess();
+            HookContext::ConstPtr context = READ_CONTEXT();
             injectProcess(context->dllPath()
                           , context->callParameters()
                           , processHandle
@@ -125,10 +126,10 @@ HRESULT WINAPI usvfs::hooks::CoCreateInstanceEx(const IID &rclsid, IUnknown *pun
     if (SUCCEEDED(procIdRes) && (pid != 0UL)) {
       spdlog::get("hooks")->debug("COM started process (ex), trying to inject to {}", pid);
 
-      HookContext::ConstPtr context = HookContext::readAccess();
       HANDLE processHandle = OpenProcess(PROCESS_ALL_ACCESS, TRUE, pid);
 
       if (processHandle != INVALID_HANDLE_VALUE) {
+        HookContext::ConstPtr context = READ_CONTEXT();
         injectProcess(context->dllPath()
                              , context->callParameters()
                              , processHandle

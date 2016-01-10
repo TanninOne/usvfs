@@ -166,15 +166,8 @@ private:
 
   BufferMap m_Buffers;
 
-  // TODO: one barrier for each function&thread instead of only per-thread?
-  //typedef std::map<std::pair<DWORD, void*>, void*> TThreadMap;
-
-  //TThreadMap m_ThreadGuards;
-
   typedef std::map<void*, void*> TThreadMap;
   boost::thread_specific_ptr<TThreadMap> m_ThreadGuards;
-
-  std::mutex m_MapMutex;
 
   LPVOID m_BarrierAddr;
   LPVOID m_ReleaseAddr;

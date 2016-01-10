@@ -4,6 +4,7 @@
 #include "../hookmanager.h"
 #include "../hookcontext.h"
 #include "../hookcallcontext.h"
+#include "../usvfs.h"
 #include <inject.h>
 #include <winapi.h>
 #include <shellapi.h>
@@ -14,24 +15,23 @@
 
 #include <sstream>
 
-
 namespace ush = usvfs::shared;
 namespace bfs = boost::filesystem;
 using ush::string_cast;
 using ush::CodePage;
 
-
-class RerouteW {
+class RerouteW
+{
   std::wstring m_Buffer{};
   std::wstring m_RealPath{};
-  bool m_Rerouted{ false };
-  LPCWSTR m_FileName{ nullptr };
+  bool m_Rerouted{false};
+  LPCWSTR m_FileName{nullptr};
 
   usvfs::RedirectionTree::NodePtrT m_FileNode;
 
-private:
-  RerouteW() = default;
 public:
+  RerouteW() = default;
+
   RerouteW(RerouteW &&reference)
     : m_Buffer(reference.m_Buffer)
     , m_RealPath(reference.m_RealPath)
@@ -39,8 +39,9 @@ public:
   {
     m_FileName = reference.m_FileName != nullptr ? m_Buffer.c_str() : nullptr;
   }
-  RerouteW &operator=(RerouteW &&reference) {
-    m_Buffer = reference.m_Buffer;
+  RerouteW &operator=(RerouteW &&reference)
+  {
+    m_Buffer   = reference.m_Buffer;
     m_RealPath = reference.m_RealPath;
     m_Rerouted = reference.m_Rerouted;
     m_FileName = reference.m_FileName != nullptr ? m_Buffer.c_str() : nullptr;
@@ -48,24 +49,32 @@ public:
   }
 
   RerouteW(const RerouteW &reference) = delete;
-  RerouteW &operator=(const RerouteW&) = delete;
+  RerouteW &operator=(const RerouteW &) = delete;
 
-  LPCWSTR fileName() const { return m_FileName; }
-  bool wasRerouted() const { return m_Rerouted; }
+  LPCWSTR fileName() const
+  {
+    return m_FileName;
+  }
+  bool wasRerouted() const
+  {
+    return m_Rerouted;
+  }
 
-  void insertMapping(const usvfs::HookContext::Ptr &context) {
+  void insertMapping(const usvfs::HookContext::Ptr &context)
+  {
     m_FileNode = context->redirectionTable().addFile(
         m_RealPath,
         usvfs::RedirectionDataLocal(string_cast<std::string>(m_FileName)));
   }
 
-  void removeMapping() {
+  void removeMapping()
+  {
     m_FileNode->removeFromTree();
   }
 
-  static RerouteW create(const usvfs::HookContext::ConstPtr &context
-                        , const usvfs::HookCallContext &callContext
-                        , const wchar_t *inPath)
+  static RerouteW create(const usvfs::HookContext::ConstPtr &context,
+                         const usvfs::HookCallContext &callContext,
+                         const wchar_t *inPath)
   {
     RerouteW result;
     if ((inPath != nullptr) && (inPath[0] != L'\0')
@@ -105,18 +114,17 @@ public:
     return result;
   }
 
-  static RerouteW createNew(const usvfs::HookContext::ConstPtr &context
-                            , const usvfs::HookCallContext &callContext
-                            , LPCWSTR inPath)
+  static RerouteW createNew(const usvfs::HookContext::ConstPtr &context,
+                            const usvfs::HookCallContext &callContext,
+                            LPCWSTR inPath)
   {
     UNUSED_VAR(callContext);
     RerouteW result;
     result.m_RealPath.assign(inPath);
-    result.m_Buffer = inPath;
+    result.m_Buffer   = inPath;
     result.m_Rerouted = false;
 
-    if ((inPath != nullptr)
-        && (inPath[0] != L'\0')
+    if ((inPath != nullptr) && (inPath[0] != L'\0')
         && !ush::startswith(inPath, L"hid#")) {
       bool absolute = false;
       if (ush::startswith(inPath, LR"(\\?\)")) {
@@ -130,22 +138,23 @@ public:
       if (!absolute) {
         usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FULL_PATHNAME);
         auto fullPath = winapi::wide::getFullPathName(inPath);
-        lookupPath = string_cast<std::string>(fullPath.first, CodePage::UTF8);
+        lookupPath    = string_cast<std::string>(fullPath.first, CodePage::UTF8);
       } else {
         lookupPath = string_cast<std::string>(inPath, CodePage::UTF8);
       }
 
       FindCreateTarget visitor;
-      usvfs::RedirectionTree::VisitorFunction visitorWrapper =
-          [&] (const usvfs::RedirectionTree::NodePtrT &node) { visitor(node); };
+      usvfs::RedirectionTree::VisitorFunction visitorWrapper = [&](
+          const usvfs::RedirectionTree::NodePtrT &node) { visitor(node); };
       context->redirectionTable()->visitPath(lookupPath, visitorWrapper);
       if (visitor.target.get() != nullptr) {
         // the visitor has found the last (deepest in the directory hierarchy)
         // create-target
-        bfs::path relativePath = ush::make_relative(visitor.target->path()
-                                                    , bfs::path(lookupPath));
+        bfs::path relativePath
+            = ush::make_relative(visitor.target->path(), bfs::path(lookupPath));
         result.m_Buffer = (bfs::path(visitor.target->data().linkTarget.c_str())
-                           / relativePath).wstring();
+                           / relativePath)
+                              .wstring();
 
         result.m_Rerouted = true;
       }
@@ -157,17 +166,16 @@ public:
   }
 
 private:
-
   struct FindCreateTarget {
     usvfs::RedirectionTree::NodePtrT target;
-    void operator()(usvfs::RedirectionTree::NodePtrT node) {
+    void operator()(usvfs::RedirectionTree::NodePtrT node)
+    {
       if (node->hasFlag(usvfs::shared::FLAG_CREATETARGET)) {
         target = node;
       }
     }
   };
 };
-
 
 HMODULE WINAPI usvfs::hooks::LoadLibraryW(LPCWSTR lpFileName)
 {
@@ -207,7 +215,8 @@ HMODULE WINAPI usvfs::hooks::LoadLibraryA(LPCSTR lpFileName)
   return res;
 }
 
-HMODULE WINAPI usvfs::hooks::LoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD dwFlags)
+HMODULE WINAPI usvfs::hooks::LoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile,
+                                            DWORD dwFlags)
 {
   HMODULE res = nullptr;
 
@@ -226,7 +235,8 @@ HMODULE WINAPI usvfs::hooks::LoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DW
   return res;
 }
 
-HMODULE WINAPI usvfs::hooks::LoadLibraryExA(LPCSTR lpFileName, HANDLE hFile, DWORD dwFlags)
+HMODULE WINAPI usvfs::hooks::LoadLibraryExA(LPCSTR lpFileName, HANDLE hFile,
+                                            DWORD dwFlags)
 {
   HMODULE res = nullptr;
 
@@ -249,7 +259,8 @@ HMODULE WINAPI usvfs::hooks::LoadLibraryExA(LPCSTR lpFileName, HANDLE hFile, DWO
 std::wstring getBinaryName(LPCWSTR applicationName, LPCWSTR lpCommandLine)
 {
   if (applicationName != nullptr) {
-    std::pair<std::wstring, std::wstring> fullPath = winapi::wide::getFullPathName(applicationName);
+    std::pair<std::wstring, std::wstring> fullPath
+        = winapi::wide::getFullPathName(applicationName);
     return fullPath.second;
   } else {
     if (lpCommandLine[0] == '"') {
@@ -280,17 +291,12 @@ std::wstring getBinaryName(LPCWSTR applicationName, LPCWSTR lpCommandLine)
   }
 }
 
-
-BOOL WINAPI usvfs::hooks::CreateProcessA(LPCSTR lpApplicationName
-                                         , LPSTR lpCommandLine
-                                         , LPSECURITY_ATTRIBUTES lpProcessAttributes
-                                         , LPSECURITY_ATTRIBUTES lpThreadAttributes
-                                         , BOOL bInheritHandles
-                                         , DWORD dwCreationFlags
-                                         , LPVOID lpEnvironment
-                                         , LPCSTR lpCurrentDirectory
-                                         , LPSTARTUPINFOA lpStartupInfo
-                                         , LPPROCESS_INFORMATION lpProcessInformation)
+BOOL WINAPI usvfs::hooks::CreateProcessA(
+    LPCSTR lpApplicationName, LPSTR lpCommandLine,
+    LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles,
+    DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory,
+    LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation)
 {
   BOOL res = FALSE;
 
@@ -302,37 +308,48 @@ BOOL WINAPI usvfs::hooks::CreateProcessA(LPCSTR lpApplicationName
         lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
   }
 
-  HookContext::ConstPtr context = HookContext::readAccess();
-
-  // remember if the caller wanted the process to be suspended. If so, we don't resume when
+  // remember if the caller wanted the process to be suspended. If so, we don't
+  // resume when
   // we're done
   BOOL susp = dwCreationFlags & CREATE_SUSPENDED;
   dwCreationFlags |= CREATE_SUSPENDED;
 
   std::string cmdline;
-  if (lpCommandLine != nullptr) {
-    // decompose command line
-    int argc = 0;
-    std::wstring arglist = ush::string_cast<std::wstring>(lpCommandLine);
-    LPWSTR *argv = ::CommandLineToArgvW(arglist.c_str(), &argc);
-    ON_BLOCK_EXIT([argv] () { LocalFree(argv); });
+  RerouteW applicationReroute;
 
-    RerouteW cmdReroute = RerouteW::create(context, callContext, argv[0]);
+  std::wstring dllPath;
+  Parameters callParameters;
 
-    // recompose command line
-    std::stringstream stream;
-    stream << "\"" << cmdReroute.fileName() << "\"";
-    for (int i = 1; i < argc; ++i) {
-      stream << " " << argv[i];
+  { // scope for context lock
+    auto context = READ_CONTEXT();
+
+    if (lpCommandLine != nullptr) {
+      // decompose command line
+      int argc             = 0;
+      std::wstring arglist = ush::string_cast<std::wstring>(lpCommandLine);
+      LPWSTR *argv = ::CommandLineToArgvW(arglist.c_str(), &argc);
+      ON_BLOCK_EXIT([argv]() { LocalFree(argv); });
+
+      RerouteW cmdReroute = RerouteW::create(context, callContext, argv[0]);
+
+      // recompose command line
+      std::stringstream stream;
+      stream << "\"" << cmdReroute.fileName() << "\"";
+      for (int i = 1; i < argc; ++i) {
+        stream << " " << argv[i];
+      }
+      cmdline = stream.str();
     }
-    cmdline = stream.str();
-  }
 
-  RerouteW applicationReroute = RerouteW::create(
-      context, callContext,
-      lpApplicationName != nullptr
-          ? ush::string_cast<std::wstring>(lpApplicationName).c_str()
-          : nullptr);
+    applicationReroute = RerouteW::create(
+        context, callContext,
+        lpApplicationName != nullptr
+            ? ush::string_cast<std::wstring>(lpApplicationName).c_str()
+            : nullptr);
+
+    dllPath        = context->dllPath();
+    callParameters = context->callParameters();
+  }
 
   PRE_REALCALL
   res = ::CreateProcessA(
@@ -343,18 +360,20 @@ BOOL WINAPI usvfs::hooks::CreateProcessA(LPCSTR lpApplicationName
   POST_REALCALL
 
   // hook unless blacklisted
-  // TODO implement process blacklisting. Currently disabled because storing in redirection-tree doesn't work and makes no sense
-//  std::wstring binaryName = getBinaryName(applicationReroute.fileName(), lpCommandLine);
-//  bool blacklisted = context->redirectionTable()->testProcessBlacklisted(usvfs::shared::toNarrow(binaryName.c_str()).c_str());
+  // TODO implement process blacklisting. Currently disabled because storing in
+  // redirection-tree doesn't work and makes no sense
+  //  std::wstring binaryName = getBinaryName(applicationReroute.fileName(),
+  //  lpCommandLine);
+  //  bool blacklisted =
+  //  context->redirectionTable()->testProcessBlacklisted(usvfs::shared::toNarrow(binaryName.c_str()).c_str());
   bool blacklisted = false;
   if (!blacklisted) {
     try {
-      injectProcess(context->dllPath()
-                    , context->callParameters()
-                    , *lpProcessInformation);
+      injectProcess(dllPath, callParameters, *lpProcessInformation);
     } catch (const std::exception &e) {
       spdlog::get("hooks")->error("failed to inject into {0}: {1}",
-        log::wrap(applicationReroute.fileName()), e.what());
+                                  log::wrap(applicationReroute.fileName()),
+                                  e.what());
     }
   }
 
@@ -364,83 +383,94 @@ BOOL WINAPI usvfs::hooks::CreateProcessA(LPCSTR lpApplicationName
     res = FALSE;
   }
 
-  LOG_CALL().PARAM(applicationReroute.fileName())
-            .PARAM(cmdline)
-            .PARAM(blacklisted)
-            .PARAM(res);
+  LOG_CALL()
+      .PARAM(applicationReroute.fileName())
+      .PARAM(cmdline)
+      .PARAM(blacklisted)
+      .PARAM(res);
 
   HOOK_END
 
   return res;
 }
 
-
-BOOL WINAPI usvfs::hooks::CreateProcessW(LPCWSTR lpApplicationName
-                                         , LPWSTR lpCommandLine
-                                         , LPSECURITY_ATTRIBUTES lpProcessAttributes
-                                         , LPSECURITY_ATTRIBUTES lpThreadAttributes
-                                         , BOOL bInheritHandles
-                                         , DWORD dwCreationFlags
-                                         , LPVOID lpEnvironment
-                                         , LPCWSTR lpCurrentDirectory
-                                         , LPSTARTUPINFOW lpStartupInfo
-                                         , LPPROCESS_INFORMATION lpProcessInformation)
+BOOL WINAPI usvfs::hooks::CreateProcessW(
+    LPCWSTR lpApplicationName, LPWSTR lpCommandLine,
+    LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles,
+    DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory,
+    LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation)
 {
   BOOL res = FALSE;
 
   HOOK_START_GROUP(MutExHookGroup::CREATE_PROCESS)
   if (!callContext.active()) {
-    return ::CreateProcessW(lpApplicationName, lpCommandLine, lpProcessAttributes,
-                            lpThreadAttributes, bInheritHandles, dwCreationFlags,
-                            lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
+    return ::CreateProcessW(
+        lpApplicationName, lpCommandLine, lpProcessAttributes,
+        lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment,
+        lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
   }
 
-  HookContext::ConstPtr context = HookContext::readAccess();
-
-  // remember if the caller wanted the process to be suspended. If so, we don't resume when
-  // we're done
+  // remember if the caller wanted the process to be suspended. If so, we
+  // don't resume when we're done
   BOOL susp = dwCreationFlags & CREATE_SUSPENDED;
   dwCreationFlags |= CREATE_SUSPENDED;
 
   std::wstring cmdline;
-  if (lpCommandLine != nullptr) {
-    // decompose command line
-    int argc = 0;
-    LPWSTR *argv = ::CommandLineToArgvW(lpCommandLine, &argc);
-    ON_BLOCK_EXIT([argv] () { LocalFree(argv); });
+  RerouteW applicationReroute;
 
-    RerouteW cmdReroute = RerouteW::create(context, callContext, argv[0]);
+  std::wstring dllPath;
+  Parameters callParameters;
 
-    // recompose command line
-    std::wstringstream stream;
-    stream << "\"" << cmdReroute.fileName() << "\"";
-    for (int i = 1; i < argc; ++i) {
-      stream << " " << argv[i];
+  { // scope for context lock
+    auto context = READ_CONTEXT();
+
+    spdlog::get("hooks")->info("{0:p} - {1:p}", (void*)lpApplicationName, (void*)lpCommandLine);
+
+    if (lpCommandLine != nullptr) {
+      // decompose command line
+      int argc     = 0;
+      LPWSTR *argv = ::CommandLineToArgvW(lpCommandLine, &argc);
+      ON_BLOCK_EXIT([argv]() { LocalFree(argv); });
+
+      RerouteW cmdReroute = RerouteW::create(context, callContext, argv[0]);
+
+      // recompose command line
+      std::wstringstream stream;
+      stream << "\"" << cmdReroute.fileName() << "\"";
+      for (int i = 1; i < argc; ++i) {
+        stream << " " << argv[i];
+      }
+      cmdline = stream.str();
+      spdlog::get("hooks")->info("{}", ush::string_cast<std::string>(cmdline));
     }
-    cmdline = stream.str();
+
+    applicationReroute
+        = RerouteW::create(context, callContext, lpApplicationName);
+
+    dllPath        = context->dllPath();
+    callParameters = context->callParameters();
   }
 
-  RerouteW applicationReroute = RerouteW::create(context, callContext, lpApplicationName);
-
   PRE_REALCALL
-  res = ::CreateProcessW(applicationReroute.fileName(),
-                         lpCommandLine != nullptr ? &cmdline[0] : nullptr,
-                         lpProcessAttributes, lpThreadAttributes,
-                         bInheritHandles, dwCreationFlags,
-                         lpEnvironment, lpCurrentDirectory,
-                         lpStartupInfo, lpProcessInformation);
+  res = ::CreateProcessW(
+      applicationReroute.fileName(),
+      lpCommandLine != nullptr ? &cmdline[0] : nullptr, lpProcessAttributes,
+      lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment,
+      lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
   POST_REALCALL
 
   // hook unless blacklisted
-  // TODO implement process blacklisting. Currently disabled because storing in redirection-tree doesn't work and makes no sense
-//  std::wstring binaryName = getBinaryName(applicationReroute.fileName(), lpCommandLine);
-//  bool blacklisted = context->redirectionTable()->testProcessBlacklisted(usvfs::shared::toNarrow(binaryName.c_str()).c_str());
+  // TODO implement process blacklisting. Currently disabled because storing in
+  // redirection-tree doesn't work and makes no sense
+  //  std::wstring binaryName = getBinaryName(applicationReroute.fileName(),
+  //  lpCommandLine);
+  //  bool blacklisted =
+  //  context->redirectionTable()->testProcessBlacklisted(usvfs::shared::toNarrow(binaryName.c_str()).c_str());
   bool blacklisted = false;
   if (!blacklisted) {
     try {
-      injectProcess(context->dllPath()
-                           , context->callParameters()
-                           , *lpProcessInformation);
+      injectProcess(dllPath, callParameters, *lpProcessInformation);
     } catch (const std::exception &e) {
       spdlog::get("hooks")
           ->error("failed to inject into {0}: {1}",
@@ -457,10 +487,11 @@ BOOL WINAPI usvfs::hooks::CreateProcessW(LPCWSTR lpApplicationName
     res = FALSE;
   }
 
-  LOG_CALL().PARAM(applicationReroute.fileName())
-            .PARAM(cmdline)
-            .PARAM(blacklisted)
-            .PARAM(res);
+  LOG_CALL()
+      .PARAM(applicationReroute.fileName())
+      .PARAM(cmdline)
+      .PARAM(blacklisted)
+      .PARAM(res);
 
   HOOK_END
 
@@ -495,11 +526,17 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
 
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
 
+  if (!callContext.active()) {
+    return ::CreateFileW(lpFileName, dwDesiredAccess, dwShareMode,
+                         lpSecurityAttributes, dwCreationDisposition,
+                         dwFlagsAndAttributes, hTemplateFile);
+  }
+
   bool storePath = false;
   if ((dwFlagsAndAttributes & FILE_FLAG_BACKUP_SEMANTICS) != 0UL) {
     // this may be an attempt to open a directory handle for iterating.
     // If so we need to treat it a little bit differently
-    bool isDir = false;
+    bool isDir  = false;
     bool exists = false;
     { // first check in the original location!
       DWORD attributes = fileAttributesRegular(lpFileName);
@@ -512,7 +549,7 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
       // if the file/directory doesn't exist in the original location,
       // we need to check in rerouted locations as well
       DWORD attributes = GetFileAttributesW(lpFileName);
-      isDir = (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0UL;
+      isDir            = (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0UL;
     }
 
     if (isDir) {
@@ -529,18 +566,20 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
     }
   }
 
-  RerouteW reroute
-      = RerouteW::create(HookContext::readAccess(), callContext, lpFileName);
-
   bool create = false;
 
-  if (((dwCreationDisposition == CREATE_ALWAYS)
-       || (dwCreationDisposition == CREATE_NEW))
-      && !reroute.wasRerouted() && !fileExists(lpFileName)) {
-    // the file will be created so now we need to know where
-    reroute = RerouteW::createNew(HookContext::readAccess(), callContext,
-                                  lpFileName);
-    create = reroute.wasRerouted();
+  RerouteW reroute;
+  {
+    auto context = READ_CONTEXT();
+    reroute      = RerouteW::create(context, callContext, lpFileName);
+
+    if (((dwCreationDisposition == CREATE_ALWAYS)
+         || (dwCreationDisposition == CREATE_NEW))
+        && !reroute.wasRerouted() && !fileExists(lpFileName)) {
+      // the file will be created so now we need to know where
+      reroute = RerouteW::createNew(context, callContext, lpFileName);
+      create  = reroute.wasRerouted();
+    }
   }
 
   PRE_REALCALL
@@ -551,13 +590,14 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
 
   if (create && (res != INVALID_HANDLE_VALUE)) {
     // new file was created in a mapped directory, insert to vitual structure
-    reroute.insertMapping(HookContext::writeAccess());
+    reroute.insertMapping(WRITE_CONTEXT());
   }
 
   if ((res != INVALID_HANDLE_VALUE) && storePath) {
     // store the original search path for use during iteration
-    HookContext::ConstPtr context = HookContext::readAccess();
-    context->customData<SearchHandleMap>(SearchHandles)[res] = lpFileName;
+    WRITE_CONTEXT()
+        ->customData<SearchHandleMap>(SearchHandles)[res]
+        = lpFileName;
 #pragma message("need to clean up this handle in CloseHandle call")
   }
 
@@ -584,8 +624,7 @@ BOOL WINAPI usvfs::hooks::GetFileAttributesExW(
 
   HOOK_START_GROUP(MutExHookGroup::FILE_ATTRIBUTES)
 
-  RerouteW reroute
-      = RerouteW::create(HookContext::readAccess(), callContext, lpFileName);
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
   PRE_REALCALL
   res = ::GetFileAttributesExW(reroute.fileName(), fInfoLevelId,
                                lpFileInformation);
@@ -610,7 +649,7 @@ DWORD WINAPI usvfs::hooks::GetFileAttributesW(LPCWSTR lpFileName)
 
   HOOK_START_GROUP(MutExHookGroup::FILE_ATTRIBUTES)
 
-  RerouteW reroute = RerouteW::create(HookContext::readAccess(), callContext, lpFileName);
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
   PRE_REALCALL
   res = ::GetFileAttributesW(reroute.fileName());
   POST_REALCALL
@@ -621,7 +660,7 @@ DWORD WINAPI usvfs::hooks::GetFileAttributesW(LPCWSTR lpFileName)
         .PARAMWRAP(reroute.fileName())
         .PARAMHEX(res)
         .PARAMHEX(::GetLastError());
-        ;
+    ;
   }
 
   HOOK_ENDP(usvfs::log::wrap(lpFileName));
@@ -629,32 +668,26 @@ DWORD WINAPI usvfs::hooks::GetFileAttributesW(LPCWSTR lpFileName)
   return res;
 }
 
-DWORD WINAPI usvfs::hooks::SetFileAttributesW(LPCTSTR lpFileName
-                                              , DWORD dwFileAttributes)
+DWORD WINAPI usvfs::hooks::SetFileAttributesW(LPCTSTR lpFileName,
+                                              DWORD dwFileAttributes)
 {
   DWORD res = 0UL;
 
   HOOK_START_GROUP(MutExHookGroup::FILE_ATTRIBUTES)
 
-  RerouteW reroute = RerouteW::create(HookContext::readAccess(), callContext, lpFileName);
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
   PRE_REALCALL
   res = ::SetFileAttributesW(reroute.fileName(), dwFileAttributes);
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
-    LOG_CALL()
-      .PARAMWRAP(reroute.fileName())
-      .PARAM(res)
-      ;
+    LOG_CALL().PARAMWRAP(reroute.fileName()).PARAM(res);
   }
 
   HOOK_END
 
-
-
   return res;
 }
-
 
 BOOL WINAPI usvfs::hooks::DeleteFileW(LPCWSTR lpFileName)
 {
@@ -662,20 +695,14 @@ BOOL WINAPI usvfs::hooks::DeleteFileW(LPCWSTR lpFileName)
 
   HOOK_START_GROUP(MutExHookGroup::DELETE_FILE)
 
-  auto context = HookContext::readAccess();
-
-  RerouteW reroute = RerouteW::create(context, callContext, lpFileName);
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
 
   PRE_REALCALL
   res = ::DeleteFileW(reroute.fileName());
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
-    LOG_CALL()
-        .PARAMWRAP(lpFileName)
-        .PARAMWRAP(reroute.fileName())
-        .PARAM(res)
-        ;
+    LOG_CALL().PARAMWRAP(lpFileName).PARAMWRAP(reroute.fileName()).PARAM(res);
   }
 
   HOOK_END
@@ -683,22 +710,29 @@ BOOL WINAPI usvfs::hooks::DeleteFileW(LPCWSTR lpFileName)
   return res;
 }
 
-
 BOOL WINAPI usvfs::hooks::MoveFileExW(LPCWSTR lpExistingFileName,
-                                      LPCWSTR lpNewFileName,
-                                      DWORD dwFlags)
+                                      LPCWSTR lpNewFileName, DWORD dwFlags)
 {
   BOOL res = FALSE;
 
   HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
 
-  auto context = HookContext::readAccess();
+  RerouteW readReroute;
+  RerouteW writeReroute;
 
-  RerouteW readReroute  = RerouteW::create(context, callContext, lpExistingFileName);
-  RerouteW writeReroute = RerouteW::createNew(context, callContext, lpNewFileName);
+  {
+    auto context = READ_CONTEXT();
+    readReroute  = RerouteW::create(context, callContext, lpExistingFileName);
+    writeReroute = RerouteW::createNew(context, callContext, lpNewFileName);
+  }
+
   PRE_REALCALL
   res = ::MoveFileExW(readReroute.fileName(), writeReroute.fileName(), dwFlags);
   POST_REALCALL
+
+  if (writeReroute.wasRerouted()) {
+    writeReroute.insertMapping(WRITE_CONTEXT());
+  }
 
   if (readReroute.wasRerouted() || writeReroute.wasRerouted()) {
     LOG_CALL()
@@ -749,61 +783,60 @@ BOOL WINAPI usvfs::hooks::SetCurrentDirectoryW(LPCWSTR lpPathName)
   return res;
 }
 
-DWORD WINAPI usvfs::hooks::GetFullPathNameW(LPCWSTR lpFileName
-                                            , DWORD nBufferLength
-                                            , LPWSTR lpBuffer
-                                            , LPWSTR *lpFilePart)
+DWORD WINAPI usvfs::hooks::GetFullPathNameW(LPCWSTR lpFileName,
+                                            DWORD nBufferLength,
+                                            LPWSTR lpBuffer, LPWSTR *lpFilePart)
 {
 #pragma message("gets called with already-rerouted filename?")
   DWORD res = 0UL;
 
   HOOK_START_GROUP(MutExHookGroup::FULL_PATHNAME)
 
-#pragma message("this doesn't cover the case where the caller is calling gfpn once with bufferlength 0 and then allocates a precisely fitting buffer")
-#pragma message("also, this returns a virtualised path and thus isn't transparent")
+#pragma message(                                                               \
+    "this doesn't cover the case where the caller is calling gfpn once with bufferlength 0 and then allocates a precisely fitting buffer")
+#pragma message(                                                               \
+    "also, this returns a virtualised path and thus isn't transparent")
 
   // nothing to do here? Maybe if current directory is virtualised
   PRE_REALCALL
-  res = ::GetFullPathNameW(lpFileName, nBufferLength, lpBuffer,
-                           lpFilePart);
+  res = ::GetFullPathNameW(lpFileName, nBufferLength, lpBuffer, lpFilePart);
   POST_REALCALL
-/*
-  RerouteW reroute = RerouteW::create(HookContext::readAccess(),
-                                      callContext, lpBuffer);
-  if (reroute.wasRerouted()) {
-    size_t len = wcslen(reroute.fileName());
-    if ((nBufferLength > 0) && (lpBuffer != nullptr)) {
-      size_t copyCount = std::min<size_t>(nBufferLength, len + 1);
-      ush::wcsncpy_sz(lpBuffer, reroute.fileName(), copyCount);
-      if (lpFilePart != nullptr) {
-        *lpFilePart = winapi::ex::wide::GetBaseName(lpBuffer);
-        if (**lpFilePart == L'\0') {
-          // lpBuffer is a directory
-          *lpFilePart = nullptr;
+  /*
+    RerouteW reroute = RerouteW::create(HookContext::readAccess(),
+                                        callContext, lpBuffer);
+    if (reroute.wasRerouted()) {
+      size_t len = wcslen(reroute.fileName());
+      if ((nBufferLength > 0) && (lpBuffer != nullptr)) {
+        size_t copyCount = std::min<size_t>(nBufferLength, len + 1);
+        ush::wcsncpy_sz(lpBuffer, reroute.fileName(), copyCount);
+        if (lpFilePart != nullptr) {
+          *lpFilePart = winapi::ex::wide::GetBaseName(lpBuffer);
+          if (**lpFilePart == L'\0') {
+            // lpBuffer is a directory
+            *lpFilePart = nullptr;
+          }
         }
       }
-    }
-    if (len <= nBufferLength) {
-      res = static_cast<DWORD>(len);
-    } else {
-      res = static_cast<DWORD>(len) + 1;
-    }
+      if (len <= nBufferLength) {
+        res = static_cast<DWORD>(len);
+      } else {
+        res = static_cast<DWORD>(len) + 1;
+      }
 
-    LOG_CALL()
-        .PARAMWRAP(lpFileName)
-        .PARAM(nBufferLength)
-        .PARAM(lpBuffer)
-        .PARAM(res);
-  }
-*/
+      LOG_CALL()
+          .PARAMWRAP(lpFileName)
+          .PARAM(nBufferLength)
+          .PARAM(lpBuffer)
+          .PARAM(res);
+    }
+  */
   HOOK_END
 
   return res;
 }
 
-DWORD WINAPI usvfs::hooks::GetModuleFileNameW(HMODULE hModule
-                                              , LPWSTR lpFilename
-                                              , DWORD nSize)
+DWORD WINAPI usvfs::hooks::GetModuleFileNameW(HMODULE hModule,
+                                              LPWSTR lpFilename, DWORD nSize)
 {
   DWORD res = 0UL;
 
@@ -816,14 +849,16 @@ DWORD WINAPI usvfs::hooks::GetModuleFileNameW(HMODULE hModule
   if (res != 0) {
     // on success
 
-    // TODO: test if the filename is within a mapped directory. If so, rewrite it to be in the mapped-to directory
+    // TODO: test if the filename is within a mapped directory. If so, rewrite
+    // it to be in the mapped-to directory
     //  -> reverseReroute...
   }
 
   if (callContext.active()) {
     LOG_CALL()
         .PARAM(hModule)
-        .addParam("lpFilename", usvfs::log::Wrap<LPCWSTR>((res != 0UL) ? lpFilename : L"<not set>"))
+        .addParam("lpFilename", usvfs::log::Wrap<LPCWSTR>(
+                                    (res != 0UL) ? lpFilename : L"<not set>"))
         .PARAM(nSize)
         .PARAM(res);
   }
@@ -833,34 +868,35 @@ DWORD WINAPI usvfs::hooks::GetModuleFileNameW(HMODULE hModule
   return res;
 }
 
-
 VOID WINAPI usvfs::hooks::ExitProcess(UINT exitCode)
 {
   HOOK_START
 
   {
-    HookContext::Ptr context = HookContext::writeAccess();
+    HookContext::Ptr context = WRITE_CONTEXT();
 
     std::vector<std::future<int>> &delayed = context->delayed();
 
     if (!delayed.empty()) {
       // ensure all delayed tasks are completed before we exit the process
-      for (std::future<int> &delayed : HookContext::writeAccess()->delayed()) {
+      for (std::future<int> &delayed : context->delayed()) {
         delayed.get();
       }
       delayed.clear();
     }
   }
 
-  // exitprocess doesn't return so logging the call after the real call doesn't make much sense.
+  // exitprocess doesn't return so logging the call after the real call doesn't
+  // make much sense.
   // nor does any pre/post call macro
   LOG_CALL().PARAM(exitCode);
 
-  HookManager::instance().removeHook("ExitProcess");
-  PRE_REALCALL
-  ExitProcess(exitCode);
-  POST_REALCALL
+  DisconnectVFS();
+
+  //  HookManager::instance().removeHook("ExitProcess");
+  //  PRE_REALCALL
+  ::ExitProcess(exitCode);
+  //  POST_REALCALL
 
   HOOK_END
 }
-

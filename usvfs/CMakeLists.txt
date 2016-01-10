@@ -10,6 +10,7 @@ SET(usvfs_HDRS
   hooks/sharedids.h
   loghelpers.h
   redirectiontree.h
+  semaphore.h
   stringcast_boost.h
   usvfs.h
   )
@@ -23,6 +24,7 @@ SET(usvfs_SRCS
   hooks/ole32.cpp
   loghelpers.cpp
   redirectiontree.cpp
+  semaphore.cpp
   stringcast_boost.cpp
   usvfs.cpp
   )

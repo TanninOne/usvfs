@@ -30,6 +30,12 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 namespace usvfs {
 
 struct Parameters {
+
+  Parameters()
+    : debugMode(false)
+    , logLevel(LogLevel::Debug)
+  {}
+
   Parameters(const char *instanceName, bool debugMode, LogLevel logLevel)
     : debugMode(debugMode)
     , logLevel(logLevel)

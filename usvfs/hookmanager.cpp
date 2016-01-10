@@ -220,7 +220,7 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "GetCurrentDirectoryW", uhooks::GetCurrentDirectoryW);
   installHook(kbaseMod, k32Mod, "SetCurrentDirectoryW", uhooks::SetCurrentDirectoryW);
 
-  //installHook(kbaseMod, k32Mod, "ExitProcess", uhooks::ExitProcess);
+  installHook(kbaseMod, k32Mod, "ExitProcess", uhooks::ExitProcess);
 
   installHook(kbaseMod, k32Mod, "CreateProcessA", uhooks::CreateProcessA);
   installHook(kbaseMod, k32Mod, "CreateProcessW", uhooks::CreateProcessW);
