@@ -598,7 +598,6 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
     WRITE_CONTEXT()
         ->customData<SearchHandleMap>(SearchHandles)[res]
         = lpFileName;
-#pragma message("need to clean up this handle in CloseHandle call")
   }
 
   if (reroute.wasRerouted()) {

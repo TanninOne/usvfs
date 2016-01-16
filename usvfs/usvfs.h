@@ -90,7 +90,7 @@ extern "C" DLLEXPORT void WINAPI GetCurrentVFSName(char *buffer, size_t size);
 /**
  * retrieve a list of all processes connected to the vfs
  */
-extern "C" DLLEXPORT BOOL WINAPI GetVFSProcessList(size_t *count, PDWORD processIDs);
+extern "C" DLLEXPORT BOOL WINAPI GetVFSProcessList(size_t *count, LPDWORD processIDs);
 
 /**
  * spawn a new process that can see the virtual file system. The signature is identical to CreateProcess
@@ -123,6 +123,13 @@ extern "C" DLLEXPORT bool WINAPI GetLogMessages(LPSTR buffer, size_t size, bool 
  *               even if this is bigger than the buffer size
  */
 extern "C" DLLEXPORT BOOL WINAPI CreateVFSDump(LPSTR buffer, size_t *size);
+
+/**
+ * adds an executable to the blacklist so it doesn't get exposed to the virtual
+ * file system
+ * @param executableName  name of the executable
+ */
+extern "C" DLLEXPORT VOID WINAPI BlacklistExecutable(LPWSTR executableName);
 
 /**
  * print debugging info about the vfs. The format is currently not fixed and may

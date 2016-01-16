@@ -54,9 +54,8 @@ typedef bi::basic_managed_windows_shared_memory
 managed_windows_shared_memory;
 
 typedef managed_windows_shared_memory SharedMemoryT;
-//typedef boost::interprocess::managed_shared_memory SharedMemoryT;
 #else // BOOST_OS_WINDOWS
-typedef boost::interprocess::managed_shared_memory SharedMemoryT;
+#error "currently only windows supported"
 #endif // BOOST_OS_WINDOWS
 
 typedef SharedMemoryT::segment_manager SegmentManagerT;

@@ -213,7 +213,7 @@ void HookManager::initHooks()
 //  installHook(kbaseMod, k32Mod, "GetFileAttributesW", uhooks::GetFileAttributesW);
   installHook(kbaseMod, k32Mod, "SetFileAttributesW", uhooks::SetFileAttributesW);
   installHook(kbaseMod, k32Mod, "CreateFileW", uhooks::CreateFileW); // not all calls seem to translate to a call to NtCreateFile
-  installStub(kbaseMod, k32Mod, "CreateFileExW");
+//  installStub(kbaseMod, k32Mod, "CreateFileExW");
 //  installStub(kbaseMod, k32Mod, "CreateDirectoryW");
   installHook(kbaseMod, k32Mod, "DeleteFileW", uhooks::DeleteFileW);
   installStub(kbaseMod, k32Mod, "DeleteFileA");

@@ -60,6 +60,10 @@ public:
   static SHMLogger &open(const char *instanceName);
   static void free();
 
+  static bool isInstantiated() {
+    return s_Instance != nullptr;
+  }
+
   static inline SHMLogger &instance() {
     if (s_Instance == nullptr) {
       throw std::runtime_error("shm logger not instantiated");

@@ -132,6 +132,8 @@ public:
   void unregisterCurrentProcess();
   std::vector<DWORD> registeredProcesses() const;
 
+  void blacklistExecutable(const std::wstring &executableName);
+
   void updateParameters() const;
 
   void registerDelayed(std::future<int> delayed);

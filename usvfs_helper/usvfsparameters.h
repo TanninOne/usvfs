@@ -27,14 +27,16 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <boost/interprocess/containers/set.hpp>
 #include "../shared/shared_memory.h"
 
-namespace usvfs {
+namespace usvfs
+{
 
 struct Parameters {
 
   Parameters()
     : debugMode(false)
     , logLevel(LogLevel::Debug)
-  {}
+  {
+  }
 
   Parameters(const char *instanceName, bool debugMode, LogLevel logLevel)
     : debugMode(debugMode)
@@ -44,7 +46,8 @@ struct Parameters {
     strncpy_s(this->currentSHMName, 64, instanceName, _TRUNCATE);
   }
 
-  Parameters(const char *instanceName, const char *currentSHMName, bool debugMode, LogLevel logLevel)
+  Parameters(const char *instanceName, const char *currentSHMName,
+             bool debugMode, LogLevel logLevel)
     : debugMode(debugMode)
     , logLevel(logLevel)
   {
@@ -54,14 +57,12 @@ struct Parameters {
 
   char instanceName[65];
   char currentSHMName[65];
-  bool debugMode { false };
-  LogLevel logLevel { LogLevel::Debug };
+  bool debugMode{false};
+  LogLevel logLevel{LogLevel::Debug};
 };
-
 
 typedef shared::VoidAllocatorT::rebind<DWORD>::other DWORDAllocatorT;
 typedef shared::VoidAllocatorT::rebind<shared::StringT>::other StringAllocatorT;
-
 
 struct SharedParameters {
 
@@ -71,7 +72,8 @@ struct SharedParameters {
 
   SharedParameters &operator=(const SharedParameters &reference) = delete;
 
-  SharedParameters(const Parameters &reference, const shared::VoidAllocatorT &allocator)
+  SharedParameters(const Parameters &reference,
+                   const shared::VoidAllocatorT &allocator)
     : instanceName(reference.instanceName, allocator)
     , currentSHMName(reference.currentSHMName, allocator)
     , debugMode(reference.debugMode)
@@ -84,7 +86,8 @@ struct SharedParameters {
 
   explicit operator Parameters()
   {
-    Parameters result(instanceName.c_str(), currentSHMName.c_str(), debugMode, logLevel);
+    Parameters result(instanceName.c_str(), currentSHMName.c_str(), debugMode,
+                      logLevel);
     return result;
   }
 
@@ -93,8 +96,8 @@ struct SharedParameters {
   bool debugMode;
   LogLevel logLevel;
   uint32_t userCount;
-  boost::container::vector<shared::StringT, StringAllocatorT> processBlacklist;
+  boost::container::set<shared::StringT, std::less<shared::StringT>,
+                        StringAllocatorT> processBlacklist;
   boost::container::set<DWORD, std::less<DWORD>, DWORDAllocatorT> processList;
 };
-
 }

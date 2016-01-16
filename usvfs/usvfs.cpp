@@ -81,14 +81,13 @@ char *SeverityShort(LogLevel lvl)
 void InitLoggingInternal(bool toConsole, bool connectExistingSHM)
 {
   try {
-    if (!toConsole) {
+    if (!toConsole && !SHMLogger::isInstantiated()) {
       if (connectExistingSHM) {
         SHMLogger::open("usvfs");
       } else {
         SHMLogger::create("usvfs");
       }
     }
-
     // a temporary logger was created in DllMain
     spdlog::drop("usvfs");
     #pragma message("need a customized name for the shm")
@@ -393,7 +392,7 @@ bool processStillActive(DWORD pid)
 }
 
 
-BOOL WINAPI GetVFSProcessList(size_t *count, PDWORD processIDs)
+BOOL WINAPI GetVFSProcessList(size_t *count, LPDWORD processIDs)
 {
   if (count == nullptr) {
     SetLastError(ERROR_INVALID_PARAMETER);
@@ -628,6 +627,12 @@ BOOL WINAPI CreateVFSDump(LPSTR buffer, size_t *size)
   bool success = *size >= str.length();
   *size = str.length();
   return success ? TRUE : FALSE;
+}
+
+
+VOID WINAPI BlacklistExecutable(LPWSTR executableName)
+{
+  context->blacklistExecutable(executableName);
 }
 
 

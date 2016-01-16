@@ -89,10 +89,11 @@ SharedParameters *HookContext::retrieveParameters(const Parameters &params)
     spdlog::get("usvfs")
         ->info("access existing config in {}", ::GetCurrentProcessId());
   }
+  spdlog::get("usvfs")->info("{} processes", res.first->processList.size());
   return res.first;
 }
 
-HookContext::ConstPtr HookContext::readAccess(const char *source)
+HookContext::ConstPtr HookContext::readAccess(const char*)
 {
   BOOST_ASSERT(s_Instance != nullptr);
 
@@ -101,7 +102,7 @@ HookContext::ConstPtr HookContext::readAccess(const char *source)
   return ConstPtr(s_Instance, unlockShared);
 }
 
-HookContext::Ptr HookContext::writeAccess(const char *source)
+HookContext::Ptr HookContext::writeAccess(const char*)
 {
   BOOST_ASSERT(s_Instance != nullptr);
 
@@ -129,6 +130,13 @@ std::wstring HookContext::dllPath() const
 void HookContext::registerProcess(DWORD pid)
 {
   m_Parameters->processList.insert(pid);
+}
+
+void HookContext::blacklistExecutable(const std::wstring &executableName)
+{
+  m_Parameters->processBlacklist.insert(
+      shared::StringT(shared::string_cast<std::string>(executableName).c_str(),
+        m_Parameters->processBlacklist.get_allocator()));
 }
 
 void HookContext::unregisterCurrentProcess()
