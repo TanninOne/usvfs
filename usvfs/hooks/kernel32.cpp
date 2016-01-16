@@ -534,6 +534,7 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
 
   bool storePath = false;
   if ((dwFlagsAndAttributes & FILE_FLAG_BACKUP_SEMANTICS) != 0UL) {
+    spdlog::get("usvfs")->info("backup semantics");
     // this may be an attempt to open a directory handle for iterating.
     // If so we need to treat it a little bit differently
     bool isDir  = false;
@@ -589,6 +590,7 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
   POST_REALCALL
 
   if (create && (res != INVALID_HANDLE_VALUE)) {
+    spdlog::get("hooks")->info("add file to vfs: {}", ush::string_cast<std::string>(lpFileName));
     // new file was created in a mapped directory, insert to vitual structure
     reroute.insertMapping(WRITE_CONTEXT());
   }
