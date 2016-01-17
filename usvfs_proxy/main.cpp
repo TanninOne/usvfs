@@ -22,6 +22,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <inject.h>
 #include <shared_memory.h>
 #include <usvfsparameters.h>
+#include <hookcontext.h>
 #include <spdlog.h>
 #include <winapi.h>
 #include <boost/filesystem.hpp>
@@ -110,7 +111,7 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  usvfs::Parameters par = static_cast<usvfs::Parameters>(*(params.first));
+  USVFSParameters par = params.first->makeLocal();
 
   if (executable.empty()) {
     HANDLE processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
@@ -118,10 +119,8 @@ int main(int argc, char **argv)
     if (tid != 0) {
       threadHandle = OpenThread(THREAD_ALL_ACCESS, FALSE, tid);
     }
-    injectProcess(winapi::wide::getModuleFileName(NULL)
-                  , par
-                  , processHandle
-                  , threadHandle);
+    usvfs::injectProcess(winapi::wide::getModuleFileName(NULL), par,
+                         processHandle, threadHandle);
   } else {
     winapi::process::Result process = winapi::ansi::createProcess(executable)
         .arguments(arguments.begin(), arguments.end())
@@ -132,9 +131,8 @@ int main(int argc, char **argv)
       return 1;
     }
 
-    injectProcess(winapi::wide::getModuleFileName(NULL)
-                  , par
-                  , process.processInfo);
+    usvfs::injectProcess(winapi::wide::getModuleFileName(NULL), par,
+                         process.processInfo);
 
     ResumeThread(process.processInfo.hThread);
   }

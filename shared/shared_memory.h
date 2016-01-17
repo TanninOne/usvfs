@@ -31,6 +31,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #endif // BOOST_OS_WINDOWS
 #include <boost/interprocess/containers/string.hpp>
 #include <boost/container/scoped_allocator.hpp>
+#include <boost/interprocess/offset_ptr.hpp>
 #include <cstdint>
 
 namespace bi = boost::interprocess;
@@ -40,10 +41,13 @@ namespace usvfs {
 namespace shared {
 
 template <typename T>
-using OffsetPtrT = bi::offset_ptr<T, std::int32_t, std::uint64_t, 4>;
+using OffsetPtrT = bi::offset_ptr<T, std::int32_t, std::uint64_t, 8>;
 typedef OffsetPtrT<void> VoidPointerT;
 
 
+// important: the windows shared memory mechanism, unlike other impelementations
+// automatically removes the SHM object when there are no more "subscribers".
+// MO currently depends on that feature!
 #ifdef BOOST_OS_WINDOWS
 // managed_windows_shared_memory apparently doesn't support sharing between
 // 64bit and 32bit processes

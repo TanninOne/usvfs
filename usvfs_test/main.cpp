@@ -101,7 +101,8 @@ public:
     // need to initialize logging in the context of the dll
     InitLogging();
 
-    usvfs::Parameters params("usvfs_test", true, LogLevel::Debug);
+    USVFSParameters params;
+    USVFSInitParameters(&params, "usvfs_test", true, LogLevel::Debug);
     m_Context.reset(CreateHookContext(params, ::GetModuleHandle(nullptr)));
     usvfs::RedirectionTreeContainer &tree = m_Context->redirectionTable();
     tree.addFile(ush::string_cast<std::string>(VIRTUAL_FILEW, ush::CodePage::UTF8).c_str()
@@ -124,7 +125,8 @@ class USVFSTestAuto : public testing::Test
 {
 public:
   void SetUp() {
-    usvfs::Parameters params("usvfs_test_fixture", true, LogLevel::Debug);
+    USVFSParameters params;
+    USVFSInitParameters(&params, "usvfs_test_fixture", true, LogLevel::Debug);
     ConnectVFS(&params);
     SHMLogger::create("usvfs");
   }
@@ -163,7 +165,8 @@ TEST_F(USVFSTest, CanResizeRedirectiontree)
 TEST_F(USVFSTest, CreateFileHookReportsCorrectErrorOnMissingFile)
 {
   EXPECT_NO_THROW({
-    usvfs::Parameters params("usvfs_test", true, LogLevel::Debug);
+    USVFSParameters params;
+    USVFSInitParameters(&params, "usvfs_test", true, LogLevel::Debug);
     std::unique_ptr<usvfs::HookContext> ctx(CreateHookContext(params, ::GetModuleHandle(nullptr)));
     HANDLE res = uhooks::CreateFileW(VIRTUAL_FILEW
                                      , GENERIC_READ
@@ -195,7 +198,8 @@ TEST_F(USVFSTest, GetFileAttributesHookReportsCorrectErrorOnMissingFile)
 {
   EXPECT_NO_THROW({
     try {
-        usvfs::Parameters params("usvfs_test", true, LogLevel::Debug);
+        USVFSParameters params;
+        USVFSInitParameters(&params, "usvfs_test", true, LogLevel::Debug);
         std::unique_ptr<usvfs::HookContext> ctx(CreateHookContext(params, ::GetModuleHandle(nullptr)));
         DWORD res = uhooks::GetFileAttributesW(VIRTUAL_FILEW);
 
@@ -210,7 +214,8 @@ TEST_F(USVFSTest, GetFileAttributesHookReportsCorrectErrorOnMissingFile)
 
 TEST_F(USVFSTest, GetFileAttributesHookRedirectsFile)
 {
-  usvfs::Parameters params("usvfs_test", true, LogLevel::Debug);
+  USVFSParameters params;
+  USVFSInitParameters(&params, "usvfs_test", true, LogLevel::Debug);
   std::unique_ptr<usvfs::HookContext> ctx(CreateHookContext(params, ::GetModuleHandle(nullptr)));
   usvfs::RedirectionTreeContainer &tree = ctx->redirectionTable();
 
@@ -223,7 +228,8 @@ TEST_F(USVFSTest, GetFileAttributesHookRedirectsFile)
 
 TEST_F(USVFSTest, GetFullPathNameOnRegularCurrentDirectory)
 {
-  usvfs::Parameters params("usvfs_test", true, LogLevel::Debug);
+  USVFSParameters params;
+  USVFSInitParameters(&params, "usvfs_test", true, LogLevel::Debug);
   std::unique_ptr<usvfs::HookContext> ctx(CreateHookContext(params, ::GetModuleHandle(nullptr)));
 
   std::wstring expected = winapi::wide::getCurrentDirectory() + L"\\filename.txt";
@@ -240,7 +246,8 @@ TEST_F(USVFSTest, GetFullPathNameOnRegularCurrentDirectory)
 
 TEST_F(USVFSTest, NtQueryDirectoryFileRegularFile)
 {
-  usvfs::Parameters params("usvfs_test", true, LogLevel::Debug);
+  USVFSParameters params;
+  USVFSInitParameters(&params, "usvfs_test", true, LogLevel::Debug);
   std::unique_ptr<usvfs::HookContext> ctx(CreateHookContext(params, ::GetModuleHandle(nullptr)));
 
   HANDLE hdl = CreateFileW(L"C:\\"
@@ -271,7 +278,8 @@ TEST_F(USVFSTest, NtQueryDirectoryFileRegularFile)
 
 TEST_F(USVFSTest, NtQueryDirectoryFileFindsVirtualFile)
 {
-  usvfs::Parameters params("usvfs_test", true, LogLevel::Debug);
+  USVFSParameters params;
+  USVFSInitParameters(&params, "usvfs_test", true, LogLevel::Debug);
   std::unique_ptr<usvfs::HookContext> ctx(CreateHookContext(params, ::GetModuleHandle(nullptr)));
   usvfs::RedirectionTreeContainer &tree = ctx->redirectionTable();
 

@@ -45,7 +45,7 @@ void printBuffer(const char *buffer, size_t size)
     size_t offset = i % 16;
     _snprintf(&temp[offset * 3], 3, "%02x ", (unsigned char)buffer[i]);
     if (offset == 15) {
-      spdlog::get("hooks")->info(temp);
+      spdlog::get("hooks")->info("{0:x} - {1}", i - offset, temp);
     }
   }
 
@@ -53,7 +53,28 @@ void printBuffer(const char *buffer, size_t size)
 }
 
 
-HookContext::HookContext(const Parameters &params, HMODULE module)
+USVFSParameters SharedParameters::makeLocal() const
+{
+  USVFSParameters result;
+  USVFSInitParametersInt(&result, instanceName.c_str(),
+                         currentSHMName.c_str(), debugMode, logLevel);
+  return result;
+}
+
+
+void usvfs::USVFSInitParametersInt(USVFSParameters *parameters,
+                                   const char *instanceName,
+                                   const char *currentSHMName, bool debugMode,
+                                   LogLevel logLevel)
+{
+  parameters->debugMode = debugMode;
+  parameters->logLevel = logLevel;
+  strncpy_s(parameters->instanceName, 64, instanceName, _TRUNCATE);
+  strncpy_s(parameters->currentSHMName, 64, currentSHMName, _TRUNCATE);
+}
+
+
+HookContext::HookContext(const USVFSParameters &params, HMODULE module)
   : m_ConfigurationSHM(bi::open_or_create, params.instanceName, 8192)
   , m_Parameters(retrieveParameters(params))
   , m_Tree(m_Parameters->currentSHMName.c_str(), 4096)
@@ -92,7 +113,7 @@ HookContext::~HookContext()
   }
 }
 
-SharedParameters *HookContext::retrieveParameters(const Parameters &params)
+SharedParameters *HookContext::retrieveParameters(const USVFSParameters &params)
 {
   std::pair<SharedParameters *, SharedMemoryT::size_type> res
       = m_ConfigurationSHM.find<SharedParameters>("parameters");
@@ -134,10 +155,10 @@ void HookContext::updateParameters() const
   m_Parameters->currentSHMName = m_Tree.shmName().c_str();
 }
 
-Parameters HookContext::callParameters() const
+USVFSParameters HookContext::callParameters() const
 {
   updateParameters();
-  return static_cast<Parameters>(*m_Parameters);
+  return m_Parameters->makeLocal();
 }
 
 std::wstring HookContext::dllPath() const
@@ -149,7 +170,6 @@ std::wstring HookContext::dllPath() const
 void HookContext::registerProcess(DWORD pid)
 {
   spdlog::get("usvfs")->info("reg proc shm {0:p}", m_ConfigurationSHM.get_address());
-  spdlog::get("usvfs")->info("offset {}", (char*)&m_Parameters->userCount - (char*)m_ConfigurationSHM.get_address());
   printBuffer((char*)m_ConfigurationSHM.get_address(), m_ConfigurationSHM.get_size());
 
   m_Parameters->processList.insert(pid);
@@ -171,7 +191,6 @@ void HookContext::unregisterCurrentProcess()
 std::vector<DWORD> HookContext::registeredProcesses() const
 {
   spdlog::get("usvfs")->info("registered shm {0:p}", m_ConfigurationSHM.get_address());
-  spdlog::get("usvfs")->info("offset {}", (char*)&m_Parameters->userCount - (char*)m_ConfigurationSHM.get_address());
   printBuffer((char*)m_ConfigurationSHM.get_address(), m_ConfigurationSHM.get_size());
   std::vector<DWORD> result;
   for (DWORD procId : m_Parameters->processList) {
@@ -200,7 +219,7 @@ void HookContext::unlockShared(const HookContext *instance)
   instance->m_Mutex.signal();
 }
 
-HookContext *__cdecl CreateHookContext(const Parameters &params, HMODULE module)
+HookContext *__cdecl CreateHookContext(const USVFSParameters &params, HMODULE module)
 {
   return new HookContext(params, module);
 }

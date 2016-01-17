@@ -101,7 +101,8 @@ int main(int argc, char *argv[])
       throw std::exception("instance name must consist of only ascii characters");
     }
 
-    usvfs::Parameters params(shmName.c_str(), false, LogLevel::Debug);
+    USVFSParameters params;
+    USVFSInitParameters(&params, shmName.c_str(), false, LogLevel::Debug);
     logger->info("initializing shm {}", shmName);
     ConnectVFS(&params);
     InitLogging(true);
@@ -180,10 +181,9 @@ int main(int argc, char *argv[])
                                   , pid);
 
       if (processHandle != nullptr) {
-        injectProcess(QCoreApplication::applicationDirPath().toStdWString()
-                      , params
-                      , processHandle
-                      , INVALID_HANDLE_VALUE);
+        usvfs::injectProcess(
+            QCoreApplication::applicationDirPath().toStdWString(), params,
+            processHandle, INVALID_HANDLE_VALUE);
       } else {
         logger->critical("failed to open handle for process {}: {}", pid, winapi::ex::ansi::errorString(::GetLastError()));
       }

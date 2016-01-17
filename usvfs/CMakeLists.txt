@@ -49,8 +49,6 @@ INCLUDE_DIRECTORIES("${Boost_INCLUDE_DIRS}"
                     "${CPPFORMAT_SOURCE_DIR}"
                     )
 
-MESSAGE(STATUS "linking against libs in ${CMAKE_BINARY_DIR}")
-
 LINK_DIRECTORIES(${LINK_DIRECTORIES}
                  "${Boost_LIBRARY_DIRS}"
                  "${ASMJIT_BINARY_DIR}"

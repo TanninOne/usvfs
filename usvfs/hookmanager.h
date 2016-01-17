@@ -32,7 +32,7 @@ class HookManager
 {
 public:
 
-  HookManager(const Parameters &params, HMODULE module);
+  HookManager(const USVFSParameters &params, HMODULE module);
   ~HookManager();
 
   static HookManager &instance();

@@ -18,8 +18,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 */
-#pragma warning (disable:4714)
-#pragma warning (disable:4503)
+#pragma warning(disable : 4714)
+#pragma warning(disable : 4503)
 #pragma warning(push, 3)
 #include "shmlogger.h"
 #include <boost/interprocess/ipc/message_queue.hpp>
@@ -28,7 +28,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #pragma warning(pop)
 
-#pragma warning(disable: 4996)
+#pragma warning(disable : 4996)
 
 using namespace boost::interprocess;
 
@@ -36,7 +36,6 @@ SHMLogger *SHMLogger::s_Instance = nullptr;
 
 SHMLogger::owner_t SHMLogger::owner;
 SHMLogger::client_t SHMLogger::client;
-
 
 SHMLogger::SHMLogger(owner_t, const std::string &queueName)
   : m_QueueName(queueName)
@@ -50,7 +49,6 @@ SHMLogger::SHMLogger(owner_t, const std::string &queueName)
   }
 }
 
-
 SHMLogger::SHMLogger(client_t, const std::string &queueName)
   : m_QueueName(queueName)
   , m_LogQueue(open_only, queueName.c_str())
@@ -63,12 +61,11 @@ SHMLogger::SHMLogger(client_t, const std::string &queueName)
   }
 }
 
-
-SHMLogger::~SHMLogger() {
+SHMLogger::~SHMLogger()
+{
   s_Instance = nullptr;
   message_queue_interop::remove(m_QueueName.c_str());
 }
-
 
 SHMLogger &SHMLogger::create(const char *instanceName)
 {
@@ -78,7 +75,7 @@ SHMLogger &SHMLogger::create(const char *instanceName)
     std::string queueName = std::string("__shm_sink_") + instanceName;
     message_queue::remove(queueName.c_str());
     new SHMLogger(owner, queueName);
-    atexit([] () { delete s_Instance; });
+    atexit([]() { delete s_Instance; });
   }
   return *s_Instance;
 }
@@ -93,12 +90,11 @@ SHMLogger &SHMLogger::open(const char *instanceName)
   return *s_Instance;
 }
 
-
 void SHMLogger::free()
 {
   if (s_Instance != nullptr) {
     SHMLogger *temp = s_Instance;
-    s_Instance = nullptr;
+    s_Instance      = nullptr;
     delete temp;
   }
 }
@@ -107,19 +103,20 @@ bool SHMLogger::tryGet(char *buffer, size_t bufferSize)
 {
   message_queue_interop::size_type receivedSize;
   unsigned int prio;
-  bool res = m_LogQueue.try_receive(buffer, bufferSize, receivedSize, prio);
+  bool res = m_LogQueue.try_receive(
+      buffer, static_cast<unsigned int>(bufferSize), receivedSize, prio);
   if (res) {
     buffer[std::min(bufferSize - 1, static_cast<size_t>(receivedSize))] = '\0';
   }
   return res;
 }
 
-
 void SHMLogger::get(char *buffer, size_t bufferSize)
 {
   message_queue_interop::size_type receivedSize;
   unsigned int prio;
-  m_LogQueue.receive(buffer, bufferSize, receivedSize, prio);
+  m_LogQueue.receive(buffer, static_cast<unsigned int>(bufferSize),
+                     receivedSize, prio);
   buffer[std::min(bufferSize - 1, static_cast<size_t>(receivedSize))] = '\0';
 }
 
@@ -136,8 +133,10 @@ void spdlog::sinks::shm_sink::log(const details::log_msg &msg)
 {
   if (m_DroppedMessages > 0) {
     int droppedMessages = m_DroppedMessages;
-    std::string dropMessage = fmt::format("{} messages dropped", droppedMessages);
-    if (m_LogQueue.try_send(dropMessage.c_str(), dropMessage.size(), 0)) {
+    std::string dropMessage
+        = fmt::format("{} messages dropped", droppedMessages);
+    if (m_LogQueue.try_send(dropMessage.c_str(),
+                            static_cast<unsigned int>(dropMessage.size()), 0)) {
       m_DroppedMessages.fetch_sub(droppedMessages);
     }
   }
@@ -145,28 +144,33 @@ void spdlog::sinks::shm_sink::log(const details::log_msg &msg)
   bool sent = true;
 
   std::string message = msg.formatted.str();
-  // spdlog auto-append line breaks which we don't need. Probably would be better to not write the
+  // spdlog auto-append line breaks which we don't need. Probably would be
+  // better to not write the
   // breaks to begin with?
   size_t count = std::min(message.find_last_not_of("\r\n") + 1,
                           static_cast<size_t>(m_LogQueue.get_max_msg_size()));
 
-  // depending on the log level, drop less important messages if the receiver can't keep up
+  // depending on the log level, drop less important messages if the receiver
+  // can't keep up
   switch (msg.level) {
     case level::trace:
     case level::debug:
     case level::notice: {
-      //m_LogQueue.send(message.c_str(), count, 0);
-      sent = m_LogQueue.try_send(message.c_str(), count, 0);
+      // m_LogQueue.send(message.c_str(), count, 0);
+      sent = m_LogQueue.try_send(message.c_str(),
+                                 static_cast<unsigned int>(count), 0);
     } break;
     case level::alert:
     case level::critical:
     case level::emerg:
     case level::err: {
-      m_LogQueue.send(message.c_str(), count, 0);
+      m_LogQueue.send(message.c_str(), static_cast<unsigned int>(count), 0);
     } break;
     default: {
-      boost::posix_time::ptime time = microsec_clock::universal_time() + boost::posix_time::milliseconds(200);
-      sent = m_LogQueue.timed_send(message.c_str(), count, 0, time);
+      boost::posix_time::ptime time = microsec_clock::universal_time()
+                                      + boost::posix_time::milliseconds(200);
+      sent = m_LogQueue.timed_send(message.c_str(),
+                                   static_cast<unsigned int>(count), 0, time);
     } break;
   }
 

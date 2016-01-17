@@ -5,6 +5,7 @@ SET(usvfs_helper_HDRS
 
 SET(usvfs_helper_SRCS
     inject.cpp
+    usvfsparameters.cpp
     )
 
 INCLUDE_DIRECTORIES("${Boost_INCLUDE_DIRS}"
@@ -17,7 +18,7 @@ INCLUDE_DIRECTORIES("${Boost_INCLUDE_DIRS}"
 LINK_DIRECTORIES(
     )
 
-ADD_DEFINITIONS()
+ADD_DEFINITIONS(-D_WINDLL -DNOMINMAX)
 
 
 ADD_LIBRARY(usvfs_helper STATIC ${usvfs_helper_HDRS} ${usvfs_helper_SRCS})

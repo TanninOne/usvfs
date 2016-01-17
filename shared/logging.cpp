@@ -21,8 +21,15 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include "logging.h"
 #include "stringcast.h"
 
+
+/*
 namespace ush = usvfs::shared;
 
+namespace std {
+ostream &operator<<(ostream &os, LPCWSTR str);
+ostream &operator<<(ostream &os, LPWSTR str);
+ostream &operator<<(ostream &os, const wstring &str);
+}
 
 std::ostream &std::operator<<(ostream &os, LPCWSTR str)
 {
@@ -75,4 +82,4 @@ std::ostream &std::operator<<(ostream &os, LPWSTR str)
 
   return os;
 }
-
+*/

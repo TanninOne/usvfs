@@ -46,7 +46,7 @@ namespace usvfs {
 HookManager *HookManager::s_Instance = nullptr;
 
 
-HookManager::HookManager(const Parameters &params, HMODULE module)
+HookManager::HookManager(const USVFSParameters &params, HMODULE module)
   : m_Context(params, module)
 {
   if (s_Instance != nullptr) {

@@ -318,7 +318,7 @@ BOOL WINAPI usvfs::hooks::CreateProcessA(
   RerouteW applicationReroute;
 
   std::wstring dllPath;
-  Parameters callParameters;
+  USVFSParameters callParameters;
 
   { // scope for context lock
     auto context = READ_CONTEXT();
@@ -420,7 +420,7 @@ BOOL WINAPI usvfs::hooks::CreateProcessW(
   RerouteW applicationReroute;
 
   std::wstring dllPath;
-  Parameters callParameters;
+  USVFSParameters callParameters;
 
   { // scope for context lock
     auto context = READ_CONTEXT();

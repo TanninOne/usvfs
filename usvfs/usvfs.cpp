@@ -291,7 +291,7 @@ void __cdecl InitHooks(LPVOID parameters, size_t)
   }
 #pragma message("bug: if the ve handler is called, the process breaks")
 
-  usvfs::Parameters *params = reinterpret_cast<usvfs::Parameters *>(parameters);
+  USVFSParameters *params = reinterpret_cast<USVFSParameters *>(parameters);
   spdlog::get("usvfs")->set_level(ConvertLogLevel(params->logLevel));
   spdlog::get("hooks")->set_level(ConvertLogLevel(params->logLevel));
 
@@ -326,7 +326,7 @@ void WINAPI GetCurrentVFSName(char *buffer, size_t size)
 }
 
 
-BOOL WINAPI ConnectVFS(const usvfs::Parameters *params)
+BOOL WINAPI ConnectVFS(const USVFSParameters *params)
 {
   if (spdlog::get("usvfs").get() == nullptr) {
     // create temporary logger so we don't get null-pointer exceptions
@@ -595,9 +595,8 @@ BOOL WINAPI CreateProcessHooked(LPCWSTR lpApplicationName
   std::wstring applicationDirPath = winapi::wide::getModuleFileName(dllModule);
   boost::filesystem::path p(applicationDirPath);
   try {
-    injectProcess(p.parent_path().wstring()
-                  , context->callParameters()
-                  , *lpProcessInformation);
+    usvfs::injectProcess(p.parent_path().wstring(), context->callParameters(),
+                         *lpProcessInformation);
   } catch (const std::exception &e) {
     spdlog::get("usvfs")->error("failed to inject: {}", e.what());
     logExtInfo(e, LogLevel::Error);
@@ -656,6 +655,17 @@ VOID WINAPI PrintDebugInfo()
   }
   spdlog::get("usvfs")
       ->warn("===== / debug {} =====", context->redirectionTable().shmName());
+}
+
+
+void WINAPI USVFSInitParameters(USVFSParameters *parameters,
+                                const char *instanceName, bool debugMode,
+                                LogLevel logLevel)
+{
+  parameters->debugMode = debugMode;
+  parameters->logLevel = logLevel;
+  strncpy_s(parameters->instanceName, 64, instanceName, _TRUNCATE);
+  strncpy_s(parameters->currentSHMName, 64, instanceName, _TRUNCATE);
 }
 
 

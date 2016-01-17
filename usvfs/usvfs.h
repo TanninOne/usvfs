@@ -56,63 +56,60 @@ static const unsigned int LINKFLAG_CREATETARGET   = 0x00000004; // if set, file 
 static const unsigned int LINKFLAG_RECURSIVE      = 0x00000008; // if set, directories are linked recursively
 
 
+extern "C" {
+
 /**
  * removes all virtual mappings
  */
-extern "C" DLLEXPORT void WINAPI ClearVirtualMappings();
+DLLEXPORT void WINAPI ClearVirtualMappings();
 
 /**
  * link a file virtually
  * @note: the directory the destination file resides in has to exist - at least virtually.
  */
-extern "C" DLLEXPORT BOOL WINAPI VirtualLinkFile(LPCWSTR source, LPCWSTR destination, unsigned int flags);
+DLLEXPORT BOOL WINAPI VirtualLinkFile(LPCWSTR source, LPCWSTR destination, unsigned int flags);
 
 /**
  * link a directory virtually. This static variant recursively links all files individually, change notifications
  * are used to update the information.
  * @param failIfExists if true, this call fails if the destination directory exists (virtually or physically)
  */
-extern "C" DLLEXPORT BOOL WINAPI VirtualLinkDirectoryStatic(LPCWSTR source, LPCWSTR destination, unsigned int flags);
+DLLEXPORT BOOL WINAPI VirtualLinkDirectoryStatic(LPCWSTR source, LPCWSTR destination, unsigned int flags);
 
 /**
  * connect to a virtual filesystem as a controller, without hooking the calling process. Please note that
  * you can only be connected to one vfs, so this will silently disconnect from a previous vfs.
  */
-extern "C" DLLEXPORT BOOL WINAPI ConnectVFS(const usvfs::Parameters *parameters);
+DLLEXPORT BOOL WINAPI ConnectVFS(const USVFSParameters *parameters);
 
 /**
  * disconnect from a virtual filesystem. This removes hooks if necessary
  */
-extern "C" DLLEXPORT void WINAPI DisconnectVFS();
+DLLEXPORT void WINAPI DisconnectVFS();
 
-extern "C" DLLEXPORT void WINAPI GetCurrentVFSName(char *buffer, size_t size);
+DLLEXPORT void WINAPI GetCurrentVFSName(char *buffer, size_t size);
 
 /**
  * retrieve a list of all processes connected to the vfs
  */
-extern "C" DLLEXPORT BOOL WINAPI GetVFSProcessList(size_t *count, LPDWORD processIDs);
+DLLEXPORT BOOL WINAPI GetVFSProcessList(size_t *count, LPDWORD processIDs);
 
 /**
  * spawn a new process that can see the virtual file system. The signature is identical to CreateProcess
  */
-extern "C" DLLEXPORT BOOL WINAPI CreateProcessHooked(LPCWSTR lpApplicationName
-                                                     , LPWSTR lpCommandLine
-                                                     , LPSECURITY_ATTRIBUTES lpProcessAttributes
-                                                     , LPSECURITY_ATTRIBUTES lpThreadAttributes
-                                                     , BOOL bInheritHandles
-                                                     , DWORD dwCreationFlags
-                                                     , LPVOID lpEnvironment
-                                                     , LPCWSTR lpCurrentDirectory
-                                                     , LPSTARTUPINFOW lpStartupInfo
-                                                     , LPPROCESS_INFORMATION lpProcessInformation
-                                                     );
+DLLEXPORT BOOL WINAPI CreateProcessHooked(
+    LPCWSTR lpApplicationName, LPWSTR lpCommandLine,
+    LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles,
+    DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory,
+    LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
 
 /**
  * retrieve a single log message.
  * FIXME There is currently no way to unblock from the caller side
  * FIXME retrieves log messages from all instances, the logging queue is not separated
  */
-extern "C" DLLEXPORT bool WINAPI GetLogMessages(LPSTR buffer, size_t size, bool blocking = false);
+DLLEXPORT bool WINAPI GetLogMessages(LPSTR buffer, size_t size, bool blocking = false);
 
 /**
  * retrieves a readable representation of the vfs tree
@@ -122,26 +119,33 @@ extern "C" DLLEXPORT bool WINAPI GetLogMessages(LPSTR buffer, size_t size, bool 
  *               this value will have been updated to contain the required size,
  *               even if this is bigger than the buffer size
  */
-extern "C" DLLEXPORT BOOL WINAPI CreateVFSDump(LPSTR buffer, size_t *size);
+DLLEXPORT BOOL WINAPI CreateVFSDump(LPSTR buffer, size_t *size);
 
 /**
  * adds an executable to the blacklist so it doesn't get exposed to the virtual
  * file system
  * @param executableName  name of the executable
  */
-extern "C" DLLEXPORT VOID WINAPI BlacklistExecutable(LPWSTR executableName);
+DLLEXPORT VOID WINAPI BlacklistExecutable(LPWSTR executableName);
 
 /**
  * print debugging info about the vfs. The format is currently not fixed and may
  * change between usvfs versions
  */
-extern "C" DLLEXPORT VOID WINAPI PrintDebugInfo();
+DLLEXPORT VOID WINAPI PrintDebugInfo();
 
 //#if defined(UNITTEST) || defined(_WINDLL)
-extern "C" DLLEXPORT void __cdecl InitLogging(bool toLocal = false);
+DLLEXPORT void WINAPI InitLogging(bool toLocal = false);
 //#endif
 
 /**
  * used internally to initialize a process at startup-time as a "slave". Don't call directly
  */
-extern "C" DLLEXPORT void __cdecl InitHooks(LPVOID userData, size_t userDataSize);
+DLLEXPORT void __cdecl InitHooks(LPVOID userData, size_t userDataSize);
+
+
+DLLEXPORT void WINAPI USVFSInitParameters(USVFSParameters *parameters,
+                                          const char *instanceName,
+                                          bool debugMode, LogLevel logLevel);
+
+}

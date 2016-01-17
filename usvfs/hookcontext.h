@@ -31,16 +31,56 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <boost/filesystem/path.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <boost/thread/shared_lock_guard.hpp>
+#include <boost/interprocess/containers/string.hpp>
+#include <boost/interprocess/containers/flat_set.hpp>
 #include <memory>
 #include <set>
 #include <future>
+#include <windows_sane.h>
 
 namespace usvfs
 {
 
-#include <windows.h>
-#undef min
-#undef max
+void USVFSInitParametersInt(USVFSParameters *parameters,
+                            const char *instanceName,
+                            const char *currentSHMName, bool debugMode,
+                            LogLevel logLevel);
+
+
+typedef shared::VoidAllocatorT::rebind<DWORD>::other DWORDAllocatorT;
+typedef shared::VoidAllocatorT::rebind<shared::StringT>::other StringAllocatorT;
+
+struct SharedParameters {
+
+  SharedParameters() = delete;
+
+  SharedParameters(const SharedParameters &reference) = delete;
+
+  SharedParameters &operator=(const SharedParameters &reference) = delete;
+
+  SharedParameters(const USVFSParameters &reference,
+                   const shared::VoidAllocatorT &allocator)
+    : instanceName(reference.instanceName, allocator)
+    , currentSHMName(reference.currentSHMName, allocator)
+    , debugMode(reference.debugMode)
+    , logLevel(reference.logLevel)
+    , userCount(1)
+    , processBlacklist(allocator)
+    , processList(allocator)
+  {
+  }
+
+  DLLEXPORT USVFSParameters makeLocal() const;
+
+  shared::StringT instanceName;
+  shared::StringT currentSHMName;
+  bool debugMode;
+  LogLevel logLevel;
+  uint32_t userCount;
+  boost::container::flat_set<shared::StringT, std::less<shared::StringT>,
+                             StringAllocatorT> processBlacklist;
+  boost::container::flat_set<DWORD, std::less<DWORD>, DWORDAllocatorT> processList;
+};
 
 
 /**
@@ -57,7 +97,7 @@ public:
   typedef unsigned int DataIDT;
 
 public:
-  HookContext(const Parameters &params, HMODULE module);
+  HookContext(const USVFSParameters &params, HMODULE module);
 
   DLLEXPORT ~HookContext();
 
@@ -94,7 +134,7 @@ public:
   /**
    * @return the parameters passed in on dll initialisation
    */
-  Parameters callParameters() const;
+  USVFSParameters callParameters() const;
 
   /**
    * @return true if usvfs is running in debug mode
@@ -144,7 +184,7 @@ private:
   static void unlock(HookContext *instance);
   static void unlockShared(const HookContext *instance);
 
-  SharedParameters *retrieveParameters(const Parameters &params);
+  SharedParameters *retrieveParameters(const USVFSParameters &params);
 
 private:
   static HookContext *s_Instance;
@@ -170,7 +210,7 @@ private:
 #if defined(UNITTEST) || defined(_WINDLL)
 // exposed only to unit tests for easier testability
 extern "C" DLLEXPORT usvfs::HookContext *__cdecl CreateHookContext(
-    const usvfs::Parameters &params, HMODULE module);
+    const USVFSParameters &params, HMODULE module);
 #endif
 
 // declare an identifier that is guaranteed to be unique across the application

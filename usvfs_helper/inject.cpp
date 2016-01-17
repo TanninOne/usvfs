@@ -36,14 +36,14 @@ namespace ush = usvfs::shared;
 using namespace winapi;
 
 void usvfs::injectProcess(const std::wstring &applicationPath
-                          , const Parameters &parameters
+                          , const USVFSParameters &parameters
                           , const PROCESS_INFORMATION &processInfo)
 {
   injectProcess(applicationPath, parameters, processInfo.hProcess, processInfo.hThread);
 }
 
 void usvfs::injectProcess(const std::wstring &applicationPath
-                          , const Parameters &parameters
+                          , const USVFSParameters &parameters
                           , HANDLE processHandle
                           , HANDLE threadHandle)
 {
@@ -89,20 +89,22 @@ void usvfs::injectProcess(const std::wstring &applicationPath
     std::wstring dllPath = (binPath / (libName + ".dll")).wstring();
 #endif // DEBUG
     if (!boost::filesystem::exists(dllPath)) {
-      USVFS_THROW_EXCEPTION(file_not_found_error()
-                            << ex_msg(std::string("dll missing: ")
-                                      + ush::string_cast<std::string>(dllPath).c_str()));
+      USVFS_THROW_EXCEPTION(
+          file_not_found_error()
+          << ex_msg(std::string("dll missing: ")
+                    + ush::string_cast<std::string>(dllPath).c_str()));
     }
 
     spdlog::get("usvfs")->debug("dll path: {}", log::wrap(dllPath));
 
     InjectLib::InjectDLL(processHandle, threadHandle, dllPath.c_str(),
-                         "InitHooks", &parameters, sizeof(Parameters));
+                         "InitHooks", &parameters, sizeof(USVFSParameters));
   } else {
     std::wstring exePath = (binPath / "usvfs_proxy.exe").wstring();
     if (!boost::filesystem::exists(exePath)) {
-      USVFS_THROW_EXCEPTION(file_not_found_error()
-                            << ex_msg(std::string("exe missing: ") + ush::string_cast<std::string>(exePath)));
+      USVFS_THROW_EXCEPTION(file_not_found_error() << ex_msg(
+                                std::string("exe missing: ")
+                                + ush::string_cast<std::string>(exePath)));
     }
     // need to use proxy aplication to inject
     auto proxyProcess = std::move(wide::createProcess(exePath)
