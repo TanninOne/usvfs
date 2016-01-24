@@ -48,7 +48,7 @@ public:
   /// \note this works correctly ONLY if the input buffer has been set with setInputBuffer or
   ///       if ud_set_pc has been called
   ///
-  uintptr_t jumpTarget();
+  uint64_t jumpTarget();
 
 private:
 

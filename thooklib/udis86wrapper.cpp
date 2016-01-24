@@ -94,11 +94,11 @@ intptr_t UDis86Wrapper::jumpOffset()
 }
 
 
-uintptr_t UDis86Wrapper::jumpTarget()
+uint64_t UDis86Wrapper::jumpTarget()
 {
   // TODO: assert we're actually on a jump
 
-  uintptr_t res = ud_insn_off(&m_Obj) + ud_insn_len(&m_Obj);
+  uint64_t res = ud_insn_off(&m_Obj) + ud_insn_len(&m_Obj);
 
   res += jumpOffset();
 
