@@ -169,9 +169,6 @@ std::wstring HookContext::dllPath() const
 
 void HookContext::registerProcess(DWORD pid)
 {
-  spdlog::get("usvfs")->info("reg proc shm {0:p}", m_ConfigurationSHM.get_address());
-  printBuffer((char*)m_ConfigurationSHM.get_address(), m_ConfigurationSHM.get_size());
-
   m_Parameters->processList.insert(pid);
 }
 

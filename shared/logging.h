@@ -36,7 +36,7 @@ enum class LogLevel : uint8_t {
   Warning,
   Error
 };
-/*
+
 // TODO according to the standard (17.4.3.1) I shouldn't add these to std but if they are in global namespace
 // the lookup seems to fail?
 namespace std {
@@ -44,4 +44,4 @@ ostream &operator<<(ostream &os, LPCWSTR str);
 ostream &operator<<(ostream &os, LPWSTR str);
 ostream &operator<<(ostream &os, const wstring &str);
 }
-*/
+

@@ -22,7 +22,6 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include "stringcast.h"
 
 
-/*
 namespace ush = usvfs::shared;
 
 namespace std {
@@ -82,4 +81,4 @@ std::ostream &std::operator<<(ostream &os, LPWSTR str)
 
   return os;
 }
-*/
+
