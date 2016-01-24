@@ -41,7 +41,7 @@ namespace usvfs {
 namespace shared {
 
 template <typename T>
-using OffsetPtrT = bi::offset_ptr<T, std::int32_t, std::uint64_t, 8>;
+using OffsetPtrT = bi::offset_ptr<T, std::int32_t, std::uint64_t>;
 typedef OffsetPtrT<void> VoidPointerT;
 
 
@@ -53,7 +53,7 @@ typedef OffsetPtrT<void> VoidPointerT;
 // 64bit and 32bit processes
 typedef bi::basic_managed_windows_shared_memory
    <char
-   , bi::rbtree_best_fit<bi::mutex_family, VoidPointerT>
+   , bi::rbtree_best_fit<bi::mutex_family, VoidPointerT, 8>
    , bi::iset_index>
 managed_windows_shared_memory;
 
