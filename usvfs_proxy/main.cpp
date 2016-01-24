@@ -23,6 +23,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <shared_memory.h>
 #include <usvfsparameters.h>
 #include <hookcontext.h>
+#include <shmlogger.h>
 #include <spdlog.h>
 #include <winapi.h>
 #include <boost/filesystem.hpp>
@@ -69,7 +70,9 @@ T getParameter(std::vector<std::string> &arguments, const std::string &key, cons
 
 int main(int argc, char **argv)
 {
-  std::shared_ptr<spdlog::logger> logger = spdlog::stdout_logger_mt("usvfs");
+  SHMLogger::open("usvfs");
+  auto logger = spdlog::create<spdlog::sinks::shm_sink>("usvfs", "usvfs");
+  logger->set_pattern("%H:%M:%S.%e [%L] (proxy) %v");
 
   std::vector<std::string> arguments;
   std::copy(argv + 1, argv + argc, std::back_inserter(arguments));
@@ -113,13 +116,15 @@ int main(int argc, char **argv)
 
   USVFSParameters par = params.first->makeLocal();
 
+  boost::filesystem::path p(winapi::wide::getModuleFileName(nullptr));
+
   if (executable.empty()) {
     HANDLE processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
     HANDLE threadHandle = INVALID_HANDLE_VALUE;
     if (tid != 0) {
       threadHandle = OpenThread(THREAD_ALL_ACCESS, FALSE, tid);
     }
-    usvfs::injectProcess(winapi::wide::getModuleFileName(NULL), par,
+    usvfs::injectProcess(p.parent_path().wstring(), par,
                          processHandle, threadHandle);
   } else {
     winapi::process::Result process = winapi::ansi::createProcess(executable)
@@ -131,7 +136,7 @@ int main(int argc, char **argv)
       return 1;
     }
 
-    usvfs::injectProcess(winapi::wide::getModuleFileName(NULL), par,
+    usvfs::injectProcess(p.parent_path().wstring(), par,
                          process.processInfo);
 
     ResumeThread(process.processInfo.hThread);
@@ -140,6 +145,7 @@ int main(int argc, char **argv)
   return 0;
   } catch (const std::exception &e) {
     logger->critical("unhandled exception: {}", e.what());
+    logExtInfo(e);
   }
 }
 
