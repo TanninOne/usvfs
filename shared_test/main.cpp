@@ -109,7 +109,7 @@ struct TestVisitor {
   TreeType::NodePtrT lastNode;
   bool flag40 { false };
 
-  void operator()(TreeType::NodePtrT node) {
+  void operator()(const TreeType::NodePtrT &node) {
     lastNode = node;
     flag40 = node->hasFlag(0x40);
     logger()->debug("{0} - {1}", lastNode->name(), flag40);
@@ -126,7 +126,7 @@ TEST(DirectoryTreeTest, VisitPath)
   TestVisitor visitor;
 
   tree->visitPath(R"(C:\temp\bla\blubb)",
-                  TreeType::VisitorFunction([&](TreeType::NodePtrT node) { visitor(node); }));
+                  TreeType::VisitorFunction([&](const TreeType::NodePtrT &node) { visitor(node); }));
   EXPECT_TRUE(visitor.flag40);
   EXPECT_EQ("bla", visitor.lastNode->name());
 }

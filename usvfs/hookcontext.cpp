@@ -190,8 +190,6 @@ void HookContext::unregisterCurrentProcess()
 
 std::vector<DWORD> HookContext::registeredProcesses() const
 {
-  spdlog::get("usvfs")->info("registered shm {0:p}", m_ConfigurationSHM.get_address());
-  printBuffer((char*)m_ConfigurationSHM.get_address(), m_ConfigurationSHM.get_size());
   std::vector<DWORD> result;
   for (DWORD procId : m_Parameters->processList) {
     result.push_back(procId);

@@ -176,6 +176,10 @@ void HookManager::installStub(HMODULE module1, HMODULE module2, const std::strin
     funcAddr = MyGetProcAddress(module1, functionName.c_str());
     if (funcAddr != nullptr) {
       handle = InstallStub(funcAddr, logStub, &err);
+    } else {
+      spdlog::get("usvfs")->debug("{} doesn't contain {}",
+                                  winapi::ansi::getModuleFileName(module1),
+                                  functionName);
     }
     if (handle != INVALID_HOOK) usedModule = module1;
   }
@@ -184,6 +188,10 @@ void HookManager::installStub(HMODULE module1, HMODULE module2, const std::strin
     funcAddr = MyGetProcAddress(module2, functionName.c_str());
     if (funcAddr != nullptr) {
       handle = InstallStub(funcAddr, logStub, &err);
+    } else {
+      spdlog::get("usvfs")->debug("{} doesn't contain {}",
+                                  winapi::ansi::getModuleFileName(module2),
+                                  functionName);
     }
     if (handle != INVALID_HOOK) usedModule = module2;
   }

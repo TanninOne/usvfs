@@ -403,6 +403,7 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
     if ((res == STATUS_SUCCESS) && (status.Information > 0)) {
       ULONG totalOffset   = 0;
       PVOID lastSkipPos   = nullptr;
+
       ULONG_PTR finalSize = status.Information;
       while (totalOffset < status.Information) {
         ULONG offset;
@@ -432,7 +433,6 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
         if (fileName.length() > 0) {
           std::wstring fileNameL = fileName;
           boost::algorithm::to_lower(fileNameL);
-          // add = foundFiles.find(fileNameL) == foundFiles.end();
           auto res = foundFiles.insert(fileNameL);
           add      = res.second; // add only if we didn't find this file before
         }
@@ -443,7 +443,6 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
             = offset != 0
                   ? offset
                   : (static_cast<ULONG>(status.Information) - totalOffset) + 4;
-
         if (!add) {
           if (lastSkipPos == nullptr) {
             lastSkipPos = buffer;
@@ -738,7 +737,7 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
         .PARAMWRAP(FileName)
         .PARAM(numVirtualFiles)
         .PARAMWRAP(res)
-        .PARAMHEX(::GetLastError());
+        .PARAMHEX(GetLastError());
   }
 
   HOOK_END

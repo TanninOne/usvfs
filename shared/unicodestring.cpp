@@ -31,7 +31,8 @@ namespace ush = usvfs::shared;
 
 namespace usvfs {
 
-UnicodeString::UnicodeString() {
+UnicodeString::UnicodeString()
+{
   m_Data.Length = m_Data.MaximumLength = 0;
 }
 
@@ -112,16 +113,20 @@ void UnicodeString::setFromHandle(HANDLE fileHandle)
     spdlog::get("hooks")->info("success: {}", ush::string_cast<std::string>((WCHAR*)info->FileName));
   }
 */
-  wchar_t dummy[2];
+
+  if (m_Buffer.size() < 128) {
+    m_Buffer.resize(128);
+  }
 
   SetLastError(0UL);
-  DWORD res = GetFinalPathNameByHandleW(fileHandle, dummy, 1, FILE_NAME_NORMALIZED);
-  if (res != 0) {
+  DWORD res = GetFinalPathNameByHandleW(fileHandle, &m_Buffer[0], m_Buffer.size(), FILE_NAME_NORMALIZED);
+  if (res == 0) {
+    m_Buffer.resize(0);
+  } else if (res > m_Buffer.size()) {
     m_Buffer.resize(res);
     GetFinalPathNameByHandleW(fileHandle, &m_Buffer[0], res, FILE_NAME_NORMALIZED);
-  } else {
-    m_Buffer.resize(0);
   }
+
   update();
 
   /* This code would also work on Windows XP but requires access to non-public API

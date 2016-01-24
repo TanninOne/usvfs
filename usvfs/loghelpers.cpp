@@ -27,10 +27,19 @@ namespace ush = usvfs::shared;
 
 std::ostream &usvfs::log::operator<<(std::ostream &os, const Wrap<NTSTATUS> &status)
 {
-  if (status.data() == 0x00000000) {
-    os << "ok";
-  } else {
-    os << "err " << std::hex << (int)status.data();
+  switch (status.data()) {
+    case 0x00000000: {
+      os << "ok";
+    } break;
+    case 0xC0000022: {
+      os << "access denied";
+    } break;
+    case 0xC0000035: {
+      os << "exists already";
+    } break;
+    default: {
+      os << "err " << std::hex << (int)status.data();
+    } break;
   }
   return os;
 }

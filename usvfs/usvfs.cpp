@@ -114,7 +114,7 @@ void InitLoggingInternal(bool toConsole, bool connectExistingSHM)
 }
 
 
-void __cdecl InitLogging(bool toConsole)
+void WINAPI InitLogging(bool toConsole)
 {
   InitLoggingInternal(toConsole, false);
 }
@@ -642,7 +642,7 @@ VOID WINAPI PrintDebugInfo()
   size_t bufferSize = 0;
   context->redirectionTable().getBuffer(buffer, bufferSize);
   std::ostringstream temp;
-  for (int i = 0; i < bufferSize; ++i) {
+  for (size_t i = 0; i < bufferSize; ++i) {
     temp << std::hex << std::setfill('0') << std::setw(2) << (unsigned)reinterpret_cast<char*>(buffer)[i] << " ";
     if ((i % 16) == 15) {
       spdlog::get("usvfs")->info("{}", temp.str());

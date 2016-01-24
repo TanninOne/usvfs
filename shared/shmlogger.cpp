@@ -131,13 +131,13 @@ void spdlog::sinks::shm_sink::flush()
 
 void spdlog::sinks::shm_sink::log(const details::log_msg &msg)
 {
-  if (m_DroppedMessages > 0) {
-    int droppedMessages = m_DroppedMessages;
+  int droppedMessages = m_DroppedMessages.load(std::memory_order_relaxed);
+  if (droppedMessages > 0) {
     std::string dropMessage
-        = fmt::format("{} messages dropped", droppedMessages);
+        = fmt::format("{} debug messages dropped", droppedMessages);
     if (m_LogQueue.try_send(dropMessage.c_str(),
                             static_cast<unsigned int>(dropMessage.size()), 0)) {
-      m_DroppedMessages.fetch_sub(droppedMessages);
+      m_DroppedMessages.store(0, std::memory_order_relaxed);
     }
   }
 
@@ -175,6 +175,6 @@ void spdlog::sinks::shm_sink::log(const details::log_msg &msg)
   }
 
   if (!sent) {
-    ++m_DroppedMessages;
+    m_DroppedMessages.fetch_add(1, std::memory_order_relaxed);
   }
 }

@@ -534,7 +534,6 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
 
   bool storePath = false;
   if ((dwFlagsAndAttributes & FILE_FLAG_BACKUP_SEMANTICS) != 0UL) {
-    spdlog::get("usvfs")->info("backup semantics");
     // this may be an attempt to open a directory handle for iterating.
     // If so we need to treat it a little bit differently
     bool isDir  = false;
@@ -602,7 +601,7 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
         = lpFileName;
   }
 
-  if (reroute.wasRerouted()) {
+  if (storePath || reroute.wasRerouted()) {
     LOG_CALL()
         .PARAM(lpFileName)
         .PARAM(reroute.fileName())
@@ -655,7 +654,7 @@ DWORD WINAPI usvfs::hooks::GetFileAttributesW(LPCWSTR lpFileName)
   res = ::GetFileAttributesW(reroute.fileName());
   POST_REALCALL
 
-  if (true || reroute.wasRerouted()) {
+  if (reroute.wasRerouted()) {
     LOG_CALL()
         .PARAMWRAP(lpFileName)
         .PARAMWRAP(reroute.fileName())

@@ -186,7 +186,7 @@ public:
    **/
   DirectoryTree(const std::string &name
                 , TreeFlags flags
-                , NodePtrT parent
+                , const NodePtrT &parent
                 , const NodeDataT &data
                 , const VoidAllocatorT &allocator)
     : m_Parent(parent)
