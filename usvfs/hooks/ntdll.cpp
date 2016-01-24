@@ -451,10 +451,12 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
         } else {
           if (lastSkipPos != nullptr) {
             memmove(lastSkipPos, buffer, status.Information - totalOffset);
+            totalOffset -= ush::AddrDiff(buffer, lastSkipPos);
+            buffer = lastSkipPos;
             lastSkipPos = nullptr;
           }
         }
-        buffer = usvfs::shared::AddrAdd(buffer, size);
+        buffer = ush::AddrAdd(buffer, size);
         totalOffset += size;
       }
       bufferSize = static_cast<ULONG>(finalSize);

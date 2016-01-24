@@ -40,6 +40,11 @@ inline LPVOID AddrAdd(LPVOID address, size_t offset)
 }
 
 
+inline int AddrDiff(LPVOID lhs, LPVOID rhs)
+{
+  return reinterpret_cast<LPBYTE>(lhs) - reinterpret_cast<LPBYTE>(rhs);
+}
+
 
 /// implicitly cast pointer to void*, from there cast to target type.
 /// This is supposed to be safer than directly reinterpret-casting
