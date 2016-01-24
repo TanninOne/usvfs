@@ -42,6 +42,7 @@ using usvfs::UnicodeString;
 #define FILE_OVERWRITE_IF 0x00000005
 #define FILE_MAXIMUM_DISPOSITION 0x00000005
 
+
 UnicodeString CreateUnicodeString(POBJECT_ATTRIBUTES objectAttributes)
 {
   UnicodeString result;
