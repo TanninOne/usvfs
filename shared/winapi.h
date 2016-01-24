@@ -75,12 +75,30 @@ namespace process {
         CloseHandle(processInfo.hProcess);
         CloseHandle(processInfo.hThread);
       }
+
+      if (stdoutPipe != INVALID_HANDLE_VALUE) {
+        CloseHandle(stdoutPipe);
+      }
+    }
+
+    size_t readStdout(std::vector<uint8_t> &buffer, bool &eof) {
+      if (stdoutPipe != INVALID_HANDLE_VALUE) {
+        DWORD read;
+        BOOL res = ReadFile(stdoutPipe, &buffer[0], buffer.size(), &read, nullptr);
+        eof = (res == TRUE) && (read == 0);
+        return static_cast<size_t>(read);
+      } else {
+        eof = true;
+        return 0;
+      }
     }
 
     bool valid;
     STARTUPINFO startupInfo;
     PROCESS_INFORMATION processInfo;
     DWORD errorCode;
+
+    HANDLE stdoutPipe { INVALID_HANDLE_VALUE };
   };
 
   /**
@@ -142,6 +160,9 @@ namespace process {
     /// @brief have the process start suspended
     _Create &suspended();
 
+    /// @brief set the process up to output stout to a pipe which can be
+    /// retrieved through the result object
+    _Create &stdoutPipe();
 
     /// @brief end the named parameter cascade and create the process
     Result _Create<CharT>::operator()()
@@ -152,6 +173,12 @@ namespace process {
       memset(clBuffer.get(), 0, (length + 1) * sizeof(CharT));
       memcpy(clBuffer.get(), m_CommandLine.str().c_str(), length * sizeof(CharT));
       Result result;
+
+      if (m_StdoutPipe) {
+        result.stdoutPipe = setupPipe(result.startupInfo.hStdOutput);
+        result.startupInfo.dwFlags |= STARTF_USESTDHANDLES;
+      }
+
       result.valid = createProcessInt(nullptr
                                       , clBuffer.get()
                                       , m_ProcessAttributes
@@ -162,6 +189,12 @@ namespace process {
                                       , m_CurrentDirectory.length() > 0 ? m_CurrentDirectory.c_str() : nullptr
                                       , &result.startupInfo
                                       , &result.processInfo) == TRUE;
+
+      if (m_Stdout != INVALID_HANDLE_VALUE) {
+        // got to close the write end of pipes
+        CloseHandle(result.startupInfo.hStdOutput);
+      }
+
       if (result.valid) {
         result.errorCode = NOERROR;
       } else {
@@ -223,6 +256,22 @@ namespace process {
                               lpStartupInfo, lpProcessInformation);
     }
 
+    HANDLE setupPipe(HANDLE &childHandle) {
+      SECURITY_ATTRIBUTES attr;
+      attr.nLength = sizeof(SECURITY_ATTRIBUTES);
+      attr.bInheritHandle = TRUE;
+      attr.lpSecurityDescriptor = nullptr;
+
+      HANDLE pipe[2];
+
+      CreatePipe(&pipe[0], &pipe[1], &attr, 0);
+      SetHandleInformation(pipe[0], HANDLE_FLAG_INHERIT, 0);
+
+      childHandle = pipe[1];
+
+      return pipe[0];
+    }
+
   private:
     std::basic_stringstream<CharT> m_CommandLine;
     std::basic_string<CharT> m_CurrentDirectory { };
@@ -231,6 +280,9 @@ namespace process {
     BOOL m_InheritHandles { false };
     DWORD m_CreationFlags { 0UL };
     bool m_Executed { false };
+    bool m_StdoutPipe { false };
+
+    HANDLE m_Stdout { INVALID_HANDLE_VALUE };
   };
 }
 
@@ -462,6 +514,11 @@ _Create<CharT> &_Create<CharT>::suspended() {
   return *this;
 }
 
+template <typename CharT>
+_Create<CharT> &_Create<CharT>::stdoutPipe() {
+  m_StdoutPipe = true;
+  return *this;
+}
 
 }
 
