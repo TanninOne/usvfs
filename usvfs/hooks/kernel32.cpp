@@ -834,57 +834,79 @@ BOOL WINAPI usvfs::hooks::SetCurrentDirectoryW(LPCWSTR lpPathName)
   return res;
 }
 
+BOOL CreateDirectoryRecursive(LPCWSTR lpPathName,
+                              LPSECURITY_ATTRIBUTES lpSecurityAttributes)
+{
+  std::unique_ptr<wchar_t, decltype(std::free) *> pathCopy{_wcsdup(lpPathName),
+                                                           std::free};
+
+  wchar_t *current = pathCopy.get();
+  wchar_t *end = current + wcslen(current);
+
+  while (current < end) {
+    size_t len = wcscspn(current, L"\\/");
+    if (len != 0) {
+      current[len] = L'\0';
+      if (!::CreateDirectoryW(current, lpSecurityAttributes)) {
+        DWORD err = ::GetLastError();
+        if (err != ERROR_ALREADY_EXISTS) {
+          spdlog::get("usvfs")
+              ->warn("failed to create intermediate directory \"{}\": {}",
+                     ush::string_cast<std::string>(current), err);
+          return FALSE;
+        }
+      }
+      current[len] = L'\\';
+    }
+    current += len + 1;
+  }
+
+  return TRUE;
+}
+
+DLLEXPORT BOOL WINAPI usvfs::hooks::CreateDirectoryW(
+    LPCWSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes)
+{
+  BOOL res = FALSE;
+  HOOK_START
+  RerouteW reroute
+      = RerouteW::create(READ_CONTEXT(), callContext, lpPathName);
+
+  PRE_REALCALL
+  if (reroute.wasRerouted()) {
+    // the intermediate directories may exist in the original directory but not
+    // in the rerouted location so do a recursive create
+    res = CreateDirectoryRecursive(reroute.fileName(), lpSecurityAttributes);
+  } else {
+    res = ::CreateDirectoryW(lpPathName, lpSecurityAttributes);
+  }
+  POST_REALCALL
+
+  if (reroute.wasRerouted()) {
+    LOG_CALL().PARAMWRAP(reroute.fileName()).PARAM(res);
+  }
+  HOOK_END
+
+  return res;
+}
+
+/*
 DWORD WINAPI usvfs::hooks::GetFullPathNameW(LPCWSTR lpFileName,
                                             DWORD nBufferLength,
                                             LPWSTR lpBuffer, LPWSTR *lpFilePart)
 {
-#pragma message("gets called with already-rerouted filename?")
   DWORD res = 0UL;
 
   HOOK_START_GROUP(MutExHookGroup::FULL_PATHNAME)
-
-#pragma message(                                                               \
-    "this doesn't cover the case where the caller is calling gfpn once with bufferlength 0 and then allocates a precisely fitting buffer")
-#pragma message(                                                               \
-    "also, this returns a virtualised path and thus isn't transparent")
 
   // nothing to do here? Maybe if current directory is virtualised
   PRE_REALCALL
   res = ::GetFullPathNameW(lpFileName, nBufferLength, lpBuffer, lpFilePart);
   POST_REALCALL
-  /*
-    RerouteW reroute = RerouteW::create(HookContext::readAccess(),
-                                        callContext, lpBuffer);
-    if (reroute.wasRerouted()) {
-      size_t len = wcslen(reroute.fileName());
-      if ((nBufferLength > 0) && (lpBuffer != nullptr)) {
-        size_t copyCount = std::min<size_t>(nBufferLength, len + 1);
-        ush::wcsncpy_sz(lpBuffer, reroute.fileName(), copyCount);
-        if (lpFilePart != nullptr) {
-          *lpFilePart = winapi::ex::wide::GetBaseName(lpBuffer);
-          if (**lpFilePart == L'\0') {
-            // lpBuffer is a directory
-            *lpFilePart = nullptr;
-          }
-        }
-      }
-      if (len <= nBufferLength) {
-        res = static_cast<DWORD>(len);
-      } else {
-        res = static_cast<DWORD>(len) + 1;
-      }
-
-      LOG_CALL()
-          .PARAMWRAP(lpFileName)
-          .PARAM(nBufferLength)
-          .PARAM(lpBuffer)
-          .PARAM(res);
-    }
-  */
   HOOK_END
 
   return res;
-}
+}*/
 
 DWORD WINAPI usvfs::hooks::GetModuleFileNameW(HMODULE hModule,
                                               LPWSTR lpFilename, DWORD nSize)

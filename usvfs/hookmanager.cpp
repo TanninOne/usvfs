@@ -222,7 +222,7 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "SetFileAttributesW", uhooks::SetFileAttributesW);
   installHook(kbaseMod, k32Mod, "CreateFileW", uhooks::CreateFileW); // not all calls seem to translate to a call to NtCreateFile
   installHook(kbaseMod, k32Mod, "CreateFileA", uhooks::CreateFileA);
-  installStub(kbaseMod, k32Mod, "CreateDirectoryW");
+  installHook(kbaseMod, k32Mod, "CreateDirectoryW", uhooks::CreateDirectoryW);
   installHook(kbaseMod, k32Mod, "DeleteFileW", uhooks::DeleteFileW);
 //  installStub(kbaseMod, k32Mod, "DeleteFileA");
   installHook(kbaseMod, k32Mod, "GetCurrentDirectoryW", uhooks::GetCurrentDirectoryW);
@@ -261,7 +261,7 @@ void HookManager::initHooks()
   installStub(kbaseMod, k32Mod, "CopyFileW");
   installStub(kbaseMod, k32Mod, "CreateHardLinkA");
   installStub(kbaseMod, k32Mod, "CreateHardLinkW");
-  installHook(kbaseMod, k32Mod, "GetFullPathNameW", uhooks::GetFullPathNameW);
+//  installHook(kbaseMod, k32Mod, "GetFullPathNameW", uhooks::GetFullPathNameW);
 
   HMODULE ntdllMod = GetModuleHandleA("ntdll.dll");
   spdlog::get("usvfs")->debug("ntdll.dll at {0:x}", reinterpret_cast<unsigned long>(ntdllMod));

@@ -225,7 +225,7 @@ TEST_F(USVFSTest, GetFileAttributesHookRedirectsFile)
   EXPECT_EQ(::GetFileAttributesW(REAL_FILEW)
             , uhooks::GetFileAttributesW(VIRTUAL_FILEW));
 }
-
+/*
 TEST_F(USVFSTest, GetFullPathNameOnRegularCurrentDirectory)
 {
   USVFSParameters params;
@@ -242,7 +242,7 @@ TEST_F(USVFSTest, GetFullPathNameOnRegularCurrentDirectory)
 
   EXPECT_NE(0UL, res);
   EXPECT_EQ(expected, std::wstring(buffer.get()));
-}
+}*/
 
 TEST_F(USVFSTest, NtQueryDirectoryFileRegularFile)
 {
