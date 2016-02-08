@@ -24,6 +24,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include "logging.h"
 #include "ntdll_declarations.h"
 #include "unicodestring.h"
+#include "scopeguard.h"
 #include <Psapi.h>
 #include <algorithm>
 #include <spdlog.h>
@@ -384,6 +385,10 @@ std::vector<FileResult> quickFindFiles(LPCWSTR directoryName, LPCWSTR pattern)
                            , OPEN_EXISTING
                            , FILE_FLAG_BACKUP_SEMANTICS
                            , nullptr);
+
+  ON_BLOCK_EXIT([hdl] () {
+    CloseHandle(hdl);
+  });
 
   uint8_t buffer[BUFFER_SIZE];
 
