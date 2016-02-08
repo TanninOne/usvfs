@@ -69,7 +69,12 @@ public:
 
   void removeMapping()
   {
-    m_FileNode->removeFromTree();
+    if (m_FileNode.get() != nullptr) {
+      m_FileNode->removeFromTree();
+    } else {
+      spdlog::get("usvfs")
+          ->warn("Node not removed: {}", string_cast<std::string>(m_FileName));
+    }
   }
 
   static RerouteW create(const usvfs::HookContext::ConstPtr &context,

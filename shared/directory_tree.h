@@ -432,8 +432,10 @@ public:
   }
 
   void removeFromTree() {
-    auto selfIter = parent()->m_Nodes.find(m_Name);
-    parent()->erase(selfIter);
+    if (auto par = parent()) {
+      auto self = par->m_Nodes.find(m_Name);
+      par->erase(self);
+    }
   }
 
 PRIVATE:
