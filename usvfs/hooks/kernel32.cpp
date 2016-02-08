@@ -195,10 +195,7 @@ HMODULE WINAPI usvfs::hooks::LoadLibraryW(LPCWSTR lpFileName)
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
-    LOG_CALL()
-        .PARAMWRAP(lpFileName)
-        .PARAMWRAP(reroute.fileName())
-        .PARAM(res);
+    LOG_CALL().PARAMWRAP(lpFileName).PARAMWRAP(reroute.fileName()).PARAM(res);
   }
 
   HOOK_END
@@ -226,10 +223,7 @@ HMODULE WINAPI usvfs::hooks::LoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile,
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
-    LOG_CALL()
-        .PARAM(lpFileName)
-        .PARAM(reroute.fileName())
-        .PARAM(res);
+    LOG_CALL().PARAM(lpFileName).PARAM(reroute.fileName()).PARAM(res);
   }
 
   HOOK_END
@@ -414,7 +408,8 @@ BOOL WINAPI usvfs::hooks::CreateProcessW(
   { // scope for context lock
     auto context = READ_CONTEXT();
 
-    spdlog::get("hooks")->info("{0:p} - {1:p}", (void*)lpApplicationName, (void*)lpCommandLine);
+    spdlog::get("hooks")->info("{0:p} - {1:p}", (void *)lpApplicationName,
+                               (void *)lpCommandLine);
 
     if (lpCommandLine != nullptr) {
       // decompose command line
@@ -589,7 +584,8 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
   POST_REALCALL
 
   if (create && (res != INVALID_HANDLE_VALUE)) {
-    spdlog::get("hooks")->info("add file to vfs: {}", ush::string_cast<std::string>(lpFileName));
+    spdlog::get("hooks")->info("add file to vfs: {}",
+                               ush::string_cast<std::string>(lpFileName));
     // new file was created in a mapped directory, insert to vitual structure
     reroute.insertMapping(WRITE_CONTEXT());
   }
@@ -710,7 +706,6 @@ BOOL WINAPI usvfs::hooks::DeleteFileW(LPCWSTR lpFileName)
   return res;
 }
 
-
 BOOL WINAPI usvfs::hooks::MoveFileA(LPCSTR lpExistingFileName,
                                     LPCSTR lpNewFileName)
 {
@@ -718,7 +713,6 @@ BOOL WINAPI usvfs::hooks::MoveFileA(LPCSTR lpExistingFileName,
       ush::string_cast<std::wstring>(lpExistingFileName).c_str(),
       ush::string_cast<std::wstring>(lpNewFileName).c_str());
 }
-
 
 BOOL WINAPI usvfs::hooks::MoveFileW(LPCWSTR lpExistingFileName,
                                     LPCWSTR lpNewFileName)
@@ -753,15 +747,13 @@ BOOL WINAPI usvfs::hooks::MoveFileW(LPCWSTR lpExistingFileName,
   if (readReroute.wasRerouted() || writeReroute.wasRerouted()) {
     LOG_CALL()
         .PARAMWRAP(readReroute.fileName())
-        .PARAMWRAP(writeReroute.fileName())
-        ;
+        .PARAMWRAP(writeReroute.fileName());
   }
 
   HOOK_END
 
   return res;
 }
-
 
 BOOL WINAPI usvfs::hooks::MoveFileExW(LPCWSTR lpExistingFileName,
                                       LPCWSTR lpNewFileName, DWORD dwFlags)

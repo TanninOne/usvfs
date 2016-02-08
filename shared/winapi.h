@@ -84,7 +84,8 @@ namespace process {
     size_t readStdout(std::vector<uint8_t> &buffer, bool &eof) {
       if (stdoutPipe != INVALID_HANDLE_VALUE) {
         DWORD read;
-        BOOL res = ReadFile(stdoutPipe, &buffer[0], buffer.size(), &read, nullptr);
+        BOOL res = ReadFile(stdoutPipe, &buffer[0],
+                            static_cast<DWORD>(buffer.size()), &read, nullptr);
         eof = (res == TRUE) && (read == 0);
         return static_cast<size_t>(read);
       } else {
