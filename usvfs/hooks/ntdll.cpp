@@ -524,9 +524,10 @@ void gatherVirtualEntries(const UnicodeString &dirName,
   }
   auto node = redir->findNode(boost::filesystem::path(dirNameW));
   if (node.get() != nullptr) {
-    std::string searchPattern
-        = FileName != nullptr ? ush::string_cast<std::string>(FileName->Buffer)
-                              : "*.*";
+    std::string searchPattern = FileName != nullptr
+                                    ? ush::string_cast<std::string>(
+                                          FileName->Buffer, ush::CodePage::UTF8)
+                                    : "*.*";
 
     for (const auto &subNode : node->find(searchPattern)) {
       if (((subNode->data().linkTarget.length() > 0) || subNode->isDirectory())

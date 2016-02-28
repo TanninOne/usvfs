@@ -36,6 +36,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <boost/filesystem.hpp>
 #pragma warning (pop)
 #include <format.h>
+#include <codecvt>
 
 
 namespace bfs   = boost::filesystem;
@@ -48,6 +49,7 @@ usvfs::HookContext *context = nullptr;
 HMODULE dllModule = nullptr;
 PVOID exceptionHandler = nullptr;
 
+typedef std::codecvt_utf8_utf16<wchar_t> u8u16_convert;
 
 namespace spdlog {
   namespace sinks {
@@ -472,8 +474,8 @@ BOOL WINAPI VirtualLinkFile(LPCWSTR source, LPCWSTR destination, unsigned int fl
     // TODO could save memory here by storing only the file name for the source and constructing
     // the full name using the parent directory
     auto res = context->redirectionTable().addFile(
-          destination
-          , usvfs::RedirectionDataLocal(ush::string_cast<std::string>(source))
+          bfs::path(destination, u8u16_convert())
+          , usvfs::RedirectionDataLocal(ush::string_cast<std::string>(source, ush::CodePage::UTF8))
           , !(flags & LINKFLAG_FAILIFEXISTS));
 
     context->updateParameters();
@@ -549,7 +551,7 @@ BOOL WINAPI VirtualLinkDirectoryStatic(LPCWSTR source, LPCWSTR destination, unsi
 
           // TODO could save memory here by storing only the file name for the source and constructing
           // the full name using the parent directory
-          context->redirectionTable().addFile(bfs::path(destination) / nameU8
+          context->redirectionTable().addFile(bfs::path(destination, u8u16_convert()) / nameU8
                                               , usvfs::RedirectionDataLocal(sourceU8 + nameU8)
                                               , true);
         }

@@ -46,6 +46,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <iomanip>
 #include <memory>
 #include <cstdint>
+#include <codecvt>
 #include <spdlog.h>
 
 
@@ -82,6 +83,7 @@ boost::filesystem::path::iterator nextIter(const boost::filesystem::path::iterat
 
 
 namespace bi = boost::interprocess;
+namespace bfs = boost::filesystem;
 namespace bmi = boost::multi_index;
 
 typedef uint8_t TreeFlags;
@@ -220,12 +222,12 @@ public:
   /**
    * @return the full path to the node
    */
-  boost::filesystem::path path() const {
+  bfs::path path() const {
     if (m_Parent.lock().get() == nullptr) {
       if (m_Name.size() == 0) {
-        return boost::filesystem::path();
+        return bfs::path();
       } else {
-        return boost::filesystem::path(m_Name.c_str()) / "\\";
+        return bfs::path(m_Name.c_str(), m_U16Convert) / "\\";
       }
     } else {
       return m_Parent.lock()->path() / m_Name.c_str();
@@ -386,9 +388,10 @@ public:
     std::vector<NodePtrT> result;
 
     if (fixedPart != std::string::npos) {
-      // if there is a prefix, search for the node representing that path and search
-      // only on that
-      NodePtrT node = findNode(boost::filesystem::path(pattern.substr(0, fixedPart)));
+      // if there is a prefix, search for the node representing that path and
+      // search only on that
+      NodePtrT node
+          = findNode(bfs::path(pattern.substr(0, fixedPart), m_U16Convert));
       if (node.get() != nullptr) {
         node->findLocal(result, pattern.substr(fixedPart + 1));
       }
@@ -541,6 +544,8 @@ PRIVATE:
   NodeDataT m_Data;
 
   NodeMapT m_Nodes;
+
+  std::codecvt_utf8_utf16<wchar_t> m_U16Convert;
 
 };
 
@@ -916,6 +921,8 @@ private:
   std::string m_SHMName;
   std::shared_ptr<SharedMemoryT> m_SHM;
   TreeMeta *m_TreeMeta;
+
+  std::codecvt_utf8_utf16<wchar_t> m_U16Convert;
 
 };
 
