@@ -38,6 +38,8 @@ bool startswith(const wchar_t *string, const wchar_t *subString);
 boost::filesystem::path make_relative(const boost::filesystem::path &from
                                       , const boost::filesystem::path &to);
 
+std::string to_hex(void *bufferIn, size_t bufferSize);
+
 } // namespace shared
 
 } // namespace usvfs

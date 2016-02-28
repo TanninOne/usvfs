@@ -20,6 +20,8 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 */
 #include "stringutils.h"
 #include <cstring>
+#include <iomanip>
+#include <sstream>
 #include <boost/algorithm/string/case_conv.hpp>
 #include "windows_sane.h"
 #include "windows_error.h"
@@ -105,4 +107,20 @@ bfs::path usvfs::shared::make_relative(const bfs::path &fromIn,
     result /= *toIter;
   }
   return result;
+}
+
+std::string usvfs::shared::to_hex(void *bufferIn, size_t bufferSize)
+{
+  unsigned char *buffer = static_cast<unsigned char *>(bufferIn);
+  std::ostringstream temp;
+  temp << std::hex << std::setfill('0') << std::setw(2);
+  for (size_t i = 0; i < bufferSize; ++i) {
+    temp << (unsigned int)buffer[i];
+    if ((i % 16) == 15) {
+      temp << "\n";
+    } else {
+      temp << " ";
+    }
+  }
+  return temp.str();
 }
