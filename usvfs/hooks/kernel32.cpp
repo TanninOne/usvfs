@@ -63,8 +63,8 @@ public:
   void insertMapping(const usvfs::HookContext::Ptr &context)
   {
     m_FileNode = context->redirectionTable().addFile(
-        m_RealPath,
-        usvfs::RedirectionDataLocal(string_cast<std::string>(m_FileName)));
+        m_RealPath, usvfs::RedirectionDataLocal(
+                        string_cast<std::string>(m_FileName, CodePage::UTF8)));
   }
 
   void removeMapping()

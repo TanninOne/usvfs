@@ -174,9 +174,10 @@ void HookContext::registerProcess(DWORD pid)
 
 void HookContext::blacklistExecutable(const std::wstring &executableName)
 {
-  m_Parameters->processBlacklist.insert(
-      shared::StringT(shared::string_cast<std::string>(executableName).c_str(),
-        m_Parameters->processBlacklist.get_allocator()));
+  m_Parameters->processBlacklist.insert(shared::StringT(
+      shared::string_cast<std::string>(executableName, shared::CodePage::UTF8)
+          .c_str(),
+      m_Parameters->processBlacklist.get_allocator()));
 }
 
 void HookContext::unregisterCurrentProcess()
