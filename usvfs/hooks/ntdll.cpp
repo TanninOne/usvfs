@@ -397,11 +397,14 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
 {
   NTSTATUS res = STATUS_NO_SUCH_FILE;
   if (hdl != INVALID_HANDLE_VALUE) {
+    PVOID lastValidRecord = nullptr;
     IO_STATUS_BLOCK status;
     res = NtQueryDirectoryFile(hdl, event, apcRoutine, apcContext, &status,
                                buffer, bufferSize, FileInformationClass,
                                returnSingleEntry, FileName, FALSE);
-    if ((res == STATUS_SUCCESS) && (status.Information > 0)) {
+    if ((res != STATUS_SUCCESS) || (status.Information <= 0)) {
+      bufferSize = 0UL;
+    } else {
       ULONG totalOffset   = 0;
       PVOID lastSkipPos   = nullptr;
 
@@ -443,7 +446,7 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
         ULONG size
             = offset != 0
                   ? offset
-                  : (static_cast<ULONG>(status.Information) - totalOffset) + 4;
+                  : (static_cast<ULONG>(status.Information) - totalOffset);
         if (!add) {
           if (lastSkipPos == nullptr) {
             lastSkipPos = buffer;
@@ -456,6 +459,7 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
             buffer = lastSkipPos;
             lastSkipPos = nullptr;
           }
+          lastValidRecord = buffer;
         }
         buffer = ush::AddrAdd(buffer, size);
         totalOffset += size;
@@ -464,9 +468,11 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
       if (lastSkipPos != nullptr) {
         // null out the unused rest if there is some
         memset(lastSkipPos, 0, status.Information - finalSize);
+        buffer = lastSkipPos;
       }
-    } else {
-      bufferSize = 0UL;
+    }
+    if (lastValidRecord != nullptr) {
+      SetInfoOffset(lastValidRecord, FileInformationClass, 0);
     }
   }
   return res;
@@ -672,6 +678,7 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
   }
 
   ULONG dataRead = Length;
+  PVOID FileInformationCurrent = FileInformation;
 
   // add regular search results, skipping those files we have in a virtual
   // location
@@ -680,11 +687,10 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
   while (moreRegular && !dataReturned) {
     dataRead        = Length;
     NTSTATUS subRes = addNtSearchData(
-        FileHandle, FileName, L"", FileInformationClass, FileInformation,
+        FileHandle, FileName, L"", FileInformationClass, FileInformationCurrent,
         dataRead, infoIter->second.foundFiles, Event, ApcRoutine, ApcContext,
         ReturnSingleEntry);
     moreRegular = subRes == STATUS_SUCCESS;
-
     if (moreRegular) {
       dataReturned = dataRead != 0;
     } else {
@@ -692,14 +698,13 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
       infoIter->second.foundFiles.clear();
     }
   }
-
   if (!moreRegular) {
     // add virtual results
     while (!dataReturned && infoIter->second.virtualMatches.size() > 0) {
       auto matchIter = infoIter->second.virtualMatches.rbegin();
       if (matchIter->realPath.size() != 0) {
         dataRead = Length;
-        if (addVirtualSearchResult(FileInformation, FileInformationClass,
+        if (addVirtualSearchResult(FileInformationCurrent, FileInformationClass,
                                    infoIter->second, matchIter->realPath,
                                    matchIter->virtualName, ReturnSingleEntry,
                                    dataRead)) {

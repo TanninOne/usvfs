@@ -846,17 +846,19 @@ BOOL CreateDirectoryRecursive(LPCWSTR lpPathName,
   while (current < end) {
     size_t len = wcscspn(current, L"\\/");
     if (len != 0) {
-      current[len] = L'\0';
-      if (!::CreateDirectoryW(current, lpSecurityAttributes)) {
-        DWORD err = ::GetLastError();
-        if (err != ERROR_ALREADY_EXISTS) {
-          spdlog::get("usvfs")
-              ->warn("failed to create intermediate directory \"{}\": {}",
-                     ush::string_cast<std::string>(current), err);
-          return FALSE;
+      if ((len != 2) || (current[1] != ':')) {
+        current[len] = L'\0';
+        if (!::CreateDirectoryW(current, lpSecurityAttributes)) {
+          DWORD err = ::GetLastError();
+          if (err != ERROR_ALREADY_EXISTS) {
+            spdlog::get("usvfs")
+                ->warn("failed to create intermediate directory \"{}\": {}",
+                       ush::string_cast<std::string>(current), err);
+            return FALSE;
+          }
         }
+        current[len] = L'\\';
       }
-      current[len] = L'\\';
     }
     current += len + 1;
   }
