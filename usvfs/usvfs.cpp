@@ -27,6 +27,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <winapi.h>
 #include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
+#include <boost/locale.hpp>
 #include <ttrampolinepool.h>
 #include <scopeguard.h>
 #include <stringcast.h>
@@ -470,11 +471,10 @@ BOOL WINAPI VirtualLinkFile(LPCWSTR source, LPCWSTR destination, unsigned int fl
       SetLastError(ERROR_PATH_NOT_FOUND);
       return FALSE;
     }
-
-    // TODO could save memory here by storing only the file name for the source and constructing
-    // the full name using the parent directory
+    // TODO could save memory here by storing only the file name for the source
+    // and constructing the full name using the parent directory
     auto res = context->redirectionTable().addFile(
-          bfs::path(destination, u8u16_convert())
+          bfs::path(destination)
           , usvfs::RedirectionDataLocal(ush::string_cast<std::string>(source, ush::CodePage::UTF8))
           , !(flags & LINKFLAG_FAILIFEXISTS));
 
@@ -551,7 +551,7 @@ BOOL WINAPI VirtualLinkDirectoryStatic(LPCWSTR source, LPCWSTR destination, unsi
 
           // TODO could save memory here by storing only the file name for the source and constructing
           // the full name using the parent directory
-          context->redirectionTable().addFile(bfs::path(destination, u8u16_convert()) / nameU8
+          context->redirectionTable().addFile(bfs::path(destination) / nameU8
                                               , usvfs::RedirectionDataLocal(sourceU8 + nameU8)
                                               , true);
         }

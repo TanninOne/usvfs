@@ -630,14 +630,14 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
                                   FileName, RestartScan);
   }
 
-  std::unique_lock<std::recursive_mutex> queryLock;
+//  std::unique_lock<std::recursive_mutex> queryLock;
   std::map<HANDLE, Searches::Info>::iterator infoIter;
   bool firstSearch = false;
 
   { // scope to limit context lifetime
     HookContext::ConstPtr context = READ_CONTEXT();
     Searches &activeSearches = context->customData<Searches>(SearchInfo);
-    queryLock = std::unique_lock<std::recursive_mutex>(activeSearches.queryMutex);
+//    queryLock = std::unique_lock<std::recursive_mutex>(activeSearches.queryMutex);
 
     if (RestartScan) {
       auto iter = activeSearches.info.find(FileHandle);

@@ -194,8 +194,7 @@ TrampolinePool::BufferList &TrampolinePool::getBufferList(LPVOID address)
   if (iter == m_Buffers.end()) {
     BufferList newBufList = { 0, std::vector<LPVOID>() };
     m_Buffers[rounded] = newBufList;
-    allocateBuffer(address);
-    iter = m_Buffers.find(rounded);
+    iter = allocateBuffer(address);
   }
   return iter->second;
 }
@@ -469,33 +468,33 @@ void TrampolinePool::forceUnlockBarrier()
   } // else no barriers to unlock
 }
 
-void TrampolinePool::allocateBuffer(LPVOID addressNear)
+TrampolinePool::BufferMap::iterator TrampolinePool::allocateBuffer(LPVOID addressNear)
 {
   // allocate a buffer that we can write to and that is executable
   SYSTEM_INFO sysInfo;
   ::ZeroMemory(&sysInfo, sizeof(SYSTEM_INFO));
   GetSystemInfo(&sysInfo);
 
-  LPVOID rounded = roundAddress(addressNear);
-  auto iter = m_Buffers.find(rounded);
+  LPVOID rounded     = roundAddress(addressNear);
+  auto iter          = m_Buffers.find(rounded);
   uintptr_t lowerEnd = reinterpret_cast<uintptr_t>(rounded);
   if (iter->second.buffers.size() > 0) {
     // start searching were we last found a buffer
-    lowerEnd = reinterpret_cast<uintptr_t>(*iter->second.buffers.rbegin()) + sysInfo.dwPageSize;
+    lowerEnd = reinterpret_cast<uintptr_t>(*iter->second.buffers.rbegin())
+               + sysInfo.dwPageSize;
   }
 
-  uintptr_t start = std::max(lowerEnd,
-                             reinterpret_cast<uintptr_t>(sysInfo.lpMinimumApplicationAddress));
+  uintptr_t start = std::max(
+      lowerEnd,
+      reinterpret_cast<uintptr_t>(sysInfo.lpMinimumApplicationAddress));
   uintptr_t upperEnd = reinterpret_cast<uintptr_t>(rounded) + m_SearchRange;
-  uintptr_t end   = std::min(upperEnd,
-                             reinterpret_cast<uintptr_t>(sysInfo.lpMaximumApplicationAddress));
+  uintptr_t end = std::min(upperEnd, reinterpret_cast<uintptr_t>(
+                                         sysInfo.lpMaximumApplicationAddress));
 
   LPVOID buffer = nullptr;
   for (uintptr_t cur = start; cur < end; cur += sysInfo.dwPageSize) {
-    buffer = VirtualAlloc(reinterpret_cast<LPVOID>(cur),
-                            m_BufferSize,
-                            MEM_COMMIT | MEM_RESERVE,
-                            PAGE_EXECUTE_READWRITE);
+    buffer = VirtualAlloc(reinterpret_cast<LPVOID>(cur), m_BufferSize,
+                          MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
     if (buffer != nullptr) {
       break;
     }
@@ -510,10 +509,12 @@ void TrampolinePool::allocateBuffer(LPVOID addressNear)
 
   iter->second.offset = 0;
   iter->second.buffers.push_back(buffer);
-  spdlog::get("usvfs")->debug("allocated trampoline buffer for jumps between {0:x} and {1:x} at {2:x}",
-    reinterpret_cast<unsigned long>(rounded),
-    (reinterpret_cast<unsigned long>(rounded) + m_SearchRange),
-    reinterpret_cast<unsigned long>(buffer));
+  spdlog::get("usvfs")->debug(
+      "allocated trampoline buffer for jumps between {0:x} and {1:x} at {2:x}",
+      reinterpret_cast<unsigned long>(rounded),
+      (reinterpret_cast<unsigned long>(rounded) + m_SearchRange),
+      reinterpret_cast<unsigned long>(buffer));
+  return iter;
 }
 
 LPVOID TrampolinePool::barrier(LPVOID function)

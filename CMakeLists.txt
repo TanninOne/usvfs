@@ -39,6 +39,11 @@ SET(project_path "${default_project_path}" CACHE PATH "path to the other mo proj
 SET(lib_path "${project_path}/../install/libs")
 LINK_DIRECTORIES("${lib_path}")
 
+FIND_PROGRAM(IWYU_PATH NAMES include-what-you-use iwyu PATHS ${project_path}/include-what-you-use/bin)
+IF(IWYU_PATH-NOTFOUND)
+  MESSAGE(STATUS "Could not find the program include-what-you-use")
+ENDIF()
+
 ADD_SUBDIRECTORY(shared)
 ADD_SUBDIRECTORY(shared_test)
 ADD_SUBDIRECTORY(thooklib)

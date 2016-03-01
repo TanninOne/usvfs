@@ -120,7 +120,14 @@ private:
 
   TrampolinePool &operator=(const TrampolinePool &reference); // not implemented
 
-  void allocateBuffer(LPVOID addressNear);
+  /**
+   * @brief allocates a buffer with read, write and execute rights near the
+   * specified adress. The purpose is that we want to be able to jump from
+   * adressNear to generated code with a 5-byte jump, even on x64 systems.
+   * @param addressNear the reference adress
+   * @note the resulting buffer is stored in the m_Buffers map
+   */
+  BufferMap::iterator allocateBuffer(LPVOID addressNear);
 
   void addBarrier(LPVOID rerouteAddr, LPVOID original, asmjit::X86Assembler &assembler);
 

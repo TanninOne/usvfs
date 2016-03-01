@@ -22,6 +22,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 
 #include "windows_sane.h"
 #include <cstdint>
+#include <cstddef>
 
 namespace usvfs {
 
@@ -40,7 +41,7 @@ inline LPVOID AddrAdd(LPVOID address, size_t offset)
 }
 
 
-inline int AddrDiff(LPVOID lhs, LPVOID rhs)
+inline std::ptrdiff_t AddrDiff(LPVOID lhs, LPVOID rhs)
 {
   return reinterpret_cast<LPBYTE>(lhs) - reinterpret_cast<LPBYTE>(rhs);
 }

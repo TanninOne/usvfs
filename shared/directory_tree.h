@@ -24,6 +24,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include "shared_memory.h"
 #include "scopeguard.h"
 #include "logging.h"
+#include "stringutils.h"
 #include <boost/predef.h>
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
@@ -460,7 +461,7 @@ PRIVATE:
   }
 
   NodePtrT findNode(const boost::filesystem::path &name, boost::filesystem::path::iterator iter) {
-    auto subNode = m_Nodes.find(iter->string());
+    auto subNode = m_Nodes.find(iter->string(m_U16Convert));
     boost::filesystem::path::iterator next = nextIter(iter, name.end());
     if (next == name.end()) {
       // last name component, should be a local node
@@ -479,7 +480,7 @@ PRIVATE:
   }
 
   const NodePtrT findNode(const boost::filesystem::path &name, boost::filesystem::path::iterator iter) const {
-    auto subNode = m_Nodes.find(iter->string());
+    auto subNode = m_Nodes.find(iter->string(m_U16Convert));
     boost::filesystem::path::iterator next = nextIter(iter, name.end());
     if (next == name.end()) {
       // last name component, should be a local node
@@ -500,7 +501,7 @@ PRIVATE:
   void visitPath(const boost::filesystem::path &path
                  , boost::filesystem::path::iterator iter
                  , const VisitorFunction &visitor) const {
-    auto subNode = m_Nodes.find(iter->string());
+    auto subNode = m_Nodes.find(iter->string(m_U16Convert));
     if (subNode != m_Nodes.end()) {
       visitor(subNode->second);
       auto next = nextIter(iter, path.end());
@@ -680,13 +681,15 @@ public:
    * @return pointer to the new node or a null ptr
    **/
   template <typename T>
-  typename TreeT::NodePtrT addDirectory(const boost::filesystem::path &name, const T &data,
-                                        TreeFlags flags = 0, bool overwrite = true) {
+  typename TreeT::NodePtrT addDirectory(const boost::filesystem::path &name,
+                                        const T &data, TreeFlags flags = 0,
+                                        bool overwrite = true)
+  {
     using namespace std::placeholders;
     try {
-      return addNode(m_TreeMeta->tree.get(), name, name.begin(), data, overwrite,
-                     flags | FLAG_DIRECTORY, allocator());
-    } catch (const bi::bad_alloc&) {
+      return addNode(m_TreeMeta->tree.get(), name, name.begin(), data,
+                     overwrite, flags | FLAG_DIRECTORY, allocator());
+    } catch (const bi::bad_alloc &) {
       reassign();
       return addDirectory(name, data, flags, overwrite);
     }
@@ -749,13 +752,13 @@ private:
                                    , unsigned int flags
                                    , const VoidAllocatorT &allocator) {
     boost::filesystem::path::iterator next = nextIter(iter, name.end());
-    StringT iterString(iter->string().c_str(), allocator);
+    StringT iterString(iter->string(m_U16Convert).c_str(), allocator);
     if (next == name.end()) {
-      typename TreeT::NodePtrT newNode = this->get()->node(iter->string().c_str());
+      typename TreeT::NodePtrT newNode = this->get()->node(iter->string(m_U16Convert).c_str());
 
       if (newNode.get() == nullptr) {
         // last name component, should be the filename
-        TreeT *node = createSubNode(allocator, iter->string(), flags, data);
+        TreeT *node = createSubNode(allocator, iter->string(m_U16Convert), flags, data);
 
         newNode = createSubPtr(node);
       }
@@ -775,7 +778,7 @@ private:
       auto subNode = base->m_Nodes.find(iterString);
       if (subNode == base->m_Nodes.end()) {
         typename TreeT::NodePtrT newNode = createSubPtr(createSubNode(allocator
-                                                                      , iter->string()
+                                                                      , iter->string(m_U16Convert)
                                                                       , FLAG_DIRECTORY | FLAG_DUMMY
                                                                       , createEmpty()));
         subNode = base->m_Nodes.insert(std::make_pair(iterString, newNode)).first;
