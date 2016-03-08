@@ -24,6 +24,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include "shmlogger.h"
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 #include <limits>
 #include <algorithm>
 #pragma warning(pop)
@@ -141,18 +142,33 @@ void spdlog::sinks::shm_sink::log(const details::log_msg &msg)
     }
   }
 
+  std::string message = msg.formatted.str();
+
+  if (message.length() > SHMLogger::MESSAGE_SIZE) {
+    std::vector<std::string> splitVec;
+    boost::split(splitVec, message, boost::is_any_of("\r\n"),
+                 boost::token_compress_on);
+    for (const std::string &line : splitVec) {
+      output(msg.level, line);
+    }
+  } else {
+    output(msg.level, message);
+  }
+}
+
+void spdlog::sinks::shm_sink::output(level::level_enum lev,
+                                     const std::string &message)
+{
   bool sent = true;
 
-  std::string message = msg.formatted.str();
   // spdlog auto-append line breaks which we don't need. Probably would be
-  // better to not write the
-  // breaks to begin with?
+  // better to not write the breaks to begin with?
   size_t count = std::min(message.find_last_not_of("\r\n") + 1,
                           static_cast<size_t>(m_LogQueue.get_max_msg_size()));
 
   // depending on the log level, drop less important messages if the receiver
   // can't keep up
-  switch (msg.level) {
+  switch (lev) {
     case level::trace:
     case level::debug:
     case level::notice: {

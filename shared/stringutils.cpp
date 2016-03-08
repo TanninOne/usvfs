@@ -113,9 +113,9 @@ std::string usvfs::shared::to_hex(void *bufferIn, size_t bufferSize)
 {
   unsigned char *buffer = static_cast<unsigned char *>(bufferIn);
   std::ostringstream temp;
-  temp << std::hex << std::setfill('0') << std::setw(2);
+  temp << std::hex;
   for (size_t i = 0; i < bufferSize; ++i) {
-    temp << (unsigned int)buffer[i];
+    temp << std::setfill('0') << std::setw(2) << (unsigned int)buffer[i];
     if ((i % 16) == 15) {
       temp << "\n";
     } else {

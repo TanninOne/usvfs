@@ -41,6 +41,7 @@ class shm_sink : public sink {
 public:
   shm_sink(const char *queueName);
   virtual void log(const details::log_msg &msg) override;
+  void output(level::level_enum lev, const std::string &message);
   virtual void flush() override;
 };
 }

@@ -532,7 +532,7 @@ BOOL WINAPI VirtualLinkDirectoryStatic(LPCWSTR source, LPCWSTR destination, unsi
           , usvfs::shared::FLAG_DIRECTORY | convertRedirectionFlags(flags)
           , true);
 
-    if (flags & LINKFLAG_RECURSIVE) {
+    if ((flags & LINKFLAG_RECURSIVE) != 0) {
       std::wstring sourceW = std::wstring(source) + L"\\";
       std::wstring destinationW = std::wstring(destination) + L"\\";
 

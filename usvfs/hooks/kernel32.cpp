@@ -584,8 +584,9 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
   POST_REALCALL
 
   if (create && (res != INVALID_HANDLE_VALUE)) {
-    spdlog::get("hooks")->info("add file to vfs: {}",
-                               ush::string_cast<std::string>(lpFileName));
+    spdlog::get("hooks")
+        ->info("add file to vfs: {}",
+               ush::string_cast<std::string>(lpFileName, ush::CodePage::UTF8));
     // new file was created in a mapped directory, insert to vitual structure
     reroute.insertMapping(WRITE_CONTEXT());
   }
