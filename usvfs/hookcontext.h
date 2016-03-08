@@ -131,6 +131,16 @@ public:
     return m_Tree;
   }
 
+  RedirectionTreeContainer &inverseTable()
+  {
+    return m_InverseTree;
+  }
+
+  const RedirectionTreeContainer &inverseTable() const
+  {
+    return m_InverseTree;
+  }
+
   /**
    * @return the parameters passed in on dll initialisation
    */
@@ -193,6 +203,7 @@ private:
 #pragma message("this should be protected by a system-wide named mutex")
   SharedParameters *m_Parameters{nullptr};
   RedirectionTreeContainer m_Tree;
+  RedirectionTreeContainer m_InverseTree;
 
   std::vector<std::future<int>> m_Futures;
 

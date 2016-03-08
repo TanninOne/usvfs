@@ -40,9 +40,10 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <codecvt>
 
 
-namespace bfs   = boost::filesystem;
-namespace ush   = usvfs::shared;
-namespace bip   = boost::interprocess;
+namespace bfs = boost::filesystem;
+namespace ush = usvfs::shared;
+namespace bip = boost::interprocess;
+namespace ba  = boost::algorithm;
 
 
 usvfs::HookManager *manager = nullptr;
@@ -554,6 +555,17 @@ BOOL WINAPI VirtualLinkDirectoryStatic(LPCWSTR source, LPCWSTR destination, unsi
           context->redirectionTable().addFile(bfs::path(destination) / nameU8
                                               , usvfs::RedirectionDataLocal(sourceU8 + nameU8)
                                               , true);
+
+          static std::set<std::string> extensions { ".exe", ".dll" };
+          std::string fileExt = ba::to_lower_copy(bfs::extension(nameU8));
+
+          if (extensions.find(fileExt) != extensions.end()) {
+            std::string destinationU8 = ush::string_cast<std::string>(destination, ush::CodePage::UTF8) + "\\";
+
+            context->inverseTable().addFile(bfs::path(source) / nameU8
+                                            , usvfs::RedirectionDataLocal(destinationU8 + nameU8)
+                                            , true);
+          }
         }
       }
     }
