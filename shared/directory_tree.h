@@ -27,6 +27,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include "stringutils.h"
 #include <boost/predef.h>
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/detail/utf8_codecvt_facet.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/format.hpp>
 #include "exceptionex.h"
@@ -228,7 +229,7 @@ public:
       if (m_Name.size() == 0) {
         return bfs::path();
       } else {
-        return bfs::path(m_Name.c_str(), m_U16Convert) / "\\";
+        return bfs::path(m_Name.c_str()) / "\\";
       }
     } else {
       return m_Parent.lock()->path() / m_Name.c_str();
@@ -392,7 +393,7 @@ public:
       // if there is a prefix, search for the node representing that path and
       // search only on that
       NodePtrT node
-          = findNode(bfs::path(pattern.substr(0, fixedPart), m_U16Convert));
+          = findNode(bfs::path(pattern.substr(0, fixedPart)));
       if (node.get() != nullptr) {
         node->findLocal(result, pattern.substr(fixedPart + 1));
       }
@@ -461,7 +462,7 @@ PRIVATE:
   }
 
   NodePtrT findNode(const boost::filesystem::path &name, boost::filesystem::path::iterator iter) {
-    auto subNode = m_Nodes.find(iter->string(m_U16Convert));
+    auto subNode = m_Nodes.find(iter->string());
     boost::filesystem::path::iterator next = nextIter(iter, name.end());
     if (next == name.end()) {
       // last name component, should be a local node
@@ -480,7 +481,7 @@ PRIVATE:
   }
 
   const NodePtrT findNode(const boost::filesystem::path &name, boost::filesystem::path::iterator iter) const {
-    auto subNode = m_Nodes.find(iter->string(m_U16Convert));
+    auto subNode = m_Nodes.find(iter->string());
     boost::filesystem::path::iterator next = nextIter(iter, name.end());
     if (next == name.end()) {
       // last name component, should be a local node
@@ -501,7 +502,7 @@ PRIVATE:
   void visitPath(const boost::filesystem::path &path
                  , boost::filesystem::path::iterator iter
                  , const VisitorFunction &visitor) const {
-    auto subNode = m_Nodes.find(iter->string(m_U16Convert));
+    auto subNode = m_Nodes.find(iter->string());
     if (subNode != m_Nodes.end()) {
       visitor(subNode->second);
       auto next = nextIter(iter, path.end());
@@ -546,8 +547,6 @@ PRIVATE:
 
   NodeMapT m_Nodes;
 
-  std::codecvt_utf8_utf16<wchar_t> m_U16Convert;
-
 };
 
 
@@ -576,6 +575,10 @@ public:
     : m_TreeMeta(nullptr)
     , m_SHMName(SHMName)
   {
+    std::locale global_loc = std::locale();
+    std::locale loc(global_loc, new boost::filesystem::detail::utf8_codecvt_facet);
+    boost::filesystem::path::imbue(loc);
+
     namespace sp = std::placeholders;
     std::regex pattern(R"exp((.*_)(\d+))exp");
     std::smatch match;
@@ -744,7 +747,7 @@ private:
   }
 
   template <typename T>
-  typename TreeT::NodePtrT addNode(DirectoryTree<typename TreeT::DataT> *base
+  typename TreeT::NodePtrT addNode(TreeT *base
                                    , const boost::filesystem::path &name
                                    , boost::filesystem::path::iterator iter
                                    , const T &data
@@ -752,22 +755,20 @@ private:
                                    , unsigned int flags
                                    , const VoidAllocatorT &allocator) {
     boost::filesystem::path::iterator next = nextIter(iter, name.end());
-    StringT iterString(iter->string(m_U16Convert).c_str(), allocator);
+    StringT iterString(iter->string().c_str(), allocator);
     if (next == name.end()) {
-      typename TreeT::NodePtrT newNode = this->get()->node(iter->string(m_U16Convert).c_str());
+      typename TreeT::NodePtrT newNode = base->node(iter->string().c_str());
 
       if (newNode.get() == nullptr) {
         // last name component, should be the filename
-        TreeT *node = createSubNode(allocator, iter->string(m_U16Convert), flags, data);
-
+        TreeT *node = createSubNode(allocator, iter->string(), flags, data);
         newNode = createSubPtr(node);
-      }
-      newNode->m_Self = TreeT::WeakPtrT(newNode);
-
-      newNode->m_Parent = base->m_Self;
-
-      if (overwrite) {
+        newNode->m_Self = TreeT::WeakPtrT(newNode);
+        newNode->m_Parent = base->m_Self;
         base->set(iterString, newNode);
+        return newNode;
+      } else if (overwrite) {
+        newNode->m_Data = createData<TreeT::DataT, T>(data, allocator);
         return newNode;
       } else {
         auto res = base->m_Nodes.insert(std::make_pair(iterString, newNode));
@@ -778,7 +779,7 @@ private:
       auto subNode = base->m_Nodes.find(iterString);
       if (subNode == base->m_Nodes.end()) {
         typename TreeT::NodePtrT newNode = createSubPtr(createSubNode(allocator
-                                                                      , iter->string(m_U16Convert)
+                                                                      , iter->string()
                                                                       , FLAG_DIRECTORY | FLAG_DUMMY
                                                                       , createEmpty()));
         subNode = base->m_Nodes.insert(std::make_pair(iterString, newNode)).first;
@@ -924,8 +925,6 @@ private:
   std::string m_SHMName;
   std::shared_ptr<SharedMemoryT> m_SHM;
   TreeMeta *m_TreeMeta;
-
-  std::codecvt_utf8_utf16<wchar_t> m_U16Convert;
 
 };
 
