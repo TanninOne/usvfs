@@ -23,6 +23,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <iomanip>
 #include <sstream>
 #include <boost/algorithm/string/case_conv.hpp>
+#include <boost/locale.hpp>
 #include "windows_sane.h"
 #include "windows_error.h"
 
@@ -62,11 +63,13 @@ static bfs::path normalize(const bfs::path &path)
 {
   bfs::path result;
 
+  boost::locale::generator gen;
+  auto loc = gen("en_US.UTF-8");
   for (bfs::path::iterator iter = path.begin(); iter != path.end(); ++iter) {
     if (*iter == "..") {
       result = result.parent_path();
     } else if (*iter != ".") {
-      result /= boost::to_lower_copy(iter->string());
+      result /= boost::to_lower_copy(iter->string(), loc);
     } // single dot is ignored
   }
   return result;

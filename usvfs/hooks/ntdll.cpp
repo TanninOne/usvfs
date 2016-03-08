@@ -7,6 +7,7 @@
 #pragma warning(push, 3)
 #include <boost/scoped_array.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/locale.hpp>
 //#include <boost/thread/mutex.hpp>
 #pragma warning(pop)
 #include <string>
@@ -408,6 +409,9 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
       ULONG totalOffset   = 0;
       PVOID lastSkipPos   = nullptr;
 
+      boost::locale::generator gen;
+      auto loc = gen("en_US.UTF-8");
+
       ULONG_PTR finalSize = status.Information;
       while (totalOffset < status.Information) {
         ULONG offset;
@@ -436,7 +440,7 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
         bool add = true;
         if (fileName.length() > 0) {
           std::wstring fileNameL = fileName;
-          boost::algorithm::to_lower(fileNameL);
+          boost::algorithm::to_lower(fileNameL, loc);
           auto res = foundFiles.insert(fileNameL);
           add      = res.second; // add only if we didn't find this file before
         }
@@ -535,14 +539,21 @@ void gatherVirtualEntries(const UnicodeString &dirName,
                                           FileName->Buffer, ush::CodePage::UTF8)
                                     : "*.*";
 
+    boost::locale::generator gen;
+    auto loc = gen("en_US.UTF-8");
+
     for (const auto &subNode : node->find(searchPattern)) {
       if (((subNode->data().linkTarget.length() > 0) || subNode->isDirectory())
           && !subNode->hasFlag(usvfs::shared::FLAG_DUMMY)) {
-        std::wstring vName = ush::string_cast<std::wstring>(subNode->name());
+        std::wstring vName = ush::string_cast<std::wstring>(
+            subNode->name(), ush::CodePage::UTF8);
+
         Searches::Info::VirtualMatch m{
-            ush::string_cast<std::wstring>(subNode->data().linkTarget), vName};
+            ush::string_cast<std::wstring>(subNode->data().linkTarget,
+                                           ush::CodePage::UTF8), vName};
         info.virtualMatches.push_back(m);
-        boost::algorithm::to_lower(vName);
+
+        boost::algorithm::to_lower(vName, loc);
         info.foundFiles.insert(vName);
       }
     }
@@ -581,7 +592,7 @@ bool addVirtualSearchResult(PVOID &FileInformation,
         dirName.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
         nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
   }
-  std::wstring fileName = fullPath.filename().wstring();
+  std::wstring fileName = ush::string_cast<std::wstring>(fullPath.filename().string(), ush::CodePage::UTF8);
   NTSTATUS subRes = addNtSearchData(
       info.currentSearchHandle,
       (fileName != L".")
