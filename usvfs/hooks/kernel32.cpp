@@ -849,7 +849,7 @@ BOOL CreateDirectoryRecursive(LPCWSTR lpPathName,
     if (len != 0) {
       if ((len != 2) || (current[1] != ':')) {
         current[len] = L'\0';
-        if (!::CreateDirectoryW(current, lpSecurityAttributes)) {
+        if (!::CreateDirectoryW(pathCopy.get(), lpSecurityAttributes)) {
           DWORD err = ::GetLastError();
           if (err != ERROR_ALREADY_EXISTS) {
             spdlog::get("usvfs")

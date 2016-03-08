@@ -455,7 +455,7 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
         } else {
           if (lastSkipPos != nullptr) {
             memmove(lastSkipPos, buffer, status.Information - totalOffset);
-            totalOffset -= ush::AddrDiff(buffer, lastSkipPos);
+            totalOffset -= static_cast<ULONG>(ush::AddrDiff(buffer, lastSkipPos));
             buffer = lastSkipPos;
             lastSkipPos = nullptr;
           }

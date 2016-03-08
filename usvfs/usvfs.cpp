@@ -543,7 +543,7 @@ BOOL WINAPI VirtualLinkDirectoryStatic(LPCWSTR source, LPCWSTR destination, unsi
             VirtualLinkDirectoryStatic(
                   (sourceW + file.fileName).c_str()
                   , (destinationW + file.fileName).c_str()
-                  , LINKFLAG_CREATETARGET);
+                  , flags);
           }
         } else {
           std::string nameU8 =
