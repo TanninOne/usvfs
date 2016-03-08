@@ -4,9 +4,6 @@ SET(thooklib_test_SRCS
     main.cpp
     )
 
-
-MESSAGE(STATUS ${ASMJIT_BINARY_DIR})
-
 INCLUDE_DIRECTORIES("${Boost_INCLUDE_DIRS}"
                     "${GTEST_INCLUDE_DIR}"
                     "${CMAKE_SOURCE_DIR}/shared"

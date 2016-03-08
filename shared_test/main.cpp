@@ -214,9 +214,8 @@ TEST(DirectoryTreeTest, SHMAllocationErrorComplex)
           tree.addFile(name, str, false);
         }
       }
-
-      EXPECT_EQ(str.c_str(), tree->node("C:")->node("temp")->node("aa", MissingThrow)->data().c_str());
-      EXPECT_EQ(str.c_str(), tree->node("C:")->node("temp")->node("az", MissingThrow)->data().c_str());
+      EXPECT_STREQ(str.c_str(), tree->node("C:")->node("temp")->node("aa", MissingThrow)->data().c_str());
+      EXPECT_STREQ(str.c_str(), tree->node("C:")->node("temp")->node("az", MissingThrow)->data().c_str());
     } catch (const std::exception &e) {
       logger()->error("{}", e.what());
       throw;
