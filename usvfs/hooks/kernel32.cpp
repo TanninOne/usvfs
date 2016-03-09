@@ -55,6 +55,12 @@ public:
   {
     return m_FileName;
   }
+
+  const std::wstring &buffer() const
+  {
+    return m_Buffer;
+  }
+
   bool wasRerouted() const
   {
     return m_Rerouted;
@@ -79,7 +85,8 @@ public:
 
   static RerouteW create(const usvfs::HookContext::ConstPtr &context,
                          const usvfs::HookCallContext &callContext,
-                         const wchar_t *inPath)
+                         const wchar_t *inPath,
+                         bool inverse = false)
   {
     RerouteW result;
     if ((inPath != nullptr) && (inPath[0] != L'\0')
@@ -104,8 +111,10 @@ public:
         } else {
           lookupPath = string_cast<std::string>(inPath, CodePage::UTF8);
         }
-        result.m_FileNode
-            = context->redirectionTable()->findNode(lookupPath.c_str());
+
+        auto table
+            = inverse ? context->inverseTable() : context->redirectionTable();
+        result.m_FileNode = table->findNode(lookupPath.c_str());
 
         if (result.m_FileNode.get()
             && !result.m_FileNode->data().linkTarget.empty()) {
@@ -918,16 +927,34 @@ DWORD WINAPI usvfs::hooks::GetModuleFileNameW(HMODULE hModule,
 
   HOOK_START_GROUP(MutExHookGroup::ALL_GROUPS)
 
+
   PRE_REALCALL
   res = ::GetModuleFileNameW(hModule, lpFilename, nSize);
   POST_REALCALL
 
-  if (res != 0) {
-    // on success
 
-    // TODO: test if the filename is within a mapped directory. If so, rewrite
-    // it to be in the mapped-to directory
-    //  -> reverseReroute...
+  if (res != 0) {
+    RerouteW reroute
+        = RerouteW::create(READ_CONTEXT(), callContext, lpFilename, true);
+
+    if (reroute.wasRerouted()) {
+      DWORD reroutedSize = reroute.buffer().size();
+       if (reroutedSize >= nSize) {
+         callContext.updateLastError(ERROR_INSUFFICIENT_BUFFER);
+         reroutedSize = nSize - 1;
+       }
+       // res can't be bigger than nSize-1 at this point
+       if (reroutedSize > 0) {
+         if (reroutedSize < res) {
+           // zero out the string windows has previously written to
+           memset(lpFilename, '\0', std::min(res, nSize) * sizeof(wchar_t));
+         }
+         // this truncates the string if the buffer is too small
+         wcsncpy(lpFilename, reroute.fileName(), reroutedSize + 1);
+       }
+       return reroutedSize;
+    }
+
   }
 
   if (callContext.active()) {

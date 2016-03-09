@@ -56,7 +56,7 @@ public:
   HookCallContext(MutExHookGroup group);
   ~HookCallContext();
 
-  void updateLastError();
+  void updateLastError(DWORD lastError = GetLastError());
 
   bool active() const;
 

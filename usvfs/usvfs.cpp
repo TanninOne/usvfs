@@ -28,6 +28,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/locale.hpp>
+#include <boost/algorithm/string.hpp>
 #include <ttrampolinepool.h>
 #include <scopeguard.h>
 #include <stringcast.h>
@@ -52,6 +53,8 @@ HMODULE dllModule = nullptr;
 PVOID exceptionHandler = nullptr;
 
 typedef std::codecvt_utf8_utf16<wchar_t> u8u16_convert;
+
+static std::set<std::string> extensions { ".exe", ".dll" };
 
 namespace spdlog {
   namespace sinks {
@@ -466,23 +469,34 @@ bool assertPathExists(LPCWSTR path)
 
 BOOL WINAPI VirtualLinkFile(LPCWSTR source, LPCWSTR destination, unsigned int flags)
 {
-  // TODO difference between winapi and ntdll api regarding system32 vs syswow64 (and other windows links?)
+  // TODO difference between winapi and ntdll api regarding system32 vs syswow64
+  // (and other windows links?)
   try {
     if (!assertPathExists(destination)) {
       SetLastError(ERROR_PATH_NOT_FOUND);
       return FALSE;
     }
-    // TODO could save memory here by storing only the file name for the source
-    // and constructing the full name using the parent directory
+
+    std::string sourceU8
+        = ush::string_cast<std::string>(source, ush::CodePage::UTF8);
     auto res = context->redirectionTable().addFile(
-          bfs::path(destination)
-          , usvfs::RedirectionDataLocal(ush::string_cast<std::string>(source, ush::CodePage::UTF8))
-          , !(flags & LINKFLAG_FAILIFEXISTS));
+        bfs::path(destination), usvfs::RedirectionDataLocal(sourceU8),
+        !(flags & LINKFLAG_FAILIFEXISTS));
+
+    std::string fileExt = ba::to_lower_copy(bfs::extension(sourceU8));
+    if (extensions.find(fileExt) != extensions.end()) {
+      std::string destinationU8
+          = ush::string_cast<std::string>(destination, ush::CodePage::UTF8);
+
+      context->inverseTable().addFile(
+          bfs::path(source), usvfs::RedirectionDataLocal(destinationU8), true);
+    }
 
     context->updateParameters();
 
     if (res.get() == nullptr) {
-      // the tree structure currently doesn't provide useful error codes but this is currently the only reason
+      // the tree structure currently doesn't provide useful error codes but
+      // this is currently the only reason
       // we would return a nullptr.
       SetLastError(ERROR_FILE_EXISTS);
       return FALSE;
@@ -556,7 +570,6 @@ BOOL WINAPI VirtualLinkDirectoryStatic(LPCWSTR source, LPCWSTR destination, unsi
                                               , usvfs::RedirectionDataLocal(sourceU8 + nameU8)
                                               , true);
 
-          static std::set<std::string> extensions { ".exe", ".dll" };
           std::string fileExt = ba::to_lower_copy(bfs::extension(nameU8));
 
           if (extensions.find(fileExt) != extensions.end()) {

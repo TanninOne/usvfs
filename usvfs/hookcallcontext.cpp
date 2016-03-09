@@ -89,9 +89,9 @@ HookCallContext::~HookCallContext()
 }
 
 
-void HookCallContext::updateLastError()
+void HookCallContext::updateLastError(DWORD lastError)
 {
-  m_LastError = GetLastError();
+  m_LastError = lastError;
 }
 
 

@@ -304,7 +304,7 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "LoadLibraryA", uhooks::LoadLibraryA);
 
   // install this hook late as usvfs is calling it itself for debugging purposes
-//  installHook(k32Mod, kbaseMod, "GetModuleFileNameW", uhooks::GetModuleFileNameW);
+  installHook(k32Mod, kbaseMod, "GetModuleFileNameW", uhooks::GetModuleFileNameW);
 
   spdlog::get("usvfs")->debug("hooks installed");
 }
