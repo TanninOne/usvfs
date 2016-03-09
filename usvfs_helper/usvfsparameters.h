@@ -28,32 +28,9 @@ extern "C" {
 
 
 struct USVFSParameters {
-/*
-  USVFSParameters()
-    : debugMode(false)
-    , logLevel(LogLevel::Debug)
-  {
-  }
-
-  USVFSParameters(const char *instanceName, bool debugMode, LogLevel logLevel)
-    : debugMode(debugMode)
-    , logLevel(logLevel)
-  {
-    strncpy_s(this->instanceName, 64, instanceName, _TRUNCATE);
-    strncpy_s(this->currentSHMName, 64, instanceName, _TRUNCATE);
-  }
-
-  USVFSParameters(const char *instanceName, const char *currentSHMName,
-             bool debugMode, LogLevel logLevel)
-    : debugMode(debugMode)
-    , logLevel(logLevel)
-  {
-    strncpy_s(this->instanceName, 64, instanceName, _TRUNCATE);
-    strncpy_s(this->currentSHMName, 64, currentSHMName, _TRUNCATE);
-  }
-*/
   char instanceName[65];
   char currentSHMName[65];
+  char currentInverseSHMName[65];
   bool debugMode{false};
   LogLevel logLevel{LogLevel::Debug};
 };

@@ -43,7 +43,9 @@ namespace usvfs
 
 void USVFSInitParametersInt(USVFSParameters *parameters,
                             const char *instanceName,
-                            const char *currentSHMName, bool debugMode,
+                            const char *currentSHMName,
+                            const char *currentInverseSHMName,
+                            bool debugMode,
                             LogLevel logLevel);
 
 
@@ -62,6 +64,7 @@ struct SharedParameters {
                    const shared::VoidAllocatorT &allocator)
     : instanceName(reference.instanceName, allocator)
     , currentSHMName(reference.currentSHMName, allocator)
+    , currentInverseSHMName(reference.currentInverseSHMName, allocator)
     , debugMode(reference.debugMode)
     , logLevel(reference.logLevel)
     , userCount(1)
@@ -74,6 +77,7 @@ struct SharedParameters {
 
   shared::StringT instanceName;
   shared::StringT currentSHMName;
+  shared::StringT currentInverseSHMName;
   bool debugMode;
   LogLevel logLevel;
   uint32_t userCount;

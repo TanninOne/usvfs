@@ -692,7 +692,11 @@ void WINAPI USVFSInitParameters(USVFSParameters *parameters,
   parameters->debugMode = debugMode;
   parameters->logLevel = logLevel;
   strncpy_s(parameters->instanceName, 64, instanceName, _TRUNCATE);
-  strncpy_s(parameters->currentSHMName, 64, instanceName, _TRUNCATE);
+  // we can't use the whole buffer as we need a few bytes to store a running
+  // counter
+  strncpy_s(parameters->currentSHMName, 60, instanceName, _TRUNCATE);
+  memset(parameters->currentInverseSHMName, '\0', 65);
+  _snprintf(parameters->currentInverseSHMName, 60, "inv_%s", instanceName);
 }
 
 

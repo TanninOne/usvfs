@@ -57,20 +57,24 @@ USVFSParameters SharedParameters::makeLocal() const
 {
   USVFSParameters result;
   USVFSInitParametersInt(&result, instanceName.c_str(),
-                         currentSHMName.c_str(), debugMode, logLevel);
+                         currentSHMName.c_str(),
+                         currentInverseSHMName.c_str(), debugMode, logLevel);
   return result;
 }
 
 
 void usvfs::USVFSInitParametersInt(USVFSParameters *parameters,
                                    const char *instanceName,
-                                   const char *currentSHMName, bool debugMode,
+                                   const char *currentSHMName,
+                                   const char *currentInverseSHMName,
+                                   bool debugMode,
                                    LogLevel logLevel)
 {
   parameters->debugMode = debugMode;
   parameters->logLevel = logLevel;
   strncpy_s(parameters->instanceName, 64, instanceName, _TRUNCATE);
   strncpy_s(parameters->currentSHMName, 64, currentSHMName, _TRUNCATE);
+  strncpy_s(parameters->currentInverseSHMName, 64, currentInverseSHMName, _TRUNCATE);
 }
 
 
@@ -78,7 +82,7 @@ HookContext::HookContext(const USVFSParameters &params, HMODULE module)
   : m_ConfigurationSHM(bi::open_or_create, params.instanceName, 8192)
   , m_Parameters(retrieveParameters(params))
   , m_Tree(m_Parameters->currentSHMName.c_str(), 4096)
-  , m_InverseTree((std::string("__inv_") + m_Parameters->currentSHMName.c_str()).c_str(), 4096)
+  , m_InverseTree(m_Parameters->currentInverseSHMName.c_str(), 4096)
   , m_DebugMode(params.debugMode)
   , m_DLLModule(module)
 {
@@ -154,6 +158,7 @@ HookContext::Ptr HookContext::writeAccess(const char*)
 void HookContext::updateParameters() const
 {
   m_Parameters->currentSHMName = m_Tree.shmName().c_str();
+  m_Parameters->currentInverseSHMName = m_InverseTree.shmName().c_str();
 }
 
 USVFSParameters HookContext::callParameters() const
