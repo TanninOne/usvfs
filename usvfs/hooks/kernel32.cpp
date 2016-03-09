@@ -944,6 +944,8 @@ DWORD WINAPI usvfs::hooks::GetModuleFileNameW(HMODULE hModule,
   DWORD res = 0UL;
 
   HOOK_START_GROUP(MutExHookGroup::ALL_GROUPS)
+
+
   PRE_REALCALL
   res = ::GetModuleFileNameW(hModule, lpFilename, nSize);
   POST_REALCALL
@@ -966,7 +968,7 @@ DWORD WINAPI usvfs::hooks::GetModuleFileNameW(HMODULE hModule,
         // this truncates the string if the buffer is too small
         ush::wcsncpy_sz(lpFilename, reroute.fileName(), reroutedSize + 1);
       }
-      res reroutedSize;
+      res = reroutedSize;
     }
 
     if (reroute.wasRerouted()) {

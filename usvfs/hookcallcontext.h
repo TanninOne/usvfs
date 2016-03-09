@@ -56,9 +56,12 @@ public:
   HookCallContext(MutExHookGroup group);
   ~HookCallContext();
 
+<<<<<<< c178d9679c5a40da6629cc91bba69f3c10c7c2d5
   HookCallContext(const HookCallContext &reference) = delete;
   HookCallContext &operator=(const HookCallContext &reference) = delete;
 
+=======
+>>>>>>> more work on reverse redirection for GetModuleFilename hook
   void updateLastError(DWORD lastError = GetLastError());
 
   bool active() const;
