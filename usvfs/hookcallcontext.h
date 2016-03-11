@@ -56,6 +56,9 @@ public:
   HookCallContext(MutExHookGroup group);
   ~HookCallContext();
 
+  HookCallContext(const HookCallContext &reference) = delete;
+  HookCallContext &operator=(const HookCallContext &reference) = delete;
+
   void updateLastError(DWORD lastError = GetLastError());
 
   bool active() const;

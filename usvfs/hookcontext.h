@@ -103,7 +103,12 @@ public:
 public:
   HookContext(const USVFSParameters &params, HMODULE module);
 
+  HookContext(const HookContext &reference) = delete;
+
   DLLEXPORT ~HookContext();
+
+  HookContext &operator=(const HookContext &reference) = delete;
+
 
   /**
    * @brief get read access to the context.

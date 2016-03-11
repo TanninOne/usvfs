@@ -35,6 +35,11 @@ public:
   HookManager(const USVFSParameters &params, HMODULE module);
   ~HookManager();
 
+  HookManager(const HookManager &reference) = delete;
+
+  HookManager &operator=(const HookManager &reference) = delete;
+
+
   static HookManager &instance();
 
 

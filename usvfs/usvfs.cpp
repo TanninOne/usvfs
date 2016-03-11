@@ -426,36 +426,43 @@ BOOL WINAPI GetVFSProcessList(size_t *count, LPDWORD processIDs)
 
 void WINAPI ClearVirtualMappings()
 {
-    context->redirectionTable()->clear();
+/*    context->redirectionTable()->clear();
+    context->inverseTable()->clear();
+    */
 }
 
-/// ensure the specified path exists. If a physical path of the same name exists, it is inserted into the virtual
-/// directory as an empty reference. If the path doesn't exist virtually and can't be cloned from a physical directory,
-/// this returns false
-/// \todo if this fails (i.e. not all intermediate directories exists) any intermediate directories already created aren't removed
-bool assertPathExists(LPCWSTR path)
+/// ensure the specified path exists. If a physical path of the same name
+/// exists, it is inserted into the virtual directory as an empty reference. If
+/// the path doesn't exist virtually and can't be cloned from a physical
+/// directory, this returns false
+/// \todo if this fails (i.e. not all intermediate directories exists) any
+/// intermediate directories already created aren't removed
+bool assertPathExists(usvfs::RedirectionTreeContainer &table, LPCWSTR path)
 {
   bfs::path p(path);
   p = p.parent_path();
 
-  usvfs::RedirectionTree::NodeT *current = context->redirectionTable().get();
+  usvfs::RedirectionTree::NodeT *current = table.get();
 
-  for (auto iter = p.begin(); iter != p.end(); iter = ush::nextIter(iter, p.end())) {
+  for (auto iter = p.begin(); iter != p.end();
+       iter = ush::nextIter(iter, p.end())) {
     if (current->exists(iter->string().c_str())) {
       // subdirectory exists virtually, all good
-      usvfs::RedirectionTree::NodePtrT found = current->node(iter->string().c_str());
+      usvfs::RedirectionTree::NodePtrT found
+          = current->node(iter->string().c_str());
       current = found.get().get();
     } else {
-      // targetPath is relative to the last rerouted "real" path. This means that if
-      // virtual c:/foo maps to real c:/windows then creating virtual c:/foo/bar will map
-      // to real c:/windows/bar
-      bfs::path targetPath = current->data().linkTarget.size() > 0 ? bfs::path(current->data().linkTarget.c_str()) / *iter
-                                                                   : *iter / "\\";
+      // targetPath is relative to the last rerouted "real" path. This means
+      // that if virtual c:/foo maps to real c:/windows then creating virtual
+      // c:/foo/bar will map to real c:/windows/bar
+      bfs::path targetPath
+          = current->data().linkTarget.size() > 0
+                ? bfs::path(current->data().linkTarget.c_str()) / *iter
+                : *iter / "\\";
       if (is_directory(targetPath)) {
-        usvfs::RedirectionTree::NodePtrT newNode = context->redirectionTable().addDirectory(current->path() / *iter
-                                                                , targetPath.string().c_str()
-                                                                , ush::FLAG_DUMMY
-                                                                , false);
+        usvfs::RedirectionTree::NodePtrT newNode = table.addDirectory(
+            current->path() / *iter, targetPath.string().c_str(),
+            ush::FLAG_DUMMY, false);
         current = newNode.get().get();
       } else {
         spdlog::get("usvfs")->info("{} doesn't exist", targetPath);
@@ -467,12 +474,13 @@ bool assertPathExists(LPCWSTR path)
   return true;
 }
 
-BOOL WINAPI VirtualLinkFile(LPCWSTR source, LPCWSTR destination, unsigned int flags)
+BOOL WINAPI VirtualLinkFile(LPCWSTR source, LPCWSTR destination,
+                            unsigned int flags)
 {
   // TODO difference between winapi and ntdll api regarding system32 vs syswow64
   // (and other windows links?)
   try {
-    if (!assertPathExists(destination)) {
+    if (!assertPathExists(context->redirectionTable(), destination)) {
       SetLastError(ERROR_PATH_NOT_FOUND);
       return FALSE;
     }
@@ -534,50 +542,50 @@ BOOL WINAPI VirtualLinkDirectoryStatic(LPCWSTR source, LPCWSTR destination, unsi
       return FALSE;
     }
 
-    if (!assertPathExists(destination)) {
+    if (!assertPathExists(context->redirectionTable(), destination)) {
       SetLastError(ERROR_PATH_NOT_FOUND);
       return FALSE;
     }
 
-    std::string sourceU8 = ush::string_cast<std::string>(source, ush::CodePage::UTF8) + "\\";
+    std::string sourceU8
+        = ush::string_cast<std::string>(source, ush::CodePage::UTF8) + "\\";
 
     context->redirectionTable().addDirectory(
-          destination
-          , usvfs::RedirectionDataLocal(sourceU8)
-          , usvfs::shared::FLAG_DIRECTORY | convertRedirectionFlags(flags)
-          , true);
+        destination, usvfs::RedirectionDataLocal(sourceU8),
+        usvfs::shared::FLAG_DIRECTORY | convertRedirectionFlags(flags), true);
 
     if ((flags & LINKFLAG_RECURSIVE) != 0) {
-      std::wstring sourceW = std::wstring(source) + L"\\";
+      std::wstring sourceW      = std::wstring(source) + L"\\";
       std::wstring destinationW = std::wstring(destination) + L"\\";
 
-      for (winapi::ex::wide::FileResult file : winapi::ex::wide::quickFindFiles(source, L"*")) {
+      for (winapi::ex::wide::FileResult file :
+           winapi::ex::wide::quickFindFiles(source, L"*")) {
         if (file.attributes & FILE_ATTRIBUTE_DIRECTORY) {
-          if ((file.fileName != L".")
-              && (file.fileName != L"..")) {
-            VirtualLinkDirectoryStatic(
-                  (sourceW + file.fileName).c_str()
-                  , (destinationW + file.fileName).c_str()
-                  , flags);
+          if ((file.fileName != L".") && (file.fileName != L"..")) {
+            VirtualLinkDirectoryStatic((sourceW + file.fileName).c_str(),
+                                       (destinationW + file.fileName).c_str(),
+                                       flags);
           }
         } else {
-          std::string nameU8 =
-              ush::string_cast<std::string>(file.fileName.c_str(), ush::CodePage::UTF8);
+          std::string nameU8 = ush::string_cast<std::string>(
+              file.fileName.c_str(), ush::CodePage::UTF8);
 
-          // TODO could save memory here by storing only the file name for the source and constructing
-          // the full name using the parent directory
-          context->redirectionTable().addFile(bfs::path(destination) / nameU8
-                                              , usvfs::RedirectionDataLocal(sourceU8 + nameU8)
-                                              , true);
+          // TODO could save memory here by storing only the file name for the
+          // source and constructing the full name using the parent directory
+          context->redirectionTable().addFile(
+              bfs::path(destination) / nameU8,
+              usvfs::RedirectionDataLocal(sourceU8 + nameU8), true);
 
           std::string fileExt = ba::to_lower_copy(bfs::extension(nameU8));
 
           if (extensions.find(fileExt) != extensions.end()) {
-            std::string destinationU8 = ush::string_cast<std::string>(destination, ush::CodePage::UTF8) + "\\";
+            std::string destinationU8 = ush::string_cast<std::string>(
+                                            destination, ush::CodePage::UTF8)
+                                        + "\\";
 
-            context->inverseTable().addFile(bfs::path(source) / nameU8
-                                            , usvfs::RedirectionDataLocal(destinationU8 + nameU8)
-                                            , true);
+            context->inverseTable().addFile(
+                bfs::path(source) / nameU8,
+                usvfs::RedirectionDataLocal(destinationU8 + nameU8), true);
           }
         }
       }

@@ -593,6 +593,10 @@ public:
                                m_SHM->get_size());
   }
 
+  TreeContainer(const TreeContainer &reference) = delete;
+
+  TreeContainer &operator=(const TreeContainer &reference) = delete;
+
   ~TreeContainer() {
     if (unassign(m_SHM, m_TreeMeta)) {
       bi::shared_memory_object::remove(m_SHMName.c_str());

@@ -112,7 +112,7 @@ public:
           lookupPath = string_cast<std::string>(inPath, CodePage::UTF8);
         }
 
-        auto table
+        const usvfs::RedirectionTreeContainer &table
             = inverse ? context->inverseTable() : context->redirectionTable();
         result.m_FileNode = table->findNode(lookupPath.c_str());
 
@@ -936,9 +936,8 @@ DWORD WINAPI usvfs::hooks::GetModuleFileNameW(HMODULE hModule,
   if (res != 0) {
     RerouteW reroute
         = RerouteW::create(READ_CONTEXT(), callContext, lpFilename, true);
-
     if (reroute.wasRerouted()) {
-      DWORD reroutedSize = reroute.buffer().size();
+      DWORD reroutedSize = static_cast<DWORD>(reroute.buffer().size());
        if (reroutedSize >= nSize) {
          callContext.updateLastError(ERROR_INSUFFICIENT_BUFFER);
          reroutedSize = nSize - 1;
@@ -950,7 +949,7 @@ DWORD WINAPI usvfs::hooks::GetModuleFileNameW(HMODULE hModule,
            memset(lpFilename, '\0', std::min(res, nSize) * sizeof(wchar_t));
          }
          // this truncates the string if the buffer is too small
-         wcsncpy(lpFilename, reroute.fileName(), reroutedSize + 1);
+         ush::wcsncpy_sz(lpFilename, reroute.fileName(), reroutedSize + 1);
        }
        return reroutedSize;
     }
