@@ -428,6 +428,39 @@ std::vector<FileResult> quickFindFiles(LPCWSTR directoryName, LPCWSTR pattern)
   return result;
 }
 
+void createPath(LPCWSTR path, LPSECURITY_ATTRIBUTES securityAttributes)
+{
+  std::unique_ptr<wchar_t, decltype(std::free) *> pathCopy{_wcsdup(path),
+                                                           std::free};
+
+  // writable copy of the path
+  wchar_t *current = pathCopy.get();
+
+  if ((wcsncmp(current, LR"(\\?\)", 4) == 0)
+      || (wcsncmp(current, LR"(\??\)", 4) == 0)) {
+    current += 4;
+  }
+
+  while (*current != L'\0') {
+    size_t len = wcscspn(current, L"\\/");
+    // don't try to create the drive letter, obviously
+    if ((len != 2) || (current[1] != ':')) {
+      // temporarily cut the string at the current (back-)slash
+      current[len] = L'\0';
+      if (!::CreateDirectoryW(pathCopy.get(), securityAttributes)) {
+        DWORD err = ::GetLastError();
+        if ((err != ERROR_ALREADY_EXISTS) && (err != NOERROR)) {
+          throw usvfs::shared::windows_error(
+              "failed to create intermediate directory");
+        }
+        // restore the path
+      }
+      current[len] = L'\\';
+    }
+    current += len + 1;
+  }
+}
+
 
 }
 

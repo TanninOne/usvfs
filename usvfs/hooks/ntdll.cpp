@@ -541,7 +541,6 @@ void gatherVirtualEntries(const UnicodeString &dirName,
 
     boost::locale::generator gen;
     auto loc = gen("en_US.UTF-8");
-
     for (const auto &subNode : node->find(searchPattern)) {
       if (((subNode->data().linkTarget.length() > 0) || subNode->isDirectory())
           && !subNode->hasFlag(usvfs::shared::FLAG_DUMMY)) {
@@ -635,6 +634,12 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
 
   HOOK_START_GROUP(MutExHookGroup::FIND_FILES)
   if (!callContext.active()) {
+    LOG_CALL()
+        .addParam("path", UnicodeString(FileHandle))
+        .PARAM(FileInformationClass)
+        .PARAMWRAP(FileName);
+
+
     return ::NtQueryDirectoryFile(FileHandle, Event, ApcRoutine, ApcContext,
                                   IoStatusBlock, FileInformation, Length,
                                   FileInformationClass, ReturnSingleEntry,
@@ -750,7 +755,7 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
   IoStatusBlock->Information = dataRead;
 
   size_t numVirtualFiles = infoIter->second.virtualMatches.size();
-  if (numVirtualFiles > 0) {
+  if ((numVirtualFiles > 0)) {
     LOG_CALL()
         .addParam("path", UnicodeString(FileHandle))
         .PARAM(FileInformationClass)
@@ -789,9 +794,10 @@ NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
       && ((OpenOptions & FILE_OPEN_FOR_BACKUP_INTENT) != 0UL)) {
     // this may be an attempt to open a directory handle for iterating.
     // If so we need to treat it a little bit differently
-    usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FILE_ATTRIBUTES);
+/*    usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FILE_ATTRIBUTES);
     FILE_BASIC_INFORMATION dummy;
-    storePath = FAILED(NtQueryAttributesFile(ObjectAttributes, &dummy));
+    storePath = FAILED(NtQueryAttributesFile(ObjectAttributes, &dummy));*/
+    storePath = true;
   }
 
   UnicodeString fullName = CreateUnicodeString(ObjectAttributes);
@@ -814,7 +820,6 @@ NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
     res = ::NtOpenFile(FileHandle, DesiredAccess, adjustedAttributes.get(),
                        IoStatusBlock, ShareAccess, OpenOptions);
     POST_REALCALL
-
     if (SUCCEEDED(res) && storePath) {
       // store the original search path for use during iteration
       READ_CONTEXT()
@@ -830,9 +835,7 @@ NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
           .PARAM(*FileHandle)
           .PARAMWRAP(res);
     }
-  } catch (const std::exception &e) {
-    spdlog::get("hooks")->info("NtOpenFile: {}", e.what());
-
+  } catch (const std::exception&) {
     PRE_REALCALL
     res = ::NtOpenFile(FileHandle, DesiredAccess, ObjectAttributes,
                        IoStatusBlock, ShareAccess, OpenOptions);
@@ -865,6 +868,13 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
 
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
   if (!callContext.active()) {
+
+    LOG_CALL()
+      .addParam("source", ObjectAttributes)
+      .PARAM(CreateDisposition)
+      .PARAM(*FileHandle);
+
+
     return ::NtCreateFile(FileHandle, DesiredAccess, ObjectAttributes,
                           IoStatusBlock, AllocationSize, FileAttributes,
                           ShareAccess, CreateDisposition, CreateOptions,
@@ -893,9 +903,8 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
     // TODO would be neat if this could (optionally) reroute all potential write
     // accesses to the create target.
     //   This could be achived by copying the file to the target here in case
-    //   the
-    //   createdisposition or the requested
-    //   access rights make that necessary
+    //   the createdisposition or the requested access rights make that
+    //   necessary
     if (((CreateDisposition == FILE_SUPERSEDE)
          || (CreateDisposition == FILE_CREATE)
          || (CreateDisposition == FILE_OPEN_IF)
@@ -907,7 +916,8 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
 
       if (createTarget.second.size() != 0) {
         // there is a reroute target for new files so adjust the path
-        redir.first = createTarget.second;
+        redir.first.resize(4);
+        redir.first.appendPath(static_cast<PUNICODE_STRING>(createTarget.second));
 
         spdlog::get("hooks")->info(
             "reroute write access: {}",

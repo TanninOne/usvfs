@@ -36,15 +36,18 @@ public:
     : m_Buffer(reference.m_Buffer)
     , m_RealPath(reference.m_RealPath)
     , m_Rerouted(reference.m_Rerouted)
+    , m_FileNode(reference.m_FileNode)
   {
     m_FileName = reference.m_FileName != nullptr ? m_Buffer.c_str() : nullptr;
   }
+
   RerouteW &operator=(RerouteW &&reference)
   {
-    m_Buffer   = reference.m_Buffer;
-    m_RealPath = reference.m_RealPath;
+    m_Buffer   = std::move(reference.m_Buffer);
+    m_RealPath = std::move(reference.m_RealPath);
     m_Rerouted = reference.m_Rerouted;
     m_FileName = reference.m_FileName != nullptr ? m_Buffer.c_str() : nullptr;
+    m_FileNode = reference.m_FileNode;
     return *this;
   }
 
@@ -93,7 +96,6 @@ public:
         && !ush::startswith(inPath, L"hid#")) {
       result.m_Buffer   = std::wstring(inPath);
       result.m_Rerouted = false;
-
       if (callContext.active()) {
         bool absolute = false;
         if (ush::startswith(inPath, LR"(\\?\)")) {
@@ -156,7 +158,6 @@ public:
       } else {
         lookupPath = string_cast<std::string>(inPath, CodePage::UTF8);
       }
-
       FindCreateTarget visitor;
       usvfs::RedirectionTree::VisitorFunction visitorWrapper = [&](
           const usvfs::RedirectionTree::NodePtrT &node) { visitor(node); };
@@ -169,6 +170,18 @@ public:
         result.m_Buffer = (bfs::path(visitor.target->data().linkTarget.c_str())
                            / relativePath)
                               .wstring();
+        spdlog::get("usvfs")
+            ->info("create rerouted: {}",
+                   ush::string_cast<std::string>(result.m_Buffer));
+        try {
+          usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::ALL_GROUPS);
+          winapi::ex::wide::createPath(
+              bfs::path(result.m_Buffer).parent_path().wstring().c_str());
+        } catch (const std::exception &e) {
+          spdlog::get("usvfs")
+              ->error("failed to create {}: {}",
+                      ush::string_cast<std::string>(result.m_Buffer), e.what());
+        }
 
         result.m_Rerouted = true;
       }
@@ -919,8 +932,11 @@ DWORD WINAPI usvfs::hooks::GetFullPathNameW(LPCWSTR lpFileName,
   POST_REALCALL
   HOOK_END
 
+  LOG_CALL().PARAMWRAP(lpFileName).PARAMWRAP(lpBuffer).PARAM(res);
+
   return res;
-}*/
+}
+*/
 
 DWORD WINAPI usvfs::hooks::GetModuleFileNameW(HMODULE hModule,
                                               LPWSTR lpFilename, DWORD nSize)
@@ -928,13 +944,11 @@ DWORD WINAPI usvfs::hooks::GetModuleFileNameW(HMODULE hModule,
   DWORD res = 0UL;
 
   HOOK_START_GROUP(MutExHookGroup::ALL_GROUPS)
-
-
   PRE_REALCALL
   res = ::GetModuleFileNameW(hModule, lpFilename, nSize);
   POST_REALCALL
 
-  if (res != 0) {
+  if ((res != 0) && callContext.active()) {
     RerouteW reroute
         = RerouteW::create(READ_CONTEXT(), callContext, lpFilename, true);
     if (reroute.wasRerouted()) {
@@ -952,7 +966,7 @@ DWORD WINAPI usvfs::hooks::GetModuleFileNameW(HMODULE hModule,
         // this truncates the string if the buffer is too small
         ush::wcsncpy_sz(lpFilename, reroute.fileName(), reroutedSize + 1);
       }
-      return reroutedSize;
+      res reroutedSize;
     }
 
     if (reroute.wasRerouted()) {
@@ -961,12 +975,25 @@ DWORD WINAPI usvfs::hooks::GetModuleFileNameW(HMODULE hModule,
           .addParam("lpFilename", usvfs::log::Wrap<LPCWSTR>(
                       (res != 0UL) ? lpFilename : L"<not set>"))
           .PARAM(nSize)
+          .PARAMHEX(::GetLastError())
           .PARAM(res);
     }
   }
 
   HOOK_END
 
+  return res;
+}
+
+DWORD WINAPI usvfs::hooks::GetModuleFileNameA(HMODULE hModule,
+                                              LPSTR lpFilename, DWORD nSize)
+{
+  std::unique_ptr<WCHAR[]> buffer(new WCHAR[nSize]);
+  DWORD res = usvfs::hooks::GetModuleFileNameW(hModule, buffer.get(), nSize);
+  if (res > 0) {
+    memcpy(lpFilename,
+           ush::string_cast<std::string>(buffer.get()).c_str(), res);
+  }
   return res;
 }
 

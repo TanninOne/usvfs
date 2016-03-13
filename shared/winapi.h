@@ -465,6 +465,18 @@ namespace ex {
      * @return the list of files found
      */
     std::vector<FileResult> quickFindFiles(LPCWSTR directoryName, LPCWSTR pattern);
+
+    /**
+     * @brief create the specified directory including all intermediate
+     * directories
+     * @param path the path to create
+     * @param securityAttributes the security attributes to use for all created
+     *        directories. if this is null (default), the standard attributes
+     *        are used
+     * @note it is not considered an error if the path already exists
+     */
+    void createPath(LPCWSTR path,
+                    LPSECURITY_ATTRIBUTES securityAttributes = nullptr);
   }
 }
 

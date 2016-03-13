@@ -218,13 +218,13 @@ void HookManager::initHooks()
   spdlog::get("usvfs")->debug("kernelbase.dll at {0:x}", reinterpret_cast<unsigned long>(kbaseMod));
 
   installHook(kbaseMod, k32Mod, "GetFileAttributesExW", uhooks::GetFileAttributesExW);
-//  installHook(kbaseMod, k32Mod, "GetFileAttributesW", uhooks::GetFileAttributesW);
+  installHook(kbaseMod, k32Mod, "GetFileAttributesW", uhooks::GetFileAttributesW);
   installHook(kbaseMod, k32Mod, "SetFileAttributesW", uhooks::SetFileAttributesW);
   installHook(kbaseMod, k32Mod, "CreateFileW", uhooks::CreateFileW); // not all calls seem to translate to a call to NtCreateFile
   installHook(kbaseMod, k32Mod, "CreateFileA", uhooks::CreateFileA);
   installHook(kbaseMod, k32Mod, "CreateDirectoryW", uhooks::CreateDirectoryW);
   installHook(kbaseMod, k32Mod, "DeleteFileW", uhooks::DeleteFileW);
-//  installStub(kbaseMod, k32Mod, "DeleteFileA");
+  installStub(kbaseMod, k32Mod, "DeleteFileA");
   installHook(kbaseMod, k32Mod, "GetCurrentDirectoryW", uhooks::GetCurrentDirectoryW);
   installStub(kbaseMod, k32Mod, "SetCurrentDirectoryA");
   installHook(kbaseMod, k32Mod, "SetCurrentDirectoryW", uhooks::SetCurrentDirectoryW);
@@ -257,6 +257,7 @@ void HookManager::initHooks()
   installStub(kbaseMod, k32Mod, "WritePrivateProfileStructA");
   installStub(kbaseMod, k32Mod, "WritePrivateProfileStructW");
 */
+
   installStub(kbaseMod, k32Mod, "CopyFileA");
   installStub(kbaseMod, k32Mod, "CopyFileW");
   installStub(kbaseMod, k32Mod, "CreateHardLinkA");
@@ -305,6 +306,7 @@ void HookManager::initHooks()
 
   // install this hook late as usvfs is calling it itself for debugging purposes
   installHook(k32Mod, kbaseMod, "GetModuleFileNameW", uhooks::GetModuleFileNameW);
+  installHook(k32Mod, kbaseMod, "GetModuleFileNameA", uhooks::GetModuleFileNameA);
 
   spdlog::get("usvfs")->debug("hooks installed");
 }
