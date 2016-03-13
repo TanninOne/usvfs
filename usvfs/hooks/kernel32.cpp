@@ -708,6 +708,7 @@ BOOL WINAPI usvfs::hooks::DeleteFileW(LPCWSTR lpFileName)
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
+    reroute.removeMapping();
     LOG_CALL().PARAMWRAP(lpFileName).PARAMWRAP(reroute.fileName()).PARAM(res);
   }
 
@@ -799,7 +800,8 @@ BOOL WINAPI usvfs::hooks::MoveFileExW(LPCWSTR lpExistingFileName,
     LOG_CALL()
         .PARAMWRAP(readReroute.fileName())
         .PARAMWRAP(writeReroute.fileName())
-        .PARAM(res);
+        .PARAM(res)
+        .PARAM(::GetLastError());
   }
 
   HOOK_END
@@ -932,37 +934,35 @@ DWORD WINAPI usvfs::hooks::GetModuleFileNameW(HMODULE hModule,
   res = ::GetModuleFileNameW(hModule, lpFilename, nSize);
   POST_REALCALL
 
-
   if (res != 0) {
     RerouteW reroute
         = RerouteW::create(READ_CONTEXT(), callContext, lpFilename, true);
     if (reroute.wasRerouted()) {
       DWORD reroutedSize = static_cast<DWORD>(reroute.buffer().size());
-       if (reroutedSize >= nSize) {
-         callContext.updateLastError(ERROR_INSUFFICIENT_BUFFER);
-         reroutedSize = nSize - 1;
-       }
-       // res can't be bigger than nSize-1 at this point
-       if (reroutedSize > 0) {
-         if (reroutedSize < res) {
-           // zero out the string windows has previously written to
-           memset(lpFilename, '\0', std::min(res, nSize) * sizeof(wchar_t));
-         }
-         // this truncates the string if the buffer is too small
-         ush::wcsncpy_sz(lpFilename, reroute.fileName(), reroutedSize + 1);
-       }
-       return reroutedSize;
+      if (reroutedSize >= nSize) {
+        callContext.updateLastError(ERROR_INSUFFICIENT_BUFFER);
+        reroutedSize = nSize - 1;
+      }
+      // res can't be bigger than nSize-1 at this point
+      if (reroutedSize > 0) {
+        if (reroutedSize < res) {
+          // zero out the string windows has previously written to
+          memset(lpFilename, '\0', std::min(res, nSize) * sizeof(wchar_t));
+        }
+        // this truncates the string if the buffer is too small
+        ush::wcsncpy_sz(lpFilename, reroute.fileName(), reroutedSize + 1);
+      }
+      return reroutedSize;
     }
 
-  }
-
-  if (callContext.active()) {
-    LOG_CALL()
-        .PARAM(hModule)
-        .addParam("lpFilename", usvfs::log::Wrap<LPCWSTR>(
-                                    (res != 0UL) ? lpFilename : L"<not set>"))
-        .PARAM(nSize)
-        .PARAM(res);
+    if (reroute.wasRerouted()) {
+      LOG_CALL()
+          .PARAM(hModule)
+          .addParam("lpFilename", usvfs::log::Wrap<LPCWSTR>(
+                      (res != 0UL) ? lpFilename : L"<not set>"))
+          .PARAM(nSize)
+          .PARAM(res);
+    }
   }
 
   HOOK_END

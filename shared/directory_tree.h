@@ -773,6 +773,7 @@ private:
         return newNode;
       } else if (overwrite) {
         newNode->m_Data = createData<TreeT::DataT, T>(data, allocator);
+        newNode->m_Flags = static_cast<usvfs::shared::TreeFlags>(flags);
         return newNode;
       } else {
         auto res = base->m_Nodes.insert(std::make_pair(iterString, newNode));

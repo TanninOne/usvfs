@@ -551,8 +551,9 @@ BOOL WINAPI VirtualLinkDirectoryStatic(LPCWSTR source, LPCWSTR destination, unsi
         = ush::string_cast<std::string>(source, ush::CodePage::UTF8) + "\\";
 
     context->redirectionTable().addDirectory(
-        destination, usvfs::RedirectionDataLocal(sourceU8),
-        usvfs::shared::FLAG_DIRECTORY | convertRedirectionFlags(flags), true);
+          destination, usvfs::RedirectionDataLocal(sourceU8),
+          usvfs::shared::FLAG_DIRECTORY | convertRedirectionFlags(flags),
+          (flags & LINKFLAG_CREATETARGET) != 0);
 
     if ((flags & LINKFLAG_RECURSIVE) != 0) {
       std::wstring sourceW      = std::wstring(source) + L"\\";

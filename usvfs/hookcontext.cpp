@@ -81,8 +81,8 @@ void usvfs::USVFSInitParametersInt(USVFSParameters *parameters,
 HookContext::HookContext(const USVFSParameters &params, HMODULE module)
   : m_ConfigurationSHM(bi::open_or_create, params.instanceName, 8192)
   , m_Parameters(retrieveParameters(params))
-  , m_Tree(m_Parameters->currentSHMName.c_str(), 4096)
-  , m_InverseTree(m_Parameters->currentInverseSHMName.c_str(), 4096)
+  , m_Tree(m_Parameters->currentSHMName.c_str(), 65536)
+  , m_InverseTree(m_Parameters->currentInverseSHMName.c_str(), 65536)
   , m_DebugMode(params.debugMode)
   , m_DLLModule(module)
 {
