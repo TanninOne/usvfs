@@ -271,7 +271,7 @@ void SetInfoFilenameImplSN(T *info, const std::wstring &fileName)
   if (info->ShortNameLength > 0) {
     // also set shortname
     if (fileName.length() < 12) {
-      info->ShortNameLength = static_cast<CCHAR>(fileName.length());
+      info->ShortNameLength = static_cast<CCHAR>(fileName.length() * sizeof(WCHAR));
       wcsncpy(info->ShortName, fileName.c_str(),
               fileName.length()); // doesn't need to be 0-terminated
     } else {
@@ -323,9 +323,9 @@ void SetInfoFilename(LPVOID address, FILE_INFORMATION_CLASS infoClass,
           reinterpret_cast<FILE_FULL_DIR_INFORMATION *>(address), fileName);
     } break;
     case FileIdBothDirectoryInformation: {
-      //      SetInfoFilenameImplSN(
-      //          reinterpret_cast<FILE_ID_BOTH_DIR_INFORMATION *>(address),
-      //          fileName);
+      SetInfoFilenameImplSN(
+          reinterpret_cast<FILE_ID_BOTH_DIR_INFORMATION *>(address),
+          fileName);
     } break;
     default: {
       // NOP
@@ -430,12 +430,9 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
             break;
           }
           // WARNING for the case where the fake name is longer this needs to
-          // move back all further
-          // results and update the offset first
-          /*
+          // move back all further results and update the offset first
           SetInfoFilename(buffer, FileInformationClass, fakeName);
           fileName = fakeName;
-          */
         }
         bool add = true;
         if (fileName.length() > 0) {
@@ -591,7 +588,8 @@ bool addVirtualSearchResult(PVOID &FileInformation,
         dirName.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
         nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
   }
-  std::wstring fileName = ush::string_cast<std::wstring>(fullPath.filename().string(), ush::CodePage::UTF8);
+  std::wstring fileName = ush::string_cast<std::wstring>(
+      fullPath.filename().string(), ush::CodePage::UTF8);
   NTSTATUS subRes = addNtSearchData(
       info.currentSearchHandle,
       (fileName != L".")
@@ -868,13 +866,6 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
 
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
   if (!callContext.active()) {
-
-    LOG_CALL()
-      .addParam("source", ObjectAttributes)
-      .PARAM(CreateDisposition)
-      .PARAM(*FileHandle);
-
-
     return ::NtCreateFile(FileHandle, DesiredAccess, ObjectAttributes,
                           IoStatusBlock, AllocationSize, FileAttributes,
                           ShareAccess, CreateDisposition, CreateOptions,
@@ -893,13 +884,12 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
                           EaBuffer, EaLength);
   }
 
-  std::pair<UnicodeString, bool> redir;
+  std::pair<UnicodeString, bool> redir(UnicodeString(), false);
 
   { // limit context scope
     HookContext::ConstPtr context = READ_CONTEXT();
 
     redir = applyReroute(context, inPath);
-
     // TODO would be neat if this could (optionally) reroute all potential write
     // accesses to the create target.
     //   This could be achived by copying the file to the target here in case

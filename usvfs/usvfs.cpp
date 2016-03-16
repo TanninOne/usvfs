@@ -426,9 +426,8 @@ BOOL WINAPI GetVFSProcessList(size_t *count, LPDWORD processIDs)
 
 void WINAPI ClearVirtualMappings()
 {
-/*    context->redirectionTable()->clear();
-    context->inverseTable()->clear();
-    */
+  context->redirectionTable()->clear();
+  context->inverseTable()->clear();
 }
 
 /// ensure the specified path exists. If a physical path of the same name
