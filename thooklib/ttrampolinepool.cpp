@@ -544,6 +544,7 @@ LPVOID TrampolinePool::barrierInt(LPVOID func)
 
 LPVOID TrampolinePool::releaseInt(LPVOID func)
 {
+  DWORD lastError = GetLastError();
   if (m_ThreadGuards.get() == nullptr) {
     m_ThreadGuards.reset(new TThreadMap());
   }
@@ -551,12 +552,14 @@ LPVOID TrampolinePool::releaseInt(LPVOID func)
   auto iter = m_ThreadGuards->find(func);
   if (iter == m_ThreadGuards->end()) {
     spdlog::get("hooks")->error("failed to release barrier for func {}", func);
+    ::SetLastError(lastError);
     return nullptr;
   }
 
   LPVOID res = (*m_ThreadGuards)[func];
   (*m_ThreadGuards)[func] = nullptr;
 
+  ::SetLastError(lastError);
   return res;
 }
 
