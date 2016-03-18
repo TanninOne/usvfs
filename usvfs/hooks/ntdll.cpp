@@ -137,7 +137,6 @@ findCreateTarget(const usvfs::HookContext::ConstPtr &context,
     bfs::path relativePath = ush::make_relative(visitor.target->path()
                                                 , bfs::path(lookupPath));
 
-//    result.second = UnicodeString(visitor.target->path().wstring().c_str());
     result.second = UnicodeString((bfs::path(visitor.target->data().linkTarget.c_str())
                                    / relativePath).wstring().c_str());
   }
@@ -632,12 +631,6 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
 
   HOOK_START_GROUP(MutExHookGroup::FIND_FILES)
   if (!callContext.active()) {
-    LOG_CALL()
-        .addParam("path", UnicodeString(FileHandle))
-        .PARAM(FileInformationClass)
-        .PARAMWRAP(FileName);
-
-
     return ::NtQueryDirectoryFile(FileHandle, Event, ApcRoutine, ApcContext,
                                   IoStatusBlock, FileInformation, Length,
                                   FileInformationClass, ReturnSingleEntry,
@@ -833,7 +826,7 @@ NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
           .PARAM(*FileHandle)
           .PARAMWRAP(res);
     }
-  } catch (const std::exception&) {
+  } catch (const std::exception &e) {
     PRE_REALCALL
     res = ::NtOpenFile(FileHandle, DesiredAccess, ObjectAttributes,
                        IoStatusBlock, ShareAccess, OpenOptions);
@@ -863,7 +856,6 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
     ULONG EaLength)
 {
   NTSTATUS res = STATUS_NO_SUCH_FILE;
-
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
   if (!callContext.active()) {
     return ::NtCreateFile(FileHandle, DesiredAccess, ObjectAttributes,
@@ -887,6 +879,7 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
   std::pair<UnicodeString, bool> redir(UnicodeString(), false);
 
   { // limit context scope
+    FunctionGroupLock lock(MutExHookGroup::ALL_GROUPS);
     HookContext::ConstPtr context = READ_CONTEXT();
 
     redir = applyReroute(context, inPath);
@@ -997,12 +990,7 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryAttributesFile(
     return ::NtQueryAttributesFile(ObjectAttributes, FileInformation);
   }
 
-  UnicodeString inPath;
-  try {
-    inPath = CreateUnicodeString(ObjectAttributes);
-  } catch (const std::exception &) {
-    return ::NtQueryAttributesFile(ObjectAttributes, FileInformation);
-  }
+  UnicodeString inPath = CreateUnicodeString(ObjectAttributes);
 
   std::pair<UnicodeString, bool> redir = applyReroute(READ_CONTEXT(), inPath);
   std::shared_ptr<OBJECT_ATTRIBUTES> adjustedAttributes
@@ -1030,7 +1018,7 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryFullAttributesFile(
 {
   NTSTATUS res = STATUS_SUCCESS;
 
-  HOOK_START
+  HOOK_START_GROUP(MutExHookGroup::FILE_ATTRIBUTES)
 
   if (!callContext.active()) {
     return ::NtQueryFullAttributesFile(ObjectAttributes, FileInformation);

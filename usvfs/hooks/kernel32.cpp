@@ -678,7 +678,7 @@ DWORD WINAPI usvfs::hooks::GetFileAttributesW(LPCWSTR lpFileName)
         .PARAMWRAP(lpFileName)
         .PARAMWRAP(reroute.fileName())
         .PARAMHEX(res)
-        .PARAMHEX(::GetLastError());
+        .PARAMHEX(callContext.lastError());
     ;
   }
 
@@ -910,7 +910,7 @@ DLLEXPORT BOOL WINAPI usvfs::hooks::CreateDirectoryW(
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
-    LOG_CALL().PARAMWRAP(reroute.fileName()).PARAM(res);
+    LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(reroute.fileName()).PARAM(res);
   }
   HOOK_END
 

@@ -61,6 +61,8 @@ public:
 
   void updateLastError(DWORD lastError = GetLastError());
 
+  DWORD lastError() const { return m_LastError; }
+
   bool active() const;
 
 private:
