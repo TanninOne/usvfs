@@ -829,11 +829,27 @@ DWORD WINAPI usvfs::hooks::GetCurrentDirectoryW(DWORD nBufferLength,
 
   HOOK_START
 
-  PRE_REALCALL
-  res = ::GetCurrentDirectoryW(nBufferLength, lpBuffer);
-  POST_REALCALL
+  auto context = READ_CONTEXT();
+  std::wstring actualCWD = context->customData<std::wstring>(ActualCWD);
 
-  if (false) {
+  if (actualCWD.empty()) {
+    PRE_REALCALL
+    res = ::GetCurrentDirectoryW(nBufferLength, lpBuffer);
+    POST_REALCALL
+  } else {
+    ush::wcsncpy_sz(
+        lpBuffer, &actualCWD[0],
+        std::max(static_cast<size_t>(nBufferLength), actualCWD.size() + 1));
+
+    // yupp, that's how GetCurrentDirectory actually works...
+    if (actualCWD.size() < nBufferLength) {
+      return static_cast<DWORD>(actualCWD.size());
+    } else {
+      return static_cast<DWORD>(actualCWD.size() + 1);
+    }
+  }
+
+  if (true) {
     LOG_CALL().PARAMWRAP(lpBuffer).PARAM(res);
   }
 
@@ -848,8 +864,14 @@ BOOL WINAPI usvfs::hooks::SetCurrentDirectoryW(LPCWSTR lpPathName)
 
   HOOK_START
 
+  auto context = READ_CONTEXT();
+  RerouteW reroute
+      = RerouteW::create(context, callContext, lpPathName);
+
+  context->customData<std::wstring>(ActualCWD) = lpPathName;
+
   PRE_REALCALL
-  res = ::SetCurrentDirectoryW(lpPathName);
+  res = ::SetCurrentDirectoryW(reroute.fileName());
   POST_REALCALL
 
   LOG_CALL().PARAMWRAP(lpPathName).PARAM(res);
