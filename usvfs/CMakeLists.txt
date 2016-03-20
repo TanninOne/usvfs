@@ -63,7 +63,7 @@ ADD_DEFINITIONS(-D_WINDLL -DBOOST_LIB_DIAGNOSTIC -DNOMINMAX)
 SET(libname usvfs_${PROJ_ARCH})
 
 ADD_LIBRARY(${libname} SHARED ${usvfs_HDRS} ${usvfs_SRCS} ${usvfs_RCS})
-TARGET_LINK_LIBRARIES(${libname} asmjit shared libudis86 thooklib tinjectlib Shlwapi usvfs_helper)
+TARGET_LINK_LIBRARIES(${libname} asmjit shared libudis86 thooklib tinjectlib Shlwapi usvfs_helper Version)
 
 IF (MSVC)
     SET_PROPERTY(TARGET ${libname} APPEND_STRING PROPERTY COMPILE_FLAGS "/W4 /wd4503 /GS-")

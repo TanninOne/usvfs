@@ -88,8 +88,7 @@ public:
 
   static RerouteW create(const usvfs::HookContext::ConstPtr &context,
                          const usvfs::HookCallContext &callContext,
-                         const wchar_t *inPath,
-                         bool inverse = false)
+                         const wchar_t *inPath, bool inverse = false)
   {
     RerouteW result;
     if ((inPath != nullptr) && (inPath[0] != L'\0')
@@ -357,8 +356,9 @@ BOOL WINAPI usvfs::hooks::CreateProcessA(
   }
 
   PRE_REALCALL
+  std::string appName = ush::string_cast<std::string>(applicationReroute.fileName());
   res = ::CreateProcessA(
-      ush::string_cast<std::string>(applicationReroute.fileName()).c_str(),
+      appName.c_str(),
       lpCommandLine != nullptr ? &cmdline[0] : nullptr, lpProcessAttributes,
       lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment,
       lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
@@ -1018,6 +1018,86 @@ DWORD WINAPI usvfs::hooks::GetModuleFileNameA(HMODULE hModule,
     memcpy(lpFilename,
            ush::string_cast<std::string>(buffer.get()).c_str(), res);
   }
+  return res;
+}
+
+BOOL WINAPI usvfs::hooks::GetFileVersionInfoW(LPCWSTR lptstrFilename, DWORD dwHandle, DWORD dwLen, LPVOID lpData)
+{
+  BOOL res = FALSE;
+
+  HOOK_START_GROUP(MutExHookGroup::GET_FILE_VERSION)
+
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lptstrFilename);
+  PRE_REALCALL
+  res = ::GetFileVersionInfoW(reroute.fileName(), dwHandle, dwLen, lpData);
+  POST_REALCALL
+
+  if (reroute.wasRerouted()) {
+    LOG_CALL().PARAMWRAP(reroute.fileName()).PARAM(res);
+  }
+
+  HOOK_END
+
+  return res;
+}
+
+BOOL WINAPI usvfs::hooks::GetFileVersionInfoExW(DWORD dwFlags, LPCWSTR lptstrFilename, DWORD dwHandle, DWORD dwLen, LPVOID lpData)
+{
+  BOOL res = FALSE;
+
+  HOOK_START_GROUP(MutExHookGroup::GET_FILE_VERSION)
+
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lptstrFilename);
+  PRE_REALCALL
+  res = ::GetFileVersionInfoExW(dwFlags, reroute.fileName(), dwHandle, dwLen, lpData);
+  POST_REALCALL
+
+  if (reroute.wasRerouted()) {
+    LOG_CALL().PARAMWRAP(reroute.fileName()).PARAM(res);
+  }
+
+  HOOK_END
+
+  return res;
+}
+
+DWORD WINAPI usvfs::hooks::GetFileVersionInfoSizeW(LPCWSTR lptstrFilename, LPDWORD lpdwHandle)
+{
+  DWORD res = 0UL;
+
+  HOOK_START_GROUP(MutExHookGroup::GET_FILE_VERSION)
+
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lptstrFilename);
+  PRE_REALCALL
+  res = ::GetFileVersionInfoSizeW(reroute.fileName(), lpdwHandle);
+  POST_REALCALL
+
+  if (reroute.wasRerouted()) {
+    LOG_CALL().PARAMWRAP(reroute.fileName()).PARAM(res);
+  }
+
+  HOOK_END
+
+  return res;
+}
+
+DWORD WINAPI usvfs::hooks::GetFileVersionInfoSizeExW(DWORD dwFlags, LPCWSTR lptstrFilename, LPDWORD lpdwHandle)
+{
+  DWORD res = 0UL;
+
+  HOOK_START_GROUP(MutExHookGroup::GET_FILE_VERSION)
+
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lptstrFilename);
+  PRE_REALCALL
+  res = ::GetFileVersionInfoSizeExW(dwFlags, reroute.fileName(), lpdwHandle);
+  POST_REALCALL
+
+  if (reroute.wasRerouted()) {
+    LOG_CALL().PARAMWRAP(reroute.fileName()).PARAM(res);
+  }
+
+  HOOK_END
+
   return res;
 }
 
