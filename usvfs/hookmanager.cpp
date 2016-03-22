@@ -262,7 +262,7 @@ void HookManager::initHooks()
   installStub(kbaseMod, k32Mod, "CopyFileW");
   installStub(kbaseMod, k32Mod, "CreateHardLinkA");
   installStub(kbaseMod, k32Mod, "CreateHardLinkW");
-//  installHook(kbaseMod, k32Mod, "GetFullPathNameW", uhooks::GetFullPathNameW);
+  installHook(kbaseMod, k32Mod, "GetFullPathNameW", uhooks::GetFullPathNameW);
 
   installHook(kbaseMod, k32Mod, "GetFileVersionInfoW", uhooks::GetFileVersionInfoW);
   installHook(kbaseMod, k32Mod, "GetFileVersionInfoExW", uhooks::GetFileVersionInfoExW);

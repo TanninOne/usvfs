@@ -948,17 +948,26 @@ DWORD WINAPI usvfs::hooks::GetFullPathNameW(LPCWSTR lpFileName,
 
   HOOK_START_GROUP(MutExHookGroup::FULL_PATHNAME)
 
-  // nothing to do here? Maybe if current directory is virtualised
+  auto context = READ_CONTEXT();
+  std::wstring actualCWD = context->customData<std::wstring>(ActualCWD);
+  std::wstring temp;
+  if (actualCWD.empty()) {
+    temp = lpFileName;
+  } else {
+    temp = (bfs::wpath(actualCWD) / lpFileName).wstring();
+  }
   PRE_REALCALL
-  res = ::GetFullPathNameW(lpFileName, nBufferLength, lpBuffer, lpFilePart);
+  res = ::GetFullPathNameW(temp.c_str(), nBufferLength, lpBuffer, lpFilePart);
   POST_REALCALL
+
+  // nothing to do here? Maybe if current directory is virtualised
   HOOK_END
 
   LOG_CALL().PARAMWRAP(lpFileName).PARAMWRAP(lpBuffer).PARAM(res);
 
   return res;
 }
-*/
+
 
 DWORD WINAPI usvfs::hooks::GetModuleFileNameW(HMODULE hModule,
                                               LPWSTR lpFilename, DWORD nSize)

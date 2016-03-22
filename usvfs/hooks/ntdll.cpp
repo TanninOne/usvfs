@@ -26,6 +26,7 @@
 #include <addrtools.h>
 #include <unicodestring.h>
 #include <windows.h>
+#include <fileapi.h>
 
 #pragma warning(disable : 4996)
 
@@ -43,8 +44,10 @@ using usvfs::UnicodeString;
 #define FILE_OVERWRITE_IF 0x00000005
 #define FILE_MAXIMUM_DISPOSITION 0x00000005
 
+template <typename T>
+using unique_ptr_deleter = std::unique_ptr<T, void (*)(T *)>;
 
-UnicodeString CreateUnicodeString(POBJECT_ATTRIBUTES objectAttributes)
+UnicodeString CreateUnicodeString(const OBJECT_ATTRIBUTES *objectAttributes)
 {
   UnicodeString result;
   if (objectAttributes->RootDirectory != nullptr) {
@@ -85,26 +88,31 @@ std::ostream &operator<<(std::ostream &os, POBJECT_ATTRIBUTES attr)
 
 std::pair<UnicodeString, bool>
 applyReroute(const usvfs::HookContext::ConstPtr &context,
+             const usvfs::HookCallContext &callContext,
              const UnicodeString &inPath)
 {
   std::pair<UnicodeString, bool> result;
   result.first  = inPath;
   result.second = false;
 
-  // see if the file exists in the redirection tree
-  std::string lookupPath = ush::string_cast<std::string>(
-      static_cast<LPCWSTR>(result.first) + 4, ush::CodePage::UTF8);
-  auto node = context->redirectionTable()->findNode(lookupPath.c_str());
-  // if so, replace the file name with the path to the mapped file
-  if ((node.get() != nullptr) && !node->data().linkTarget.empty()) {
-    std::wstring reroutePath = ush::string_cast<std::wstring>(
-        node->data().linkTarget.c_str(), ush::CodePage::UTF8);
-    if ((*reroutePath.rbegin() == L'\\') && (*lookupPath.rbegin() != '\\')) {
-      reroutePath.resize(reroutePath.size() - 1);
+  if (callContext.active()) {
+    // see if the file exists in the redirection tree
+    std::string lookupPath = ush::string_cast<std::string>(
+        static_cast<LPCWSTR>(result.first) + 4, ush::CodePage::UTF8);
+    auto node = context->redirectionTable()->findNode(lookupPath.c_str());
+    // if so, replace the file name with the path to the mapped file
+    if ((node.get() != nullptr) && !node->data().linkTarget.empty()) {
+      std::wstring reroutePath = ush::string_cast<std::wstring>(
+          node->data().linkTarget.c_str(), ush::CodePage::UTF8);
+      if ((*reroutePath.rbegin() == L'\\') && (*lookupPath.rbegin() != '\\')) {
+        reroutePath.resize(reroutePath.size() - 1);
+      }
+      std::replace(reroutePath.begin(), reroutePath.end(), L'/', L'\\');
+      if (reroutePath[1] == L'\\')
+        reroutePath[1] = L'?';
+      result.first.set(reroutePath.c_str());
+      result.second = true;
     }
-    std::replace(reroutePath.begin(), reroutePath.end(), L'/', L'\\');
-    result.first.set(reroutePath.c_str());
-    result.second = true;
   }
   return result;
 }
@@ -146,9 +154,10 @@ findCreateTarget(const usvfs::HookContext::ConstPtr &context,
 
 std::pair<UnicodeString, bool>
 applyReroute(const usvfs::HookContext::ConstPtr &context,
+             const usvfs::HookCallContext &callContext,
              POBJECT_ATTRIBUTES inAttributes)
 {
-  return applyReroute(context, CreateUnicodeString(inAttributes));
+  return applyReroute(context, callContext, CreateUnicodeString(inAttributes));
 }
 
 ULONG StructMinSize(FILE_INFORMATION_CLASS infoClass)
@@ -268,32 +277,8 @@ void SetInfoFilenameImplSN(T *info, const std::wstring &fileName)
          info->FileNameLength); // doesn't need to be 0-terminated
 
   if (info->ShortNameLength > 0) {
-    // also set shortname
-    if (fileName.length() < 12) {
-      info->ShortNameLength = static_cast<CCHAR>(fileName.length() * sizeof(WCHAR));
-      wcsncpy(info->ShortName, fileName.c_str(),
-              fileName.length()); // doesn't need to be 0-terminated
-    } else {
-      // shortname generation: last dot indicates the extension, which is
-      // maintained
-      // filename is shortened to 6 letters plus ~1
-      // TODO this should be ~x where x incremenents for each file with the
-      // (otherwise) same shortname
-      const wchar_t *fileNameEnd = info->FileName + fileName.length();
-      const wchar_t *ext         = wcsrevsearch(fileNameEnd, info->FileName, L'.');
-
-      info->ShortNameLength = 8 * sizeof(WCHAR);
-      wcsncpy(info->ShortName, info->FileName, 6);
-      wcsncpy(info->ShortName + 6, L"~1", 2);
-      if (ext != nullptr) {
-        size_t extLen = fileNameEnd - ext;
-        info->ShortNameLength += static_cast<CCHAR>(extLen * sizeof(WCHAR));
-        wcsncpy(info->ShortName + 8, ext, extLen);
-      }
-    }
-  }
-  for (size_t i = 0; i < info->ShortNameLength / sizeof(WCHAR); ++i) {
-    info->ShortName[i] = std::towupper(info->ShortName[i]);
+    info->ShortNameLength
+        = GetShortPathNameW(fileName.c_str(), info->ShortName, 8);
   }
 }
 
@@ -760,14 +745,22 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
   return res;
 }
 
-std::shared_ptr<OBJECT_ATTRIBUTES>
-makeObjectAttributes(UnicodeString &path, POBJECT_ATTRIBUTES attributeTemplate)
+unique_ptr_deleter<OBJECT_ATTRIBUTES>
+makeObjectAttributes(std::pair<UnicodeString, bool> &redirInfo,
+                     POBJECT_ATTRIBUTES attributeTemplate)
 {
-  std::shared_ptr<OBJECT_ATTRIBUTES> result(new OBJECT_ATTRIBUTES);
-  memcpy(result.get(), attributeTemplate, sizeof(OBJECT_ATTRIBUTES));
-  result->RootDirectory = nullptr;
-  result->ObjectName    = static_cast<PUNICODE_STRING>(path);
-  return result;
+  if (redirInfo.second) {
+    unique_ptr_deleter<OBJECT_ATTRIBUTES> result(
+        new OBJECT_ATTRIBUTES, [](OBJECT_ATTRIBUTES *ptr) { delete ptr; });
+    memcpy(result.get(), attributeTemplate, sizeof(OBJECT_ATTRIBUTES));
+    result->RootDirectory = nullptr;
+    result->ObjectName    = static_cast<PUNICODE_STRING>(redirInfo.first);
+    return result;
+  } else {
+    // just reuse the template with a dummy deleter
+    return unique_ptr_deleter<OBJECT_ATTRIBUTES>(attributeTemplate,
+                                                 [](OBJECT_ATTRIBUTES *) {});
+  }
 }
 
 NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
@@ -793,7 +786,7 @@ NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
 
   UnicodeString fullName = CreateUnicodeString(ObjectAttributes);
 
-  if (!callContext.active() || (fullName.size() == 0)
+  if ((fullName.size() == 0)
       || (GetFileSize(ObjectAttributes->RootDirectory, nullptr)
           != INVALID_FILE_SIZE)) {
     res = ::NtOpenFile(FileHandle, DesiredAccess, ObjectAttributes,
@@ -803,9 +796,9 @@ NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
 
   try {
     std::pair<UnicodeString, bool> redir
-        = applyReroute(READ_CONTEXT(), fullName);
-    std::shared_ptr<OBJECT_ATTRIBUTES> adjustedAttributes
-        = makeObjectAttributes(redir.first, ObjectAttributes);
+        = applyReroute(READ_CONTEXT(), callContext, fullName);
+    unique_ptr_deleter<OBJECT_ATTRIBUTES> adjustedAttributes
+        = makeObjectAttributes(redir, ObjectAttributes);
 
     PRE_REALCALL
     res = ::NtOpenFile(FileHandle, DesiredAccess, adjustedAttributes.get(),
@@ -882,7 +875,7 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
     FunctionGroupLock lock(MutExHookGroup::ALL_GROUPS);
     HookContext::ConstPtr context = READ_CONTEXT();
 
-    redir = applyReroute(context, inPath);
+    redir = applyReroute(context, callContext, inPath);
     // TODO would be neat if this could (optionally) reroute all potential write
     // accesses to the create target.
     //   This could be achived by copying the file to the target here in case
@@ -910,8 +903,8 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
     }
   }
 
-  std::shared_ptr<OBJECT_ATTRIBUTES> adjustedAttributes
-      = makeObjectAttributes(redir.first, ObjectAttributes);
+  unique_ptr_deleter<OBJECT_ATTRIBUTES> adjustedAttributes
+      = makeObjectAttributes(redir, ObjectAttributes);
 
   PRE_REALCALL
   res = ::NtCreateFile(FileHandle, DesiredAccess, adjustedAttributes.get(),
@@ -986,15 +979,12 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryAttributesFile(
 
   HOOK_START_GROUP(MutExHookGroup::FILE_ATTRIBUTES)
 
-  if (!callContext.active()) {
-    return ::NtQueryAttributesFile(ObjectAttributes, FileInformation);
-  }
-
   UnicodeString inPath = CreateUnicodeString(ObjectAttributes);
 
-  std::pair<UnicodeString, bool> redir = applyReroute(READ_CONTEXT(), inPath);
-  std::shared_ptr<OBJECT_ATTRIBUTES> adjustedAttributes
-      = makeObjectAttributes(redir.first, ObjectAttributes);
+  std::pair<UnicodeString, bool> redir
+      = applyReroute(READ_CONTEXT(), callContext, inPath);
+  unique_ptr_deleter<OBJECT_ATTRIBUTES> adjustedAttributes
+      = makeObjectAttributes(redir, ObjectAttributes);
 
   PRE_REALCALL
   res = ::NtQueryAttributesFile(adjustedAttributes.get(), FileInformation);
@@ -1031,9 +1021,10 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryFullAttributesFile(
     return ::NtQueryFullAttributesFile(ObjectAttributes, FileInformation);
   }
 
-  std::pair<UnicodeString, bool> redir = applyReroute(READ_CONTEXT(), inPath);
-  std::shared_ptr<OBJECT_ATTRIBUTES> adjustedAttributes
-      = makeObjectAttributes(redir.first, ObjectAttributes);
+  std::pair<UnicodeString, bool> redir
+      = applyReroute(READ_CONTEXT(), callContext, inPath);
+  unique_ptr_deleter<OBJECT_ATTRIBUTES> adjustedAttributes
+      = makeObjectAttributes(redir, ObjectAttributes);
 
   PRE_REALCALL
   res = ::NtQueryFullAttributesFile(adjustedAttributes.get(), FileInformation);
