@@ -142,11 +142,14 @@ findCreateTarget(const usvfs::HookContext::ConstPtr &context,
       [&](const usvfs::RedirectionTree::NodePtrT &node) { visitor(node); };
   context->redirectionTable()->visitPath(lookupPath, visitorWrapper);
   if (visitor.target.get() != nullptr) {
-    bfs::path relativePath = ush::make_relative(visitor.target->path()
-                                                , bfs::path(lookupPath));
+    bfs::path relativePath
+        = ush::make_relative(visitor.target->path(), bfs::path(lookupPath));
 
-    result.second = UnicodeString((bfs::path(visitor.target->data().linkTarget.c_str())
-                                   / relativePath).wstring().c_str());
+    bfs::path target(visitor.target->data().linkTarget.c_str());
+    target /= relativePath;
+
+    result.second = UnicodeString(target.wstring().c_str());
+    winapi::ex::wide::createPath(target.parent_path().wstring().c_str());
   }
   return result;
 }
