@@ -280,8 +280,8 @@ void SetInfoFilenameImplSN(T *info, const std::wstring &fileName)
          info->FileNameLength); // doesn't need to be 0-terminated
 
   if (info->ShortNameLength > 0) {
-    info->ShortNameLength
-        = GetShortPathNameW(fileName.c_str(), info->ShortName, 8);
+    info->ShortNameLength = static_cast<CCHAR>(
+        GetShortPathNameW(fileName.c_str(), info->ShortName, 8));
   }
 }
 
@@ -386,6 +386,7 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
   NTSTATUS res = STATUS_NO_SUCH_FILE;
   if (hdl != INVALID_HANDLE_VALUE) {
     PVOID lastValidRecord = nullptr;
+    PVOID bufferInit = buffer;
     IO_STATUS_BLOCK status;
     res = NtQueryDirectoryFile(hdl, event, apcRoutine, apcContext, &status,
                                buffer, bufferSize, FileInformationClass,
@@ -399,7 +400,6 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
       boost::locale::generator gen;
       auto loc = gen("en_US.UTF-8");
 
-      ULONG_PTR finalSize = status.Information;
       while (totalOffset < status.Information) {
         ULONG offset;
         std::wstring fileName;
@@ -439,7 +439,6 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
           if (lastSkipPos == nullptr) {
             lastSkipPos = buffer;
           }
-          finalSize -= size;
         } else {
           if (lastSkipPos != nullptr) {
             memmove(lastSkipPos, buffer, status.Information - totalOffset);
@@ -452,11 +451,14 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
         buffer = ush::AddrAdd(buffer, size);
         totalOffset += size;
       }
-      bufferSize = static_cast<ULONG>(finalSize);
+
       if (lastSkipPos != nullptr) {
-        // null out the unused rest if there is some
-        memset(lastSkipPos, 0, status.Information - finalSize);
         buffer = lastSkipPos;
+        bufferSize = ush::AddrDiff(buffer, bufferInit);
+        // null out the unused rest if there is some
+        memset(lastSkipPos, 0, status.Information - bufferSize);
+      } else {
+        bufferSize = ush::AddrDiff(buffer, bufferInit);
       }
     }
     if (lastValidRecord != nullptr) {
@@ -584,7 +586,6 @@ bool addVirtualSearchResult(PVOID &FileInformation,
           : nullptr,
       virtualName, FileInformationClass, FileInformation, dataRead,
       info.foundFiles, nullptr, nullptr, nullptr, ReturnSingleEntry);
-
   if (subRes == STATUS_SUCCESS) {
     return true;
   } else {
@@ -616,7 +617,6 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
   // if we don't add the regular files first, "." and ".." wouldn't be in the
   //   first search result of wildcard searches which may confuse the caller
   NTSTATUS res = STATUS_NO_MORE_FILES;
-
   HOOK_START_GROUP(MutExHookGroup::FIND_FILES)
   if (!callContext.active()) {
     return ::NtQueryDirectoryFile(FileHandle, Event, ApcRoutine, ApcContext,
@@ -672,7 +672,6 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
     gatherVirtualEntries(searchPath, context->redirectionTable(), FileName,
                          infoIter->second);
   }
-
   ULONG dataRead = Length;
   PVOID FileInformationCurrent = FileInformation;
 
@@ -792,9 +791,8 @@ NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
   if ((fullName.size() == 0)
       || (GetFileSize(ObjectAttributes->RootDirectory, nullptr)
           != INVALID_FILE_SIZE)) {
-    res = ::NtOpenFile(FileHandle, DesiredAccess, ObjectAttributes,
-                       IoStatusBlock, ShareAccess, OpenOptions);
-    return res;
+    return ::NtOpenFile(FileHandle, DesiredAccess, ObjectAttributes,
+                        IoStatusBlock, ShareAccess, OpenOptions);
   }
 
   try {
@@ -820,6 +818,7 @@ NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
           .addParam("source", ObjectAttributes)
           .addParam("rerouted", adjustedAttributes.get())
           .PARAM(*FileHandle)
+          .PARAM(OpenOptions)
           .PARAMWRAP(res);
     }
   } catch (const std::exception &e) {
@@ -879,6 +878,7 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
     HookContext::ConstPtr context = READ_CONTEXT();
 
     redir = applyReroute(context, callContext, inPath);
+
     // TODO would be neat if this could (optionally) reroute all potential write
     // accesses to the create target.
     //   This could be achived by copying the file to the target here in case
