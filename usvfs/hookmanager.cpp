@@ -224,7 +224,7 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "CreateFileA", uhooks::CreateFileA);
   installHook(kbaseMod, k32Mod, "CreateDirectoryW", uhooks::CreateDirectoryW);
   installHook(kbaseMod, k32Mod, "DeleteFileW", uhooks::DeleteFileW);
-  installStub(kbaseMod, k32Mod, "DeleteFileA");
+  installHook(kbaseMod, k32Mod, "DeleteFileA", uhooks::DeleteFileA);
   installHook(kbaseMod, k32Mod, "GetCurrentDirectoryW", uhooks::GetCurrentDirectoryW);
   installStub(kbaseMod, k32Mod, "SetCurrentDirectoryA");
   installHook(kbaseMod, k32Mod, "SetCurrentDirectoryW", uhooks::SetCurrentDirectoryW);
@@ -236,8 +236,15 @@ void HookManager::initHooks()
 
   installHook(kbaseMod, k32Mod, "MoveFileA", uhooks::MoveFileA);
   installHook(kbaseMod, k32Mod, "MoveFileW", uhooks::MoveFileW);
-  installStub(kbaseMod, k32Mod, "MoveFileExA");
+  installHook(kbaseMod, k32Mod, "MoveFileExA", uhooks::MoveFileExA);
   installHook(kbaseMod, k32Mod, "MoveFileExW", uhooks::MoveFileExW);
+
+  installHook(kbaseMod, k32Mod, "CopyFileA", uhooks::CopyFileA);
+  installHook(kbaseMod, k32Mod, "CopyFileW", uhooks::CopyFileW);
+  installHook(kbaseMod, k32Mod, "CopyFileExA", uhooks::CopyFileExA);
+  installHook(kbaseMod, k32Mod, "CopyFileExW", uhooks::CopyFileExW);
+
+
 /*
   installStub(kbaseMod, k32Mod, "GetPrivateProfileStringA");
   installStub(kbaseMod, k32Mod, "GetPrivateProfileStringW");
@@ -258,8 +265,6 @@ void HookManager::initHooks()
   installStub(kbaseMod, k32Mod, "WritePrivateProfileStructW");
 */
 
-  installStub(kbaseMod, k32Mod, "CopyFileA");
-  installStub(kbaseMod, k32Mod, "CopyFileW");
   installStub(kbaseMod, k32Mod, "CreateHardLinkA");
   installStub(kbaseMod, k32Mod, "CreateHardLinkW");
   installHook(kbaseMod, k32Mod, "GetFullPathNameW", uhooks::GetFullPathNameW);
@@ -290,13 +295,6 @@ void HookManager::initHooks()
     installStub(shellMod, nullptr, "ShellExecuteExW");
   }
 
-  HMODULE versionMod = GetModuleHandleA("version.dll");
-  if (versionMod != nullptr) {
-    spdlog::get("usvfs")->debug("version.dll at {0:x}", reinterpret_cast<unsigned long>(versionMod));
-    installStub(versionMod, nullptr, "GetFileVersionInfoW");
-    installStub(versionMod, nullptr, "GetFileVersionInfoSizeW");
-  }
-
 /*  HMODULE oleMod = GetModuleHandleA("ole32.dll");
   if (oleMod != nullptr) {
     spdlog::get("usvfs")->debug("ole32.dll at {0:x}", reinterpret_cast<unsigned long>(oleMod));
@@ -312,7 +310,12 @@ void HookManager::initHooks()
   // install this hook late as usvfs is calling it itself for debugging purposes
   installHook(k32Mod, kbaseMod, "GetModuleFileNameW", uhooks::GetModuleFileNameW);
   installHook(k32Mod, kbaseMod, "GetModuleFileNameA", uhooks::GetModuleFileNameA);
-
+/*
+  installHook(kbaseMod, k32Mod, "GetModuleHandleW", uhooks::GetModuleHandleW);
+  installHook(kbaseMod, k32Mod, "GetModuleHandleA", uhooks::GetModuleHandleA);
+  installHook(kbaseMod, k32Mod, "GetModuleHandleExW", uhooks::GetModuleHandleExW);
+  installHook(kbaseMod, k32Mod, "GetModuleHandleExA", uhooks::GetModuleHandleExA);
+*/
   spdlog::get("usvfs")->debug("hooks installed");
 }
 
