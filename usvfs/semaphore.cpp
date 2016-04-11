@@ -1,4 +1,5 @@
 #include "semaphore.h"
+#include <spdlog.h>
 
 
 RecursiveBenaphore::RecursiveBenaphore()
@@ -18,13 +19,20 @@ void RecursiveBenaphore::wait(DWORD timeout)
 {
   DWORD tid = ::GetCurrentThreadId();
 
+  int tries = 3;
   if (::_InterlockedIncrement(&m_Counter) > 1) {
     if (tid != m_OwnerId) {
       while (::WaitForSingleObject(m_Semaphore, timeout) != WAIT_OBJECT_0) {
         HANDLE owner = ::OpenThread(SYNCHRONIZE, FALSE, m_OwnerId);
-        if (::WaitForSingleObject(owner, 0) == WAIT_OBJECT_0) {
+        if ((tries <= 0)
+            || (::WaitForSingleObject(owner, 0) == WAIT_OBJECT_0)) {
           // owner has quit without releasing the semaphore!
           m_Recursion = 0;
+          spdlog::get("usvfs")
+              ->error("thread {} never released the mutex", m_OwnerId);
+          break;
+        } else {
+          --tries;
         }
       }
     }
