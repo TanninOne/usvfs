@@ -444,7 +444,8 @@ void createPath(LPCWSTR path, LPSECURITY_ATTRIBUTES securityAttributes)
   while (*current != L'\0') {
     size_t len = wcscspn(current, L"\\/");
     // don't try to create the drive letter, obviously
-    if ((len != 2) || (current[1] != ':')) {
+    if ((len != 0) && (current[len] != L'\0') &&
+        ((len != 2) || (current[1] != ':'))) {
       // temporarily cut the string at the current (back-)slash
       current[len] = L'\0';
       if (!::CreateDirectoryW(pathCopy.get(), securityAttributes)) {
