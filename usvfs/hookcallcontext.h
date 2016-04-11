@@ -43,8 +43,9 @@ enum class MutExHookGroup : int {
   SHELL_FILEOP = 7,
   DELETE_FILE = 8,
   GET_FILE_VERSION = 9,
+  GET_MODULE_HANDLE = 10,
 
-  NO_GROUP = 10,
+  NO_GROUP = 11,
   LAST = NO_GROUP,
 };
 

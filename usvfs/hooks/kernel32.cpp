@@ -169,15 +169,12 @@ public:
         result.m_Buffer = (bfs::path(visitor.target->data().linkTarget.c_str())
                            / relativePath)
                               .wstring();
-        spdlog::get("usvfs")
-            ->info("create rerouted: {}",
-                   ush::string_cast<std::string>(result.m_Buffer));
         try {
           usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::ALL_GROUPS);
           winapi::ex::wide::createPath(
               bfs::path(result.m_Buffer).parent_path().wstring().c_str());
         } catch (const std::exception &e) {
-          spdlog::get("usvfs")
+          spdlog::get("hooks")
               ->error("failed to create {}: {}",
                       ush::string_cast<std::string>(result.m_Buffer), e.what());
         }
@@ -238,7 +235,6 @@ HMODULE WINAPI usvfs::hooks::LoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile,
   HOOK_START_GROUP(MutExHookGroup::LOAD_LIBRARY)
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
-
   PRE_REALCALL
   res = ::LoadLibraryExW(reroute.fileName(), hFile, dwFlags);
   POST_REALCALL
@@ -430,9 +426,6 @@ BOOL WINAPI usvfs::hooks::CreateProcessW(
   { // scope for context lock
     auto context = READ_CONTEXT();
 
-    spdlog::get("hooks")->info("{0:p} - {1:p}", (void *)lpApplicationName,
-                               (void *)lpCommandLine);
-
     if (lpCommandLine != nullptr) {
       // decompose command line
       int argc     = 0;
@@ -448,7 +441,6 @@ BOOL WINAPI usvfs::hooks::CreateProcessW(
         stream << " " << argv[i];
       }
       cmdline = stream.str();
-      spdlog::get("hooks")->info("{}", ush::string_cast<std::string>(cmdline));
     }
 
     applicationReroute
@@ -1004,37 +996,6 @@ BOOL WINAPI usvfs::hooks::SetCurrentDirectoryW(LPCWSTR lpPathName)
   return res;
 }
 
-BOOL CreateDirectoryRecursive(LPCWSTR lpPathName,
-                              LPSECURITY_ATTRIBUTES lpSecurityAttributes)
-{
-  std::unique_ptr<wchar_t, decltype(std::free) *> pathCopy{_wcsdup(lpPathName),
-                                                           std::free};
-
-  wchar_t *current = pathCopy.get();
-  wchar_t *end = current + wcslen(current);
-
-  while (current < end) {
-    size_t len = wcscspn(current, L"\\/");
-    if (len != 0) {
-      if ((len != 2) || (current[1] != ':')) {
-        current[len] = L'\0';
-        if (!::CreateDirectoryW(pathCopy.get(), lpSecurityAttributes)) {
-          DWORD err = ::GetLastError();
-          if (err != ERROR_ALREADY_EXISTS) {
-            spdlog::get("usvfs")
-                ->warn("failed to create intermediate directory \"{}\": {}",
-                       ush::string_cast<std::string>(current), err);
-            return FALSE;
-          }
-        }
-        current[len] = L'\\';
-      }
-    }
-    current += len + 1;
-  }
-
-  return TRUE;
-}
 
 DLLEXPORT BOOL WINAPI usvfs::hooks::CreateDirectoryW(
     LPCWSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes)
@@ -1048,7 +1009,8 @@ DLLEXPORT BOOL WINAPI usvfs::hooks::CreateDirectoryW(
   if (reroute.wasRerouted()) {
     // the intermediate directories may exist in the original directory but not
     // in the rerouted location so do a recursive create
-    res = CreateDirectoryRecursive(reroute.fileName(), lpSecurityAttributes);
+    winapi::ex::wide::createPath(reroute.fileName(), lpSecurityAttributes);
+    res = TRUE;
   } else {
     res = ::CreateDirectoryW(lpPathName, lpSecurityAttributes);
   }
