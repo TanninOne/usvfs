@@ -33,6 +33,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <limits>
 #include <sstream>
 #include <utility>
+#include <shlobj.h>
 
 
 #define ALIAS(alias, original) template <typename... Args>\
@@ -344,6 +345,8 @@ namespace wide {
   std::wstring getModuleFileName(HMODULE module, HANDLE process = INVALID_HANDLE_VALUE);
   std::pair<std::wstring, std::wstring> getFullPathName(LPCWSTR fileName);
   std::wstring getCurrentDirectory();
+  std::wstring getKnownFolderPath(REFKNOWNFOLDERID folderID);
+
   typedef process::_Create<wchar_t> createProcess;
   typedef file::_Create<wchar_t, CREATE_NEW> createFile;
   typedef file::_Create<wchar_t, OPEN_EXISTING> openFile;

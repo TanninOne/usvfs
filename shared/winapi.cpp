@@ -143,6 +143,19 @@ std::wstring getCurrentDirectory()
   return result;
 }
 
+std::wstring getKnownFolderPath(REFKNOWNFOLDERID folderID)
+{
+  PWSTR writablePath;
+
+  ::SHGetKnownFolderPath(folderID, 0, nullptr, &writablePath);
+
+  ON_BLOCK_EXIT([writablePath] () {
+    ::CoTaskMemFree(writablePath);
+  });
+
+  return std::wstring(writablePath);
+}
+
 }
 
 namespace ex {
