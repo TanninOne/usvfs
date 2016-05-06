@@ -769,7 +769,9 @@ BOOL WINAPI usvfs::hooks::MoveFileW(LPCWSTR lpExistingFileName,
   if (readReroute.wasRerouted() || writeReroute.wasRerouted()) {
     LOG_CALL()
         .PARAMWRAP(readReroute.fileName())
-        .PARAMWRAP(writeReroute.fileName());
+        .PARAMWRAP(writeReroute.fileName())
+        .PARAM(res)
+        .PARAM(::GetLastError());
   }
 
   HOOK_END
@@ -870,7 +872,9 @@ BOOL WINAPI usvfs::hooks::CopyFileW(LPCWSTR lpExistingFileName,
   if (readReroute.wasRerouted() || writeReroute.wasRerouted()) {
     LOG_CALL()
         .PARAMWRAP(readReroute.fileName())
-        .PARAMWRAP(writeReroute.fileName());
+        .PARAMWRAP(writeReroute.fileName())
+        .PARAM(res)
+        .PARAM(::GetLastError());
   }
 
   HOOK_END

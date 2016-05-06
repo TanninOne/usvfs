@@ -84,8 +84,9 @@ std::wstring getModuleFileName(HMODULE module, HANDLE process)
   std::wstring result;
   result.resize(64);
   DWORD rc = 0UL;
+
   while ((rc = (process == INVALID_HANDLE_VALUE)
-                  ? GetModuleFileNameW(module, &result[0], static_cast<DWORD>(result.size()))
+                  ? ::GetModuleFileNameW(module, &result[0], static_cast<DWORD>(result.size()))
                   : ::GetModuleFileNameExW(process, module, &result[0], static_cast<DWORD>(result.size()))
          ) == result.size()) {
     result.resize(result.size() * 2);

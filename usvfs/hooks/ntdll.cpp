@@ -391,6 +391,7 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
     res = NtQueryDirectoryFile(hdl, event, apcRoutine, apcContext, &status,
                                buffer, bufferSize, FileInformationClass,
                                returnSingleEntry, FileName, FALSE);
+
     if ((res != STATUS_SUCCESS) || (status.Information <= 0)) {
       bufferSize = 0UL;
     } else {
@@ -399,7 +400,6 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
 
       boost::locale::generator gen;
       auto loc = gen("en_US.UTF-8");
-
       while (totalOffset < status.Information) {
         ULONG offset;
         std::wstring fileName;
@@ -753,8 +753,7 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
         .PARAM(FileInformationClass)
         .PARAMWRAP(FileName)
         .PARAM(numVirtualFiles)
-        .PARAMWRAP(res)
-        .PARAMHEX(GetLastError());
+        .PARAMWRAP(res);
   }
 
   HOOK_END

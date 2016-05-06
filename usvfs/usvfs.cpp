@@ -230,7 +230,7 @@ LONG WINAPI VEHandler(PEXCEPTION_POINTERS exceptionPtrs)
     return EXCEPTION_CONTINUE_SEARCH;
   }
 
-  auto logger = spdlog::get("usvfs");
+  auto logger = spdlog::get("hooks");
   // ensure that the barrier won't keep future hook functions from running in case the process lives
   ON_BLOCK_EXIT([] () {
     HookLib::TrampolinePool::instance().forceUnlockBarrier();
