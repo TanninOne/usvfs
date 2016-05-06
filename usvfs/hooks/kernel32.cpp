@@ -1036,7 +1036,7 @@ DWORD WINAPI usvfs::hooks::GetFullPathNameW(LPCWSTR lpFileName,
   auto context = READ_CONTEXT();
   std::wstring actualCWD = context->customData<std::wstring>(ActualCWD);
   std::wstring temp;
-  if (actualCWD.empty()) {
+  if (actualCWD.empty() || bfs::path(lpFileName).is_absolute()) {
     temp = lpFileName;
   } else {
     temp = (bfs::wpath(actualCWD) / lpFileName).wstring();
