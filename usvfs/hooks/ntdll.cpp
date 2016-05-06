@@ -666,6 +666,10 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
     UnicodeString searchPath;
     if (iter != searchMap.end()) {
       searchPath = UnicodeString(iter->second.c_str());
+      infoIter->second.currentSearchHandle =
+          CreateFileW(iter->second.c_str(), GENERIC_READ,
+                      FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+                      OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
     } else {
       searchPath = UnicodeString(FileHandle);
     }
@@ -681,8 +685,14 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
   bool dataReturned = false;
   while (moreRegular && !dataReturned) {
     dataRead        = Length;
+
+    HANDLE handle = infoIter->second.currentSearchHandle;
+    if (handle == INVALID_HANDLE_VALUE) {
+      handle = FileHandle;
+    }
+
     NTSTATUS subRes = addNtSearchData(
-        FileHandle, FileName, L"", FileInformationClass, FileInformationCurrent,
+        handle, FileName, L"", FileInformationClass, FileInformationCurrent,
         dataRead, infoIter->second.foundFiles, Event, ApcRoutine, ApcContext,
         ReturnSingleEntry);
     moreRegular = subRes == STATUS_SUCCESS;
@@ -691,6 +701,10 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
     } else {
       infoIter->second.regularComplete = true;
       infoIter->second.foundFiles.clear();
+      if (infoIter->second.currentSearchHandle != INVALID_HANDLE_VALUE) {
+        ::CloseHandle(infoIter->second.currentSearchHandle);
+        infoIter->second.currentSearchHandle = INVALID_HANDLE_VALUE;
+      }
     }
   }
   if (!moreRegular) {
