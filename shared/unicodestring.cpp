@@ -119,7 +119,9 @@ void UnicodeString::setFromHandle(HANDLE fileHandle)
   }
 
   SetLastError(0UL);
-  DWORD res = GetFinalPathNameByHandleW(fileHandle, &m_Buffer[0], m_Buffer.size(), FILE_NAME_NORMALIZED);
+  DWORD res = GetFinalPathNameByHandleW(fileHandle, &m_Buffer[0],
+                                        static_cast<DWORD>(m_Buffer.size()),
+                                        FILE_NAME_NORMALIZED);
   if (res == 0) {
     m_Buffer.resize(0);
   } else if (res > m_Buffer.size()) {

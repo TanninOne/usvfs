@@ -962,9 +962,9 @@ DWORD WINAPI usvfs::hooks::GetCurrentDirectoryW(DWORD nBufferLength,
 
     // yupp, that's how GetCurrentDirectory actually works...
     if (actualCWD.size() < nBufferLength) {
-      return static_cast<DWORD>(actualCWD.size());
+      res = static_cast<DWORD>(actualCWD.size());
     } else {
-      return static_cast<DWORD>(actualCWD.size() + 1);
+      res = static_cast<DWORD>(actualCWD.size() + 1);
     }
   }
 
@@ -993,7 +993,7 @@ BOOL WINAPI usvfs::hooks::SetCurrentDirectoryW(LPCWSTR lpPathName)
   res = ::SetCurrentDirectoryW(reroute.fileName());
   POST_REALCALL
 
-  LOG_CALL().PARAMWRAP(lpPathName).PARAM(res);
+  LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(reroute.fileName()).PARAM(res);
 
   HOOK_END
 
@@ -1038,6 +1038,7 @@ DWORD WINAPI usvfs::hooks::GetFullPathNameW(LPCWSTR lpFileName,
   HOOK_START_GROUP(MutExHookGroup::FULL_PATHNAME)
 
   auto context = READ_CONTEXT();
+
   std::wstring actualCWD = context->customData<std::wstring>(ActualCWD);
   std::wstring temp;
   if (actualCWD.empty() || bfs::path(lpFileName).is_absolute()) {
@@ -1070,11 +1071,9 @@ DWORD WINAPI usvfs::hooks::GetModuleFileNameW(HMODULE hModule,
   DWORD res = 0UL;
 
   HOOK_START_GROUP(MutExHookGroup::ALL_GROUPS)
-
   PRE_REALCALL
   res = ::GetModuleFileNameW(hModule, lpFilename, nSize);
   POST_REALCALL
-
   if ((res != 0) && callContext.active()) {
     RerouteW reroute
         = RerouteW::create(READ_CONTEXT(), callContext, lpFilename, true);

@@ -114,9 +114,9 @@ void HookManager::removeHook(const std::string &functionName)
 void HookManager::logStubInt(LPVOID address)
 {
   if (m_Stubs.find(address) != m_Stubs.end()) {
-    spdlog::get("hooks")->debug("{0} called", m_Stubs[address]);
+    spdlog::get("hooks")->warn("{0} called", m_Stubs[address]);
   } else {
-    spdlog::get("hooks")->debug("unknown function at {0} called", address);
+    spdlog::get("hooks")->warn("unknown function at {0} called", address);
   }
 }
 
@@ -227,6 +227,7 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "CreateDirectoryW", uhooks::CreateDirectoryW);
   installHook(kbaseMod, k32Mod, "DeleteFileW", uhooks::DeleteFileW);
   installHook(kbaseMod, k32Mod, "DeleteFileA", uhooks::DeleteFileA);
+  installStub(kbaseMod, k32Mod, "GetCurrentDirectoryA");
   installHook(kbaseMod, k32Mod, "GetCurrentDirectoryW", uhooks::GetCurrentDirectoryW);
   installStub(kbaseMod, k32Mod, "SetCurrentDirectoryA");
   installHook(kbaseMod, k32Mod, "SetCurrentDirectoryW", uhooks::SetCurrentDirectoryW);
@@ -245,27 +246,6 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "CopyFileW", uhooks::CopyFileW);
   installHook(kbaseMod, k32Mod, "CopyFileExA", uhooks::CopyFileExA);
   installHook(kbaseMod, k32Mod, "CopyFileExW", uhooks::CopyFileExW);
-
-
-/*
-  installStub(kbaseMod, k32Mod, "GetPrivateProfileStringA");
-  installStub(kbaseMod, k32Mod, "GetPrivateProfileStringW");
-  installStub(kbaseMod, k32Mod, "GetPrivateProfileStructA");
-  installStub(kbaseMod, k32Mod, "GetPrivateProfileStructW");
-  installStub(kbaseMod, k32Mod, "GetPrivateProfileSectionNamesA");
-  installStub(kbaseMod, k32Mod, "GetPrivateProfileSectionNamesW");
-  installStub(kbaseMod, k32Mod, "GetPrivateProfileSectionA");
-  installStub(kbaseMod, k32Mod, "GetPrivateProfileSectionW");
-  installStub(kbaseMod, k32Mod, "GetPrivateProfileIntA");
-  installStub(kbaseMod, k32Mod, "GetPrivateProfileIntW");
-
-  installStub(kbaseMod, k32Mod, "WritePrivateProfileSectionA");
-  installStub(kbaseMod, k32Mod, "WritePrivateProfileSectionW");
-  installStub(kbaseMod, k32Mod, "WritePrivateProfileStringA");
-  installStub(kbaseMod, k32Mod, "WritePrivateProfileStringW");
-  installStub(kbaseMod, k32Mod, "WritePrivateProfileStructA");
-  installStub(kbaseMod, k32Mod, "WritePrivateProfileStructW");
-*/
 
   installStub(kbaseMod, k32Mod, "CreateHardLinkA");
   installStub(kbaseMod, k32Mod, "CreateHardLinkW");
@@ -297,6 +277,7 @@ void HookManager::initHooks()
     installStub(shellMod, nullptr, "ShellExecuteExW");
   }
 
+
 /*  HMODULE oleMod = GetModuleHandleA("ole32.dll");
   if (oleMod != nullptr) {
     spdlog::get("usvfs")->debug("ole32.dll at {0:x}", reinterpret_cast<unsigned long>(oleMod));
@@ -304,6 +285,7 @@ void HookManager::initHooks()
     installHook(oleMod, nullptr, "CoCreateInstanceEx", uhooks::CoCreateInstanceEx);
   }
 */
+
   installHook(kbaseMod, k32Mod, "LoadLibraryExW", uhooks::LoadLibraryExW);
   installHook(kbaseMod, k32Mod, "LoadLibraryExA", uhooks::LoadLibraryExA);
   installHook(kbaseMod, k32Mod, "LoadLibraryW", uhooks::LoadLibraryW);

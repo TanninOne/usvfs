@@ -454,11 +454,11 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
 
       if (lastSkipPos != nullptr) {
         buffer = lastSkipPos;
-        bufferSize = ush::AddrDiff(buffer, bufferInit);
+        bufferSize = static_cast<ULONG>(ush::AddrDiff(buffer, bufferInit));
         // null out the unused rest if there is some
         memset(lastSkipPos, 0, status.Information - bufferSize);
       } else {
-        bufferSize = ush::AddrDiff(buffer, bufferInit);
+        bufferSize = static_cast<ULONG>(ush::AddrDiff(buffer, bufferInit));
       }
     }
     if (lastValidRecord != nullptr) {
@@ -834,7 +834,7 @@ NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
           .PARAM(OpenOptions)
           .PARAMWRAP(res);
     }
-  } catch (const std::exception &e) {
+  } catch (const std::exception&) {
     PRE_REALCALL
     res = ::NtOpenFile(FileHandle, DesiredAccess, ObjectAttributes,
                        IoStatusBlock, ShareAccess, OpenOptions);

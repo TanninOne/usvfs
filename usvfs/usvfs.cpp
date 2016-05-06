@@ -167,10 +167,11 @@ void createMiniDump(PEXCEPTION_POINTERS exceptionPtrs)
     if (funcDump) {
       //std::wstring dmpPath = winapi::wide::getModuleFileName(dllModule) + L"_" + std::to_wstring(time(nullptr)) + L".dmp";
 #if BOOST_ARCH_X86_64
-      std::wstring dmpPath = winapi::wide::getKnownFolderPath(FOLDERID_LocalAppData) + L"/usvfs/uvsfs_x64.dmp";
+      std::wstring dmpPath = winapi::wide::getKnownFolderPath(FOLDERID_LocalAppData) + L"\\usvfs\\uvsfs_x64.dmp";
 #else
-      std::wstring dmpPath = winapi::wide::getKnownFolderPath(FOLDERID_LocalAppData) + L"/usvfs/uvsfs_x86.dmp";
+      std::wstring dmpPath = winapi::wide::getKnownFolderPath(FOLDERID_LocalAppData) + L"\\usvfs\\uvsfs_x86.dmp";
 #endif
+      winapi::ex::wide::createPath(dmpPath.c_str());
       HANDLE dumpFile = winapi::wide::createFile(dmpPath).createAlways().access(GENERIC_WRITE).share(FILE_SHARE_WRITE)();
       if (dumpFile != INVALID_HANDLE_VALUE) {
         _MINIDUMP_EXCEPTION_INFORMATION exceptionInfo;
