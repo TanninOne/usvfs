@@ -23,7 +23,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include "stringutils.h"
 #include "stringcast.h"
 #include "logging.h"
-#include <format.h>
+#include <fmt/format.h>
 #include <spdlog.h>
 
 

@@ -37,7 +37,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #pragma warning (push, 3)
 #include <boost/filesystem.hpp>
 #pragma warning (pop)
-#include <format.h>
+#include <fmt/format.h>
 #include <codecvt>
 
 

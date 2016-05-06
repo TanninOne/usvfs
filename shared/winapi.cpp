@@ -28,7 +28,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <Psapi.h>
 #include <algorithm>
 #include <spdlog.h>
-#include <format.h>
+#include <fmt/format.h>
 
 
 namespace ush = usvfs::shared;

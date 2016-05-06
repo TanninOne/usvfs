@@ -28,7 +28,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include "asmjit_sane.h"
 #include <boost/predef.h>
 #include <boost/filesystem.hpp>
-#include <format.h>
+#include <fmt/format.h>
 #include <cstdio>
 #include <spdlog.h>
 #include <TlHelp32.h>
