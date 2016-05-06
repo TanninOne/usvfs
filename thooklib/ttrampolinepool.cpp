@@ -42,7 +42,7 @@ TrampolinePool *TrampolinePool::s_Instance = nullptr;
 
 
 TrampolinePool::TrampolinePool()
-  : m_MaxTrampolineSize(0)
+  : m_MaxTrampolineSize(sizeof(LPVOID))
 {
   m_BarrierAddr = &TrampolinePool::barrier;
   m_ReleaseAddr = &TrampolinePool::release;
@@ -226,6 +226,9 @@ LPVOID TrampolinePool::storeStub(LPVOID reroute, LPVOID original, LPVOID returnA
 
   size_t codeSize = assembler.getCodeSize();
 
+  m_MaxTrampolineSize = std::max(m_MaxTrampolineSize,
+                                 static_cast<int>(codeSize + sizeof(LPVOID)));
+
   // final test to see if we can store the trampoline in the buffer
   if ((bufferList.offset + codeSize) > m_BufferSize) {
     // can't place function in buffer, allocate another and try again
@@ -271,6 +274,9 @@ LPVOID TrampolinePool::storeTrampoline(LPVOID reroute, LPVOID original, LPVOID r
   assembler.jmp(eax);
 #endif
   size_t codeSize = assembler.getCodeSize();
+
+  m_MaxTrampolineSize = std::max(m_MaxTrampolineSize,
+                                 static_cast<int>(codeSize + sizeof(LPVOID)));
 
   // final test to see if we can store the trampoline in the buffer
   if ((bufferList.offset + codeSize) > m_BufferSize) {
@@ -383,6 +389,9 @@ LPVOID TrampolinePool::storeStub(LPVOID reroute, LPVOID original, size_t preambl
   // adjust relative jumps for move to buffer
   size_t codeSize = assembler.getCodeSize();
 
+  m_MaxTrampolineSize = std::max(m_MaxTrampolineSize,
+                                 static_cast<int>(codeSize + sizeof(LPVOID)));
+
   // final test to see if we can store the trampoline in the buffer
   if ((bufferList.offset + codeSize) > m_BufferSize) {
     // can't place function in buffer, allocate another and try again
@@ -423,6 +432,10 @@ LPVOID TrampolinePool::storeTrampoline(LPVOID reroute, LPVOID original, size_t p
 
   // adjust relative jumps for move to buffer
   size_t codeSize = assembler.getCodeSize();
+
+  m_MaxTrampolineSize = std::max(m_MaxTrampolineSize,
+                                 static_cast<int>(codeSize + sizeof(LPVOID)));
+
   // TODO this does not take into account that the code size may technically change after relocation
   // in which case the following test may determine the code fits into the buffer when it really
   // doesnt't. asmjit doesn't seem to provide a way to adjust jumps without actually moving the code though
@@ -510,10 +523,11 @@ TrampolinePool::BufferMap::iterator TrampolinePool::allocateBuffer(LPVOID addres
   iter->second.offset = 0;
   iter->second.buffers.push_back(buffer);
   spdlog::get("usvfs")->debug(
-      "allocated trampoline buffer for jumps between {0:x} and {1:x} at {2:x}",
-      reinterpret_cast<unsigned long>(rounded),
-      (reinterpret_cast<unsigned long>(rounded) + m_SearchRange),
-      reinterpret_cast<unsigned long>(buffer));
+      "allocated trampoline buffer for jumps between {0:p} and {1:x} at {2:p}"
+        "(size {3})",
+      rounded,
+      (reinterpret_cast<uintptr_t>(rounded) + m_SearchRange),
+      buffer, m_BufferSize);
   return iter;
 }
 
