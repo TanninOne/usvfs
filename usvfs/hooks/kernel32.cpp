@@ -958,7 +958,7 @@ DWORD WINAPI usvfs::hooks::GetCurrentDirectoryW(DWORD nBufferLength,
   } else {
     ush::wcsncpy_sz(
         lpBuffer, &actualCWD[0],
-        std::max(static_cast<size_t>(nBufferLength), actualCWD.size() + 1));
+        std::min(static_cast<size_t>(nBufferLength), actualCWD.size() + 1));
 
     // yupp, that's how GetCurrentDirectory actually works...
     if (actualCWD.size() < nBufferLength) {

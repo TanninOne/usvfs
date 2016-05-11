@@ -43,7 +43,7 @@ void usvfs::shared::strncpy_sz(char *dest, const char *src, size_t destSize)
 
 void usvfs::shared::wcsncpy_sz(wchar_t *dest, const wchar_t *src, size_t destSize)
 {
-  if (destSize > 0) {
+  if ((destSize > 0) && (dest != nullptr)) {
     wcsncpy(dest, src, destSize - 1);
     dest[destSize - 1] = L'\0';
   }
