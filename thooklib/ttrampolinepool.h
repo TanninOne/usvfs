@@ -50,6 +50,8 @@ public:
 
   static TrampolinePool &instance();
 
+  void setBlock(bool block);
+
   ///
   /// store a stub without moving code from the original function. This is used in cases
   /// where the hook can be placed without overwriting logic (i.e. hot-patchable functions and
@@ -170,6 +172,8 @@ private:
 #endif
 
   static TrampolinePool *s_Instance;
+
+  bool m_FullBlock {false};
 
   BufferMap m_Buffers;
 

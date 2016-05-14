@@ -25,6 +25,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include "exceptionex.h"
 #include "usvfs.h"
 #include <utility.h>
+#include <ttrampolinepool.h>
 #include <stdexcept>
 #include <boost/format.hpp>
 #include <boost/filesystem.hpp>
@@ -207,8 +208,11 @@ void HookManager::installStub(HMODULE module1, HMODULE module2, const std::strin
   }
 }
 
+
 void HookManager::initHooks()
 {
+  HookLib::TrampolinePool::instance().setBlock(true);
+
   HMODULE k32Mod = GetModuleHandleA("kernel32.dll");
   spdlog::get("usvfs")->debug("kernel32.dll at {0:x}", reinterpret_cast<unsigned long>(k32Mod));
   // kernelbase.dll contains the actual implementation for functions formerly in
@@ -301,6 +305,7 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "GetModuleHandleExA", uhooks::GetModuleHandleExA);
 */
   spdlog::get("usvfs")->debug("hooks installed");
+  HookLib::TrampolinePool::instance().setBlock(false);
 }
 
 

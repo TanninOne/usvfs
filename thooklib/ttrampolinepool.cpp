@@ -70,6 +70,13 @@ TrampolinePool &TrampolinePool::instance()
   return sInstance;
 }
 
+void TrampolinePool::setBlock(bool block) {
+  m_FullBlock = block;
+  if (m_ThreadGuards.get() == nullptr) {
+    m_ThreadGuards.reset(new TThreadMap());
+  }
+}
+
 #if BOOST_ARCH_X86_64
 // push all registers (except rax) and flags to the stack
 static void pushAll(X86Assembler &assembler)
@@ -543,6 +550,10 @@ LPVOID TrampolinePool::release(LPVOID function)
 
 LPVOID TrampolinePool::barrierInt(LPVOID func)
 {
+  if (m_FullBlock) {
+    return nullptr;
+  }
+
   if (m_ThreadGuards.get() == nullptr) {
     m_ThreadGuards.reset(new TThreadMap());
   }
