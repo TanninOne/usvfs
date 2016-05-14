@@ -581,13 +581,18 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
   {
     auto context = READ_CONTEXT();
     reroute      = RerouteW::create(context, callContext, lpFileName);
-
     if (((dwCreationDisposition == CREATE_ALWAYS)
          || (dwCreationDisposition == CREATE_NEW))
         && !reroute.wasRerouted() && !fileExists(lpFileName)) {
       // the file will be created so now we need to know where
       reroute = RerouteW::createNew(context, callContext, lpFileName);
       create  = reroute.wasRerouted();
+
+      if (create) {
+        bfs::path target(reroute.fileName());
+        winapi::ex::wide::createPath(target.parent_path().wstring().c_str(),
+                                     lpSecurityAttributes);
+      }
     }
   }
 
