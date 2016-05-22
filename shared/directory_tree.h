@@ -582,7 +582,8 @@ public:
     namespace sp = std::placeholders;
     std::regex pattern(R"exp((.*_)(\d+))exp");
     std::smatch match;
-    regex_match(std::string(m_SHMName.c_str()), match, pattern);
+    std::string shmName(m_SHMName.c_str());
+    regex_match(shmName, match, pattern);
     if (match.size() != 3) {
       m_SHMName += "_1";
     }

@@ -39,7 +39,7 @@ public:
 };
 
 template <typename ToT, typename FromT>
-ToT string_cast(const FromT &source
+ToT string_cast(FromT source
                 , CodePage codePage = CodePage::LOCAL
                 , size_t sourceLength = std::numeric_limits<size_t>::max())
 {
