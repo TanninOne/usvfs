@@ -14,6 +14,7 @@ INCLUDE_DIRECTORIES("${Boost_INCLUDE_DIRS}"
 					
 LINK_DIRECTORIES("${LINK_DIRECTORIES}"
                  "${CMAKE_BINARY_DIR}/shared"
+                 "${GTEST_LIBRARY_DIR}"
                  "${Boost_LIBRARY_DIRS}"
                  )
 
