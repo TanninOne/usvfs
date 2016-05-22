@@ -1,5 +1,8 @@
 # usvfs
 
+[![Build status](https://ci.appveyor.com/api/projects/status/5xwl7y8yuu7ctkhu?svg=true)](https://ci.appveyor.com/project/TanninOne/usvfs)
+[![Coverity Scan Build Status](https://scan.coverity.com/projects/8941/badge.svg)](https://scan.coverity.com/projects/8941)
+
 USVFS (short for User Space Virtual File System) aims to allow windows applications to create file or directory links that
 are visible to only a select set of processes.
 It does so by using api hooking to fool file access functions into discovering/opening files that are in fact somewhere else
