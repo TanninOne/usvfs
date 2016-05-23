@@ -896,6 +896,9 @@ private:
 
   bool unassign(const std::shared_ptr<SharedMemoryT> &shm, TreeMeta *tree)
   {
+    if (tree == nullptr) {
+      return true;
+    }
     if (decreaseRefCount(tree) == 0) {
       shm->get_segment_manager()->destroy_ptr(tree);
       return true;

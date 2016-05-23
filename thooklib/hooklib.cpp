@@ -565,6 +565,8 @@ HOOKHANDLE HookLib::InstallStub(LPVOID functionAddress, LPVOID stubAddress, Hook
   info.replacementFunction = stubAddress;
   info.stub = true;
   info.detour = nullptr;
+  info.trampoline = nullptr;
+  info.type = THookInfo::TYPE_OVERWRITE;
 
   return applyHook(info, error);
 }
@@ -588,6 +590,8 @@ HOOKHANDLE HookLib::InstallHook(LPVOID functionAddress, LPVOID hookAddress, Hook
   info.replacementFunction = hookAddress;
   info.stub = false;
   info.detour = nullptr;
+  info.trampoline = nullptr;
+  info.type = THookInfo::TYPE_OVERWRITE;
 
   return applyHook(info, error);
 }

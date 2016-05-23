@@ -53,283 +53,279 @@ struct parameter_error : public std::runtime_error {
 };
 
 namespace process {
-  /**
-   * @brief result of process creation
-   */
-  struct Result {
-    Result() {
-      ::ZeroMemory(&startupInfo, sizeof(STARTUPINFO));
-      startupInfo.cb = sizeof(STARTUPINFO);
-    }
-    Result(const Result&) = delete;
-    Result(Result &&reference)
-      : valid(reference.valid)
-      , startupInfo(reference.startupInfo)
-      , processInfo(reference.processInfo)
-      , errorCode(reference.errorCode)
-    {
-      reference.valid = false;
-    }
+/**
+ * @brief result of process creation
+ */
+struct Result {
+  Result() {
+    ::ZeroMemory(&processInfo, sizeof(PROCESS_INFORMATION));
+    ::ZeroMemory(&startupInfo, sizeof(STARTUPINFO));
+    startupInfo.cb = sizeof(STARTUPINFO);
+  }
+  Result(const Result &) = delete;
+  Result(Result &&reference)
+      : valid(reference.valid), startupInfo(reference.startupInfo),
+        processInfo(reference.processInfo), errorCode(reference.errorCode) {
+    reference.valid = false;
+  }
 
-    ~Result() {
-      if (valid) {
-        CloseHandle(processInfo.hProcess);
-        CloseHandle(processInfo.hThread);
-      }
-
-      if (stdoutPipe != INVALID_HANDLE_VALUE) {
-        CloseHandle(stdoutPipe);
-      }
+  ~Result() {
+    if (valid) {
+      CloseHandle(processInfo.hProcess);
+      CloseHandle(processInfo.hThread);
     }
 
-    size_t readStdout(std::vector<uint8_t> &buffer, bool &eof) {
-      if (stdoutPipe != INVALID_HANDLE_VALUE) {
-        DWORD read;
-        BOOL res = ReadFile(stdoutPipe, &buffer[0],
-                            static_cast<DWORD>(buffer.size()), &read, nullptr);
-        eof = (res == TRUE) && (read == 0);
-        return static_cast<size_t>(read);
-      } else {
-        eof = true;
-        return 0;
-      }
+    if (stdoutPipe != INVALID_HANDLE_VALUE) {
+      CloseHandle(stdoutPipe);
+    }
+  }
+
+  size_t readStdout(std::vector<uint8_t> &buffer, bool &eof) {
+    if (stdoutPipe != INVALID_HANDLE_VALUE) {
+      DWORD read;
+      BOOL res = ReadFile(stdoutPipe, &buffer[0],
+                          static_cast<DWORD>(buffer.size()), &read, nullptr);
+      eof = (res == TRUE) && (read == 0);
+      return static_cast<size_t>(read);
+    } else {
+      eof = true;
+      return 0;
+    }
+  }
+
+  bool valid{false};
+  STARTUPINFO startupInfo;
+  PROCESS_INFORMATION processInfo;
+  DWORD errorCode{0UL};
+
+  HANDLE stdoutPipe{INVALID_HANDLE_VALUE};
+};
+
+/**
+ * @brief internal class to handle process creation with named parameters.
+ */
+template <typename CharT> class _Create {
+public:
+  _Create(const std::basic_string<CharT> &binaryName);
+  _Create(const _Create<CharT> &reference) = delete;
+  _Create<CharT> &operator=(const _Create<CharT> &reference) = delete;
+
+  _Create(_Create<CharT> &&reference)
+      : m_CurrentDirectory(std::move(reference.m_CurrentDirectory)),
+        m_ProcessAttributes(reference.m_ProcessAttributes),
+        m_ThreadAttributes(reference.m_ThreadAttributes),
+        m_InheritHandles(reference.m_InheritHandles),
+        m_CreationFlags(std::move(reference.m_CreationFlags)),
+        m_Executed(reference.m_Executed) {
+    // stringstream should be moveable but it seems it isn't on mingw
+    m_CommandLine << reference.m_CommandLine.rdbuf();
+  }
+
+  /// named parameter "argument". May be called repeatedly. This is
+  /// directly appended to the command line with a separating space. No
+  /// quoting happens
+  template <typename ArgT> _Create &argument(const ArgT &argin) {
+    m_CommandLine << " " << argin;
+    return *this;
+  }
+
+  template <typename ArgT> _Create &arg(const ArgT &argin) {
+    return this->argument(argin);
+  }
+
+  template <typename IterT> _Create &arguments(IterT begin, IterT end) {
+    for (; begin != end; ++begin) {
+      m_CommandLine << " " << *begin;
+    }
+    return *this;
+  }
+
+  /// @brief set the working directory for the process
+  _Create &workingDirectory(const std::basic_string<CharT> &path);
+
+  /// @brief set process attributes
+  _Create &processAttributes(SECURITY_ATTRIBUTES *attributes);
+
+  /// @brief set thread attributes
+  _Create &threadAttributes(SECURITY_ATTRIBUTES *attributes);
+
+  /// @brief activate inheriting handles
+  _Create &inheritHandles();
+
+  /// @brief have the process start suspended
+  _Create &suspended();
+
+  /// @brief set the process up to output stout to a pipe which can be
+  /// retrieved through the result object
+  _Create &stdoutPipe();
+
+  /// @brief end the named parameter cascade and create the process
+  Result _Create<CharT>::operator()() {
+    m_CommandLine.seekp(0, std::ios::end);
+    unsigned int length = static_cast<unsigned int>(m_CommandLine.tellp());
+    std::unique_ptr<CharT[]> clBuffer(new CharT[length + 1]);
+    memset(clBuffer.get(), 0, (length + 1) * sizeof(CharT));
+    memcpy(clBuffer.get(), m_CommandLine.str().c_str(), length * sizeof(CharT));
+    Result result;
+
+    if (m_StdoutPipe) {
+      result.stdoutPipe = setupPipe(result.startupInfo.hStdOutput);
+      result.startupInfo.dwFlags |= STARTF_USESTDHANDLES;
     }
 
-    bool valid;
-    STARTUPINFO startupInfo;
-    PROCESS_INFORMATION processInfo;
-    DWORD errorCode;
+    result.valid =
+        createProcessInt(nullptr, clBuffer.get(), m_ProcessAttributes,
+                         m_ThreadAttributes, m_InheritHandles, m_CreationFlags,
+                         nullptr, m_CurrentDirectory.length() > 0
+                                      ? m_CurrentDirectory.c_str()
+                                      : nullptr,
+                         &result.startupInfo, &result.processInfo) == TRUE;
 
-    HANDLE stdoutPipe { INVALID_HANDLE_VALUE };
-  };
-
-  /**
-   * @brief internal class to handle process creation with named parameters.
-   */
-  template <typename CharT>
-  class _Create {
-  public:
-    _Create(const std::basic_string<CharT> &binaryName);
-    _Create(const _Create<CharT> &reference) = delete;
-    _Create<CharT> &operator=(const _Create<CharT> &reference) = delete;
-
-    _Create(_Create<CharT> &&reference)
-      : m_CurrentDirectory(std::move(reference.m_CurrentDirectory))
-      , m_ProcessAttributes(reference.m_ProcessAttributes)
-      , m_ThreadAttributes(reference.m_ThreadAttributes)
-      , m_InheritHandles(reference.m_InheritHandles)
-      , m_CreationFlags(std::move(reference.m_CreationFlags))
-      , m_Executed(reference.m_Executed)
-   {
-     // stringstream should be moveable but it seems it isn't on mingw
-     m_CommandLine << reference.m_CommandLine.rdbuf();
-   }
-
-    /// named parameter "argument". May be called repeatedly. This is
-    /// directly appended to the command line with a separating space. No
-    /// quoting happens
-    template <typename ArgT>
-    _Create &argument(const ArgT &argin) {
-      m_CommandLine << " " << argin;
-      return *this;
+    if (m_Stdout != INVALID_HANDLE_VALUE) {
+      // got to close the write end of pipes
+      CloseHandle(result.startupInfo.hStdOutput);
     }
 
-    template <typename ArgT>
-    _Create &arg(const ArgT &argin) {
-      return this->argument(argin);
+    if (result.valid) {
+      result.errorCode = NOERROR;
+    } else {
+      result.errorCode = GetLastError();
     }
+    return result;
+  }
 
-    template <typename IterT>
-    _Create &arguments(IterT begin, IterT end) {
-      for (; begin != end; ++begin) {
-        m_CommandLine << " " << *begin;
-      }
-      return *this;
+private:
+  static BOOL createProcessInt(LPCWSTR lpApplicationName, LPWSTR lpCommandLine,
+                               SECURITY_ATTRIBUTES *lpProcessAttributes,
+                               SECURITY_ATTRIBUTES *lpThreadAttributes,
+                               BOOL bInheritHandles, DWORD dwCreationFlags,
+                               LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory,
+                               LPSTARTUPINFOW lpStartupInfo,
+                               LPPROCESS_INFORMATION lpProcessInformation) {
+    return ::CreateProcessW(
+        lpApplicationName, lpCommandLine, lpProcessAttributes,
+        lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment,
+        lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
+  }
+
+  static BOOL createProcessInt(LPCSTR lpApplicationName, LPSTR lpCommandLine,
+                               SECURITY_ATTRIBUTES *lpProcessAttributes,
+                               SECURITY_ATTRIBUTES *lpThreadAttributes,
+                               BOOL bInheritHandles, DWORD dwCreationFlags,
+                               LPVOID lpEnvironment, LPCSTR lpCurrentDirectory,
+                               LPSTARTUPINFOW lpStartupInfo,
+                               LPPROCESS_INFORMATION lpProcessInformation) {
+    std::wstring executable;
+    if (lpApplicationName != nullptr) {
+      executable = usvfs::shared::string_cast<std::wstring>(lpApplicationName);
     }
-
-    /// @brief set the working directory for the process
-    _Create &workingDirectory(const std::basic_string<CharT> &path);
-
-    /// @brief set process attributes
-    _Create &processAttributes(SECURITY_ATTRIBUTES *attributes);
-
-    /// @brief set thread attributes
-    _Create &threadAttributes(SECURITY_ATTRIBUTES *attributes);
-
-    /// @brief activate inheriting handles
-    _Create &inheritHandles();
-
-    /// @brief have the process start suspended
-    _Create &suspended();
-
-    /// @brief set the process up to output stout to a pipe which can be
-    /// retrieved through the result object
-    _Create &stdoutPipe();
-
-    /// @brief end the named parameter cascade and create the process
-    Result _Create<CharT>::operator()()
-    {
-      m_CommandLine.seekp(0, std::ios::end);
-      unsigned int length = static_cast<unsigned int>(m_CommandLine.tellp());
-      std::unique_ptr<CharT[]> clBuffer(new CharT[length + 1]);
-      memset(clBuffer.get(), 0, (length + 1) * sizeof(CharT));
-      memcpy(clBuffer.get(), m_CommandLine.str().c_str(), length * sizeof(CharT));
-      Result result;
-
-      if (m_StdoutPipe) {
-        result.stdoutPipe = setupPipe(result.startupInfo.hStdOutput);
-        result.startupInfo.dwFlags |= STARTF_USESTDHANDLES;
-      }
-
-      result.valid = createProcessInt(nullptr
-                                      , clBuffer.get()
-                                      , m_ProcessAttributes
-                                      , m_ThreadAttributes
-                                      , m_InheritHandles
-                                      , m_CreationFlags
-                                      , nullptr
-                                      , m_CurrentDirectory.length() > 0 ? m_CurrentDirectory.c_str() : nullptr
-                                      , &result.startupInfo
-                                      , &result.processInfo) == TRUE;
-
-      if (m_Stdout != INVALID_HANDLE_VALUE) {
-        // got to close the write end of pipes
-        CloseHandle(result.startupInfo.hStdOutput);
-      }
-
-      if (result.valid) {
-        result.errorCode = NOERROR;
-      } else {
-        result.errorCode = GetLastError();
-      }
-      return result;
+    std::wstring cmdline;
+    if (lpCommandLine != nullptr) {
+      cmdline = usvfs::shared::string_cast<std::wstring>(lpCommandLine);
     }
-
-  private:
-    static BOOL createProcessInt(LPCWSTR lpApplicationName,
-                                 LPWSTR lpCommandLine,
-                                 SECURITY_ATTRIBUTES *lpProcessAttributes,
-                                 SECURITY_ATTRIBUTES *lpThreadAttributes,
-                                 BOOL bInheritHandles,
-                                 DWORD dwCreationFlags,
-                                 LPVOID lpEnvironment,
-                                 LPCWSTR lpCurrentDirectory,
-                                 LPSTARTUPINFOW lpStartupInfo,
-                                 LPPROCESS_INFORMATION lpProcessInformation
-                                 ) {
-      return ::CreateProcessW(lpApplicationName, lpCommandLine,
-                              lpProcessAttributes, lpThreadAttributes,
-                              bInheritHandles, dwCreationFlags,
-                              lpEnvironment, lpCurrentDirectory,
-                              lpStartupInfo, lpProcessInformation);
+    std::wstring cwd;
+    if (lpCurrentDirectory != nullptr) {
+      cwd = usvfs::shared::string_cast<std::wstring>(lpCurrentDirectory);
     }
+    return ::CreateProcessW(
+        lpApplicationName != nullptr ? executable.c_str() : nullptr,
+        lpCommandLine != nullptr ? &cmdline[0] : nullptr, lpProcessAttributes,
+        lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment,
+        lpCurrentDirectory != nullptr ? cwd.c_str() : nullptr, lpStartupInfo,
+        lpProcessInformation);
+  }
 
-    static BOOL createProcessInt(LPCSTR lpApplicationName,
-                                 LPSTR lpCommandLine,
-                                 SECURITY_ATTRIBUTES *lpProcessAttributes,
-                                 SECURITY_ATTRIBUTES *lpThreadAttributes,
-                                 BOOL bInheritHandles,
-                                 DWORD dwCreationFlags,
-                                 LPVOID lpEnvironment,
-                                 LPCSTR lpCurrentDirectory,
-                                 LPSTARTUPINFOW lpStartupInfo,
-                                 LPPROCESS_INFORMATION lpProcessInformation
-                                 ) {
-      std::wstring executable;
-      if (lpApplicationName != nullptr) {
-        executable = usvfs::shared::string_cast<std::wstring>(lpApplicationName);
-      }
-      std::wstring cmdline;
-      if (lpCommandLine != nullptr) {
-        cmdline = usvfs::shared::string_cast<std::wstring>(lpCommandLine);
-      }
-      std::wstring cwd;
-      if (lpCurrentDirectory != nullptr) {
-        cwd = usvfs::shared::string_cast<std::wstring>(lpCurrentDirectory);
-      }
-      return ::CreateProcessW(lpApplicationName != nullptr ? executable.c_str()
-                                                           : nullptr,
-                              lpCommandLine != nullptr ? &cmdline[0]
-                                                       : nullptr,
-                              lpProcessAttributes, lpThreadAttributes,
-                              bInheritHandles, dwCreationFlags, lpEnvironment,
-                              lpCurrentDirectory != nullptr ? cwd.c_str()
-                                                            : nullptr,
-                              lpStartupInfo, lpProcessInformation);
-    }
+  HANDLE setupPipe(HANDLE &childHandle) {
+    SECURITY_ATTRIBUTES attr;
+    attr.nLength = sizeof(SECURITY_ATTRIBUTES);
+    attr.bInheritHandle = TRUE;
+    attr.lpSecurityDescriptor = nullptr;
 
-    HANDLE setupPipe(HANDLE &childHandle) {
-      SECURITY_ATTRIBUTES attr;
-      attr.nLength = sizeof(SECURITY_ATTRIBUTES);
-      attr.bInheritHandle = TRUE;
-      attr.lpSecurityDescriptor = nullptr;
+    HANDLE pipe[2];
 
-      HANDLE pipe[2];
+    CreatePipe(&pipe[0], &pipe[1], &attr, 0);
+    SetHandleInformation(pipe[0], HANDLE_FLAG_INHERIT, 0);
 
-      CreatePipe(&pipe[0], &pipe[1], &attr, 0);
-      SetHandleInformation(pipe[0], HANDLE_FLAG_INHERIT, 0);
+    childHandle = pipe[1];
 
-      childHandle = pipe[1];
+    return pipe[0];
+  }
 
-      return pipe[0];
-    }
+private:
+  std::basic_stringstream<CharT> m_CommandLine;
+  std::basic_string<CharT> m_CurrentDirectory{};
+  SECURITY_ATTRIBUTES *m_ProcessAttributes{nullptr};
+  SECURITY_ATTRIBUTES *m_ThreadAttributes{nullptr};
+  BOOL m_InheritHandles{false};
+  DWORD m_CreationFlags{0UL};
+  bool m_Executed{false};
+  bool m_StdoutPipe{false};
 
-  private:
-    std::basic_stringstream<CharT> m_CommandLine;
-    std::basic_string<CharT> m_CurrentDirectory { };
-    SECURITY_ATTRIBUTES *m_ProcessAttributes { nullptr };
-    SECURITY_ATTRIBUTES *m_ThreadAttributes { nullptr };
-    BOOL m_InheritHandles { false };
-    DWORD m_CreationFlags { 0UL };
-    bool m_Executed { false };
-    bool m_StdoutPipe { false };
-
-    HANDLE m_Stdout { INVALID_HANDLE_VALUE };
-  };
+  HANDLE m_Stdout{INVALID_HANDLE_VALUE};
+};
 }
 
 namespace file {
-  /**
-   * @brief internal class to handle file creation (opening) with named parameters.
-   */
-  template <typename CharT, DWORD DefaultDisposition>
-  class _Create {
-  public:
-    _Create(const std::basic_string<CharT> &fileName)
-      : m_FileName(fileName)
-    {
-    }
+/**
+ * @brief internal class to handle file creation (opening) with named
+ * parameters.
+ */
+template <typename CharT, DWORD DefaultDisposition> class _Create {
+public:
+  _Create(const std::basic_string<CharT> &fileName) : m_FileName(fileName) {}
 
-    _Create &access(DWORD desiredAccess) { m_DesiredAccess = desiredAccess; return *this; }
-    _Create &share(DWORD shareMode) { m_ShareMode = shareMode; return *this; }
-    _Create &createAlways() { m_CreationDisposition = CREATE_ALWAYS; return *this; }
-    _Create &openAlways() { m_CreationDisposition = OPEN_ALWAYS; return *this; }
-    _Create &security(SECURITY_ATTRIBUTES *attributes) { m_SecurityAttributes = attributes; return *this; }
-    _Create &templateFile(HANDLE templateFile) { m_Template = templateFile; return *this; }
+  _Create &access(DWORD desiredAccess) {
+    m_DesiredAccess = desiredAccess;
+    return *this;
+  }
+  _Create &share(DWORD shareMode) {
+    m_ShareMode = shareMode;
+    return *this;
+  }
+  _Create &createAlways() {
+    m_CreationDisposition = CREATE_ALWAYS;
+    return *this;
+  }
+  _Create &openAlways() {
+    m_CreationDisposition = OPEN_ALWAYS;
+    return *this;
+  }
+  _Create &security(SECURITY_ATTRIBUTES *attributes) {
+    m_SecurityAttributes = attributes;
+    return *this;
+  }
+  _Create &templateFile(HANDLE templateFile) {
+    m_Template = templateFile;
+    return *this;
+  }
 
-    /// @brief end the named parameter cascade and open the file
-    HANDLE operator()() {
-      return callDelegate(std::integral_constant<bool, sizeof(CharT) == sizeof(wchar_t)>());
-    }
-  private:
-    HANDLE callDelegate(std::true_type) {
-      return ::CreateFileW(m_FileName.c_str(), m_DesiredAccess, m_ShareMode, m_SecurityAttributes,
-                           m_CreationDisposition, m_Flags, m_Template);
-    }
-    HANDLE callDelegate(std::false_type) {
-      return ::CreateFileA(m_FileName.c_str(), m_DesiredAccess, m_ShareMode, m_SecurityAttributes,
-                           m_CreationDisposition, m_Flags, m_Template);
-    }
+  /// @brief end the named parameter cascade and open the file
+  HANDLE operator()() {
+    return callDelegate(
+        std::integral_constant<bool, sizeof(CharT) == sizeof(wchar_t)>());
+  }
 
-  private:
-    std::basic_string<CharT> m_FileName;
-    DWORD m_DesiredAccess = { GENERIC_ALL };
-    DWORD m_ShareMode = { 0UL };
-    DWORD m_CreationDisposition = { DefaultDisposition };
-    DWORD m_Flags = { FILE_ATTRIBUTE_NORMAL };
-    HANDLE m_Template = { nullptr };
-    SECURITY_ATTRIBUTES *m_SecurityAttributes = { nullptr };
-  };
+private:
+  HANDLE callDelegate(std::true_type) {
+    return ::CreateFileW(m_FileName.c_str(), m_DesiredAccess, m_ShareMode,
+                         m_SecurityAttributes, m_CreationDisposition, m_Flags,
+                         m_Template);
+  }
+  HANDLE callDelegate(std::false_type) {
+    return ::CreateFileA(m_FileName.c_str(), m_DesiredAccess, m_ShareMode,
+                         m_SecurityAttributes, m_CreationDisposition, m_Flags,
+                         m_Template);
+  }
+
+private:
+  std::basic_string<CharT> m_FileName;
+  DWORD m_DesiredAccess{GENERIC_ALL};
+  DWORD m_ShareMode{0UL};
+  DWORD m_CreationDisposition{DefaultDisposition};
+  DWORD m_Flags{FILE_ATTRIBUTE_NORMAL};
+  HANDLE m_Template{nullptr};
+  SECURITY_ATTRIBUTES *m_SecurityAttributes{nullptr};
+};
 }
 
 namespace ansi {

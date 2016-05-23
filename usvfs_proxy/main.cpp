@@ -144,8 +144,14 @@ int main(int argc, char **argv)
 
   return 0;
   } catch (const std::exception &e) {
-    logger->critical("unhandled exception: {}", e.what());
-    logExtInfo(e);
+    try {
+      logger->critical("unhandled exception: {}", e.what());
+      logExtInfo(e);
+    } catch (const fmt::FormatError &) {
+      logger->critical() << e.what();
+    } catch (const spdlog::spdlog_ex &) {
+      // no way to log this
+    }
   }
 }
 

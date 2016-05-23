@@ -134,12 +134,12 @@ HRESULT WINAPI usvfs::hooks::CoCreateInstanceEx(const IID &rclsid, IUnknown *pun
                              , context->callParameters()
                              , processHandle
                              , INVALID_HANDLE_VALUE);
-        CloseHandle(processHandle);
         try {
           processName = winapi::ansi::getModuleFileName(nullptr, processHandle);
         } catch (const std::exception &ex) {
           spdlog::get("hooks")->warn("failed to retrieve module name ({1}): {0}", ex.what(), processHandle);
         }
+        CloseHandle(processHandle);
       } else {
         spdlog::get("hooks")->warn("can't open process {0}: {1:x}", pid, static_cast<unsigned long>(procIdRes));
       }
