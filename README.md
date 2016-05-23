@@ -1,5 +1,6 @@
 # usvfs
 
+[![License](http://img.shields.io/:license-gpl-blue.svg)](http://www.gnu.org/licenses/gpl-3.0.en.html)
 [![Build status](https://ci.appveyor.com/api/projects/status/5xwl7y8yuu7ctkhu?svg=true)](https://ci.appveyor.com/project/TanninOne/usvfs)
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/8941/badge.svg)](https://scan.coverity.com/projects/8941)
 
