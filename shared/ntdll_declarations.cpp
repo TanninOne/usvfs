@@ -33,20 +33,26 @@ RtlDoesFileExists_U_type RtlDoesFileExists_U;
 RtlGetVersion_type RtlGetVersion;
 
 static struct __Initializer {
+  HMODULE m_NtDLLMod;
   __Initializer() {
-    HMODULE ntdllMod = ::LoadLibrary(TEXT("ntdll.dll"));
+    m_NtDLLMod = ::LoadLibrary(TEXT("ntdll.dll"));
 
-    if (ntdllMod == nullptr) {
+    if (m_NtDLLMod == nullptr) {
       TerminateProcess(GetCurrentProcess(), 1);
       return;
     }
-    LOAD_EXT(ntdllMod, NtQueryDirectoryFile);
-    LOAD_EXT(ntdllMod, NtQueryFullAttributesFile);
-    LOAD_EXT(ntdllMod, NtQueryAttributesFile);
-    LOAD_EXT(ntdllMod, NtCreateFile);
-    LOAD_EXT(ntdllMod, NtOpenFile);
-    LOAD_EXT(ntdllMod, NtClose);
-    LOAD_EXT(ntdllMod, RtlDoesFileExists_U);
-    LOAD_EXT(ntdllMod, RtlGetVersion);
+    LOAD_EXT(m_NtDLLMod, NtQueryDirectoryFile);
+    LOAD_EXT(m_NtDLLMod, NtQueryFullAttributesFile);
+    LOAD_EXT(m_NtDLLMod, NtQueryAttributesFile);
+    LOAD_EXT(m_NtDLLMod, NtCreateFile);
+    LOAD_EXT(m_NtDLLMod, NtOpenFile);
+    LOAD_EXT(m_NtDLLMod, NtClose);
+    LOAD_EXT(m_NtDLLMod, RtlDoesFileExists_U);
+    LOAD_EXT(m_NtDLLMod, RtlGetVersion);
+  }
+
+  ~__Initializer() {
+    // all hooks should be disabled by now. If not, this won't end well...
+    FreeLibrary(m_NtDLLMod);
   }
 } __initializer;

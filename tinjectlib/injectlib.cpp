@@ -360,6 +360,7 @@ void InjectDLLEIP(HANDLE processHandle
   if (sxsfm != nullptr) {
     sxsfm(&threadContext, 0);
   }
+  ::FreeLibrary(k32mod);
 
   if (GetThreadContext(threadHandle, &threadContext) == 0) {
     throw windows_error("failed to access thread context.");

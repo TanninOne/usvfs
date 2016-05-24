@@ -55,7 +55,7 @@ private:
 private:
 
   ud_t m_Obj;
-  const uint8_t *m_Buffer;
+  const uint8_t *m_Buffer { nullptr };
 
 };
 

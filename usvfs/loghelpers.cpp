@@ -20,6 +20,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 */
 #include "loghelpers.h"
 #include <stringcast.h>
+#include <stringutils.h>
 
 
 namespace ush = usvfs::shared;
@@ -38,6 +39,7 @@ std::ostream &usvfs::log::operator<<(std::ostream &os, const Wrap<NTSTATUS> &sta
       os << "exists already";
     } break;
     default: {
+      ush::FormatGuard guard(os);
       os << "err " << std::hex << (int)status.data();
     } break;
   }

@@ -135,11 +135,11 @@ public:
   {
     UNUSED_VAR(callContext);
     RerouteW result;
-    result.m_Buffer   = inPath;
     result.m_Rerouted = false;
 
     if ((inPath != nullptr) && (inPath[0] != L'\0')
         && !ush::startswith(inPath, L"hid#")) {
+      result.m_Buffer   = inPath;
       result.m_RealPath.assign(inPath);
 
       bool absolute = false;

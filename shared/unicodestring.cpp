@@ -34,6 +34,7 @@ namespace usvfs {
 UnicodeString::UnicodeString()
 {
   m_Data.Length = m_Data.MaximumLength = 0;
+  m_Data.Buffer = nullptr;
 }
 
 

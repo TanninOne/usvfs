@@ -203,7 +203,7 @@ void createMiniDump(PEXCEPTION_POINTERS exceptionPtrs)
         logger->error("No crash dump created, dbghelp.dll invalid");
       }
     }
-    CloseHandle(dbgDLL);
+    FreeLibrary(dbgDLL);
   } else {
     if (logger != nullptr) {
       logger->error("No crash dump created, dbghelp.dll not found");

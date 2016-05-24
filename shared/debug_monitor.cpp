@@ -175,7 +175,11 @@ HANDLE DebugMonitor::openOrCreateEvent(LPCTSTR name, DWORD, BOOL initialState)
   if ((result == nullptr) || (GetLastError() == ERROR_ALREADY_EXISTS)) {
     printf("failed to create event %ls\n", name);
     m_InitError = GetLastError();
-    result = nullptr;
+
+    if (result != nullptr) {
+      ::CloseHandle(result);
+      result = nullptr;
+    }
   }
   return result;
 }

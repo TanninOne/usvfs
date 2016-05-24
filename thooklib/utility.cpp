@@ -19,6 +19,8 @@ You should have received a copy of the GNU General Public License
 along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 */
 #include "utility.h"
+#include <cstdlib>
+#include <scopeguard.h>
 
 
 namespace HookLib {
@@ -54,6 +56,9 @@ FARPROC MyGetProcAddress(HMODULE module, LPCSTR functionName)
       if (funcAddr[nameOrdinals[i]] >= dataDirectory->VirtualAddress &&
           funcAddr[nameOrdinals[i]] < dataDirectory->VirtualAddress + dataDirectory->Size) {
         char *forwardLibName  = _strdup((LPSTR)module + funcAddr[nameOrdinals[i]]);
+        ON_BLOCK_EXIT([forwardLibName] () {
+          free(forwardLibName);
+        });
         char *forwardFunctionName = strchr(forwardLibName, '.');
         *forwardFunctionName = 0;
         ++forwardFunctionName;

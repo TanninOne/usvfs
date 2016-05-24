@@ -21,6 +21,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include <string>
+#include <ios>
 #include <boost/filesystem.hpp>
 
 
@@ -39,6 +40,20 @@ boost::filesystem::path make_relative(const boost::filesystem::path &from
                                       , const boost::filesystem::path &to);
 
 std::string to_hex(void *bufferIn, size_t bufferSize);
+
+class FormatGuard {
+  std::ostream &m_Stream;
+  std::ios::fmtflags m_Flags;
+
+public:
+  FormatGuard(std::ostream &stream)
+      : m_Stream(stream), m_Flags(stream.flags()) {}
+
+  FormatGuard(const FormatGuard &reference) = delete;
+  FormatGuard &operator=(FormatGuard &reference) = delete;
+
+  ~FormatGuard() { m_Stream.flags(m_Flags); }
+};
 
 } // namespace shared
 

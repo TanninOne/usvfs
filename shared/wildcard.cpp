@@ -27,7 +27,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 
 
 
-bool InnerMatch(LPCWSTR pszString, LPCWSTR pszMatch)
+bool IsInnerMatch(LPCWSTR pszString, LPCWSTR pszMatch)
 {
   while (*pszMatch != L'\0') {
     if ((*pszMatch==L'?') || (*pszMatch==L'>')) {
@@ -39,12 +39,12 @@ bool InnerMatch(LPCWSTR pszString, LPCWSTR pszMatch)
       ++pszString;
       ++pszMatch;
     } else if ((*pszMatch==L'*') || (*pszMatch==L'<')) {
-      if (InnerMatch(pszString, pszMatch + 1)) {
+      if (IsInnerMatch(pszString, pszMatch + 1)) {
         // * may match empty string or we may have matched something already
         return true;
       }
 
-      return *pszString && InnerMatch(pszString + 1, pszMatch);
+      return *pszString && IsInnerMatch(pszString + 1, pszMatch);
 
       // the rest of the string can't be matched
     } else {
@@ -70,9 +70,9 @@ bool usvfs::shared::wildcard::Match(LPCWSTR pszString, LPCWSTR pszMatch)
     if ((len > 2) && (wcscmp(pszMatch + len - 2, L".*") == 0)) {
       // cmd.exe seems to completely ignore .* at the end.
       std::wstring temp(pszMatch, pszMatch + len - 2);
-      return InnerMatch(pszString, temp.c_str());
+      return IsInnerMatch(pszString, temp.c_str());
     }
-    return InnerMatch(pszString, pszMatch);
+    return IsInnerMatch(pszString, pszMatch);
   }
 }
 

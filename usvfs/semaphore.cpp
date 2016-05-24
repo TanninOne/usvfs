@@ -1,5 +1,6 @@
 #include "semaphore.h"
 #include <spdlog.h>
+#include <scopeguard.h>
 
 
 RecursiveBenaphore::RecursiveBenaphore()
@@ -19,11 +20,12 @@ void RecursiveBenaphore::wait(DWORD timeout)
 {
   DWORD tid = ::GetCurrentThreadId();
 
-  int tries = 3;
   if (::_InterlockedIncrement(&m_Counter) > 1) {
     if (tid != m_OwnerId) {
+      int tries = 3;
       while (::WaitForSingleObject(m_Semaphore, timeout) != WAIT_OBJECT_0) {
         HANDLE owner = ::OpenThread(SYNCHRONIZE, FALSE, m_OwnerId);
+        ON_BLOCK_EXIT([owner] () { ::CloseHandle(owner); });
         if ((tries <= 0)
             || (::WaitForSingleObject(owner, 0) == WAIT_OBJECT_0)) {
           // owner has quit without releasing the semaphore!

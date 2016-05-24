@@ -30,7 +30,7 @@ public:
 
 public:
 
-  DebugMonitor(const DebugCallback &callback);
+  explicit DebugMonitor(const DebugCallback &callback);
   ~DebugMonitor();
 
   ///

@@ -46,7 +46,7 @@ public:
 
 class CallLogger {
 public:
-  CallLogger(const char *function)
+  explicit CallLogger(const char *function)
   {
     const char *namespaceend = strrchr(function, ':');
     if (namespaceend != nullptr) {
@@ -112,7 +112,7 @@ CallLogger &CallLogger::addParam(const char *name, const T &value, uint8_t style
 template <typename T>
 class Wrap {
 public:
-  Wrap(const T &data) : m_Data(data) {}
+  explicit Wrap(const T &data) : m_Data(data) {}
   Wrap(Wrap<T> &&reference) : m_Data(std::move(reference.m_Data)) {}
   Wrap(const Wrap<T> &reference) = delete;
   Wrap<T> &operator=(const Wrap<T>& reference) = delete;
