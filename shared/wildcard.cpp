@@ -111,10 +111,12 @@ LPCSTR InnerMatch(LPCSTR pszString, LPCSTR pszMatch)
       //    So just an empty string matches. This is done by recursion.
       //      Because we eat one character from the match string, the
       //      recursion will stop.
-      LPCSTR remainder = InnerMatch(pszString, pszMatch + 1);
-      if (remainder != nullptr) {
-        // we have a match and the * replaces no other character
-        return remainder;
+      {
+          LPCSTR remainder = InnerMatch(pszString, pszMatch + 1);
+          if (remainder != nullptr) {
+              // we have a match and the * replaces no other character
+              return remainder;
+          }
       }
 
       // 2. Chance we eat the next character and try it again, with a

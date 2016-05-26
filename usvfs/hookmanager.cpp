@@ -214,12 +214,12 @@ void HookManager::initHooks()
   HookLib::TrampolinePool::instance().setBlock(true);
 
   HMODULE k32Mod = GetModuleHandleA("kernel32.dll");
-  spdlog::get("usvfs")->debug("kernel32.dll at {0:x}", reinterpret_cast<unsigned long>(k32Mod));
+  spdlog::get("usvfs")->debug("kernel32.dll at {0:x}", reinterpret_cast<uintptr_t>(k32Mod));
   // kernelbase.dll contains the actual implementation for functions formerly in
   // kernel32.dll and advapi32.dll, starting with Windows 7
   // http://msdn.microsoft.com/en-us/library/windows/desktop/dd371752(v=vs.85).aspx
   HMODULE kbaseMod = GetModuleHandleA("kernelbase.dll");
-  spdlog::get("usvfs")->debug("kernelbase.dll at {0:x}", reinterpret_cast<unsigned long>(kbaseMod));
+  spdlog::get("usvfs")->debug("kernelbase.dll at {0:x}", reinterpret_cast<uintptr_t>(kbaseMod));
 
   installHook(kbaseMod, k32Mod, "GetFileAttributesExW", uhooks::GetFileAttributesExW);
   installHook(kbaseMod, k32Mod, "GetFileAttributesW", uhooks::GetFileAttributesW);
@@ -261,7 +261,7 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "GetFileVersionInfoSizeExW", uhooks::GetFileVersionInfoSizeExW);
 
   HMODULE ntdllMod = GetModuleHandleA("ntdll.dll");
-  spdlog::get("usvfs")->debug("ntdll.dll at {0:x}", reinterpret_cast<unsigned long>(ntdllMod));
+  spdlog::get("usvfs")->debug("ntdll.dll at {0:x}", reinterpret_cast<uintptr_t>(ntdllMod));
   installHook(ntdllMod, nullptr, "NtQueryFullAttributesFile", uhooks::NtQueryFullAttributesFile);
   installHook(ntdllMod, nullptr, "NtQueryAttributesFile", uhooks::NtQueryAttributesFile);
   installHook(ntdllMod, nullptr, "NtQueryDirectoryFile", uhooks::NtQueryDirectoryFile);
@@ -272,7 +272,7 @@ void HookManager::initHooks()
 
   HMODULE shellMod = GetModuleHandleA("shell32.dll");
   if (shellMod != nullptr) {
-    spdlog::get("usvfs")->debug("shell32.dll at {0:x}", reinterpret_cast<unsigned long>(shellMod));
+    spdlog::get("usvfs")->debug("shell32.dll at {0:x}", reinterpret_cast<uintptr_t>(shellMod));
     installStub(shellMod, nullptr, "SHFileOperationA");
     installStub(shellMod, nullptr, "SHFileOperationW");
     installStub(shellMod, nullptr, "ShellExecuteA");

@@ -1288,8 +1288,8 @@ VOID WINAPI usvfs::hooks::ExitProcess(UINT exitCode)
 
     if (!delayed.empty()) {
       // ensure all delayed tasks are completed before we exit the process
-      for (std::future<int> &delayed : context->delayed()) {
-        delayed.get();
+      for (std::future<int> &delayedOp : delayed) {
+        delayedOp.get();
       }
       delayed.clear();
     }

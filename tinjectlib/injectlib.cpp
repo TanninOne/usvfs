@@ -355,6 +355,9 @@ void InjectDLLEIP(HANDLE processHandle
 
   // documentation says starting with Win7 SP1 you HAVE to call SetXStateFeaturesMask
   HMODULE k32mod = ::LoadLibrary(__TEXT("kernel32.dll"));
+  if (k32mod == nullptr) {
+      throw windows_error("failed to load kernel32.dll");
+  }
   TSetXStateFeaturesMaskType sxsfm =
       reinterpret_cast<TSetXStateFeaturesMaskType>(GetProcAddress(k32mod, "SetXStateFeaturesMask"));
   if (sxsfm != nullptr) {
@@ -456,19 +459,21 @@ void InjectLib::InjectDLL(HANDLE processHandle
       if (threadInfo.th32OwnerProcessID == pid) {
         HANDLE thread = ::OpenThread(THREAD_ALL_ACCESS, FALSE, threadInfo.th32ThreadID);
 
-        DWORD suspCount = SuspendThread(thread);
-        if (suspCount == 0) {
-          FILETIME creationTime, exitTime, kernelTime, userTime;
-          ::GetThreadTimes(thread, &creationTime, &exitTime, &kernelTime, &userTime);
+        if (thread != nullptr) {
+            DWORD suspCount = SuspendThread(thread);
+            if (suspCount == 0) {
+                FILETIME creationTime, exitTime, kernelTime, userTime;
+                ::GetThreadTimes(thread, &creationTime, &exitTime, &kernelTime, &userTime);
 
-          if ((injectThread == INVALID_HANDLE_VALUE)
-              || (CompareFileTime(&creationTime, &injectThreadTime) < 0)) {
-            spdlog::get("usvfs")->info("candidate for oldest thread: {0}", threadInfo.th32ThreadID);
-            injectThread = thread;
-            injectThreadTime = creationTime;
-          }
+                if ((injectThread == INVALID_HANDLE_VALUE)
+                    || (CompareFileTime(&creationTime, &injectThreadTime) < 0)) {
+                    spdlog::get("usvfs")->info("candidate for oldest thread: {0}", threadInfo.th32ThreadID);
+                    injectThread = thread;
+                    injectThreadTime = creationTime;
+                }
+            }
+            threadHandles.push_back(thread);
         }
-        threadHandles.push_back(thread);
       }
       moreThreads = Thread32Next(snapshot, &threadInfo);
     }

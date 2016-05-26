@@ -219,6 +219,7 @@ LPVOID TrampolinePool::storeStub(LPVOID reroute, LPVOID original, LPVOID returnA
 
   // ??? write address of reroute to trampoline and move past the address
   *reinterpret_cast<LPVOID*>(spot) = reroute;
+  // coverity[suspicious_sizeof]
   spot = AddrAdd(spot, sizeof(LPVOID));
   bufferList.offset += sizeof(LPVOID);
 
@@ -267,6 +268,7 @@ LPVOID TrampolinePool::storeTrampoline(LPVOID reroute, LPVOID original, LPVOID r
   LPVOID spot = AddrAdd(*bufferList.buffers.rbegin(), bufferList.offset);
 
   *reinterpret_cast<LPVOID*>(spot) = reroute;
+  // coverity[suspicious_sizeof]
   spot = AddrAdd(spot, sizeof(LPVOID));
   bufferList.offset += sizeof(LPVOID);
 
@@ -378,6 +380,7 @@ LPVOID TrampolinePool::storeStub(LPVOID reroute, LPVOID original, size_t preambl
   LPVOID spot = AddrAdd(*bufferList.buffers.rbegin(), bufferList.offset);
 
   *reinterpret_cast<LPVOID*>(spot) = reroute;
+  // coverity[suspicious_sizeof]
   spot = AddrAdd(spot, sizeof(LPVOID));
   bufferList.offset += sizeof(LPVOID);
 
@@ -426,6 +429,7 @@ LPVOID TrampolinePool::storeTrampoline(LPVOID reroute, LPVOID original, size_t p
   LPVOID spot = AddrAdd(*bufferList.buffers.rbegin(), bufferList.offset);
 
   *reinterpret_cast<LPVOID*>(spot) = reroute;
+  // coverity[suspicious_sizeof]
   spot = AddrAdd(spot, sizeof(LPVOID));
   bufferList.offset += sizeof(LPVOID);
 

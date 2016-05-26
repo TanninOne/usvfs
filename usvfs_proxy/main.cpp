@@ -69,17 +69,22 @@ T getParameter(std::vector<std::string> &arguments, const std::string &key, cons
 }
 
 int main(int argc, char **argv) {
-  SHMLogger::open("usvfs");
-  auto logger = spdlog::create<spdlog::sinks::shm_sink>("usvfs", "usvfs");
-  logger->set_pattern("%H:%M:%S.%e [%L] (proxy) %v");
+  std::shared_ptr<spdlog::logger> logger;
 
   std::vector<std::string> arguments;
   std::copy(argv + 1, argv + argc, std::back_inserter(arguments));
 
   std::string instance;
   try {
+    SHMLogger::open("usvfs");
+    logger = spdlog::create<spdlog::sinks::shm_sink>("usvfs", "usvfs");
+    logger->set_pattern("%H:%M:%S.%e [%L] (proxy) %v");
+
     instance = getParameter<std::string>(arguments, "instance", true);
   } catch (const std::exception &e) {
+    if (logger.get() == nullptr) {
+      return 1;
+    }
     try {
       logger->critical("{}", e.what());
     } catch (const spdlog::spdlog_ex &) {

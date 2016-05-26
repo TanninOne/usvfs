@@ -15,7 +15,7 @@ using namespace usvfs::shared;
 using namespace boost::interprocess;
 
 
-static const char SHMName[] = "treetest_shm";
+static const char g_SHMName[] = "treetest_shm";
 static const char TreeName[] = "treetest_tree";
 
 typedef DirectoryTree<int> TreeType;
@@ -89,7 +89,7 @@ TEST(WildcardTest, MatchWildcard)
 TEST(DirectoryTreeTest, SimpleTreeInit)
 {
   EXPECT_NO_THROW({
-    ContainerType tree(SHMName, 4096);
+    ContainerType tree(g_SHMName, 4096);
     TreeType::NodePtrT p = tree.addFile(R"(C:\temp\test.txt)", 42, false);
     EXPECT_NE(TreeType::NodePtrT(), p);
   });
@@ -97,8 +97,8 @@ TEST(DirectoryTreeTest, SimpleTreeInit)
 
 TEST(DirectoryTreeTest, FindNode)
 {
-  shared_memory_object::remove(SHMName);
-  ContainerType tree(SHMName, 64 * 1024);
+  shared_memory_object::remove(g_SHMName);
+  ContainerType tree(g_SHMName, 64 * 1024);
   EXPECT_NE(nullptr, tree.addFile(R"(C:\temp\bla)", 0x42, 0, false));
 
   EXPECT_NE(nullptr, tree->findNode(R"(C:\temp)").get());
@@ -119,8 +119,8 @@ struct TestVisitor {
 
 TEST(DirectoryTreeTest, VisitPath)
 {
-  shared_memory_object::remove(SHMName);
-  ContainerType tree(SHMName, 64 * 1024);
+  shared_memory_object::remove(g_SHMName);
+  ContainerType tree(g_SHMName, 64 * 1024);
   EXPECT_NE(nullptr, tree.addFile(R"(C:\temp\bla)", 1, 0x40, false));
 
   TestVisitor visitor;
@@ -133,9 +133,9 @@ TEST(DirectoryTreeTest, VisitPath)
 
 TEST(DirectoryTreeTest, WildCardFind)
 {
-  shared_memory_object::remove(SHMName);
+  shared_memory_object::remove(g_SHMName);
   EXPECT_NO_THROW({
-    ContainerType tree(SHMName, 64 * 1024);
+    ContainerType tree(g_SHMName, 64 * 1024);
 
     EXPECT_NE(nullptr, tree.addFile(R"(C:\temp)", 1, FLAG_DIRECTORY, false));
     EXPECT_NE(nullptr, tree.addFile(R"(C:\temp\abc)", 1, 0, false));
@@ -161,7 +161,7 @@ TEST(DirectoryTreeTest, WildCardFind)
 TEST(DirectoryTreeTest, SHMAllocation)
 {
   EXPECT_NO_THROW({
-    ContainerType create(SHMName, 64 * 1024);
+    ContainerType create(g_SHMName, 64 * 1024);
 
     { // creation
       create.addFile(R"(C:\temp\abc)", 1, false);
@@ -170,7 +170,7 @@ TEST(DirectoryTreeTest, SHMAllocation)
     }
 
     { // access
-      ContainerType access(SHMName, 64 * 1024);
+      ContainerType access(g_SHMName, 64 * 1024);
       EXPECT_NE(nullptr, access.get());
       std::vector<TreeType::NodePtrT> res = access->find(R"(C:\temp\*)");
       EXPECT_EQ(3, res.size()); // matches the three files
@@ -183,7 +183,7 @@ TEST(DirectoryTreeTest, SHMAllocationError)
 {
   EXPECT_NO_THROW({
     try {
-      ContainerType tree(SHMName, 4096);
+      ContainerType tree(g_SHMName, 4096);
       int c = 0;
       for (char i = 'a'; i <= 'z'; ++i) {
         for (char j = 'a'; j <= 'z'; ++j) {
@@ -206,7 +206,7 @@ TEST(DirectoryTreeTest, SHMAllocationErrorComplex)
 {
   EXPECT_NO_THROW({
     try {
-      ComplexContainerType tree(SHMName, 4096);
+      ComplexContainerType tree(g_SHMName, 4096);
       SHMString str = tree.create("gaga");
       for (char i = 'a'; i <= 'z'; ++i) {
         for (char j = 'a'; j <= 'z'; ++j) {

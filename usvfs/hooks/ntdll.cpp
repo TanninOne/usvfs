@@ -425,8 +425,8 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
         if (fileName.length() > 0) {
           std::wstring fileNameL = fileName;
           boost::algorithm::to_lower(fileNameL, loc);
-          auto res = foundFiles.insert(fileNameL);
-          add      = res.second; // add only if we didn't find this file before
+          auto insertRes = foundFiles.insert(fileNameL);
+          add      = insertRes.second; // add only if we didn't find this file before
         }
         // size of this block is determined by the offset in the info structure,
         // unless its the last element, then its size is the remaining buffer
