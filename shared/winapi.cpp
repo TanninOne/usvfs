@@ -457,6 +457,8 @@ void createPath(LPCWSTR path, LPSECURITY_ATTRIBUTES securityAttributes)
 
   while (*current != L'\0') {
     size_t len = wcscspn(current, L"\\/");
+    // may also be \0
+    wchar_t separator = current[len];
     // don't try to create the drive letter, obviously
     if ((len != 0) && ((len != 2) || (current[1] != ':'))) {
       // temporarily cut the string at the current (back-)slash
@@ -464,12 +466,13 @@ void createPath(LPCWSTR path, LPSECURITY_ATTRIBUTES securityAttributes)
       if (!::CreateDirectoryW(pathCopy.get(), securityAttributes)) {
         DWORD err = ::GetLastError();
         if ((err != ERROR_ALREADY_EXISTS) && (err != NOERROR)) {
-          throw usvfs::shared::windows_error(
-              "failed to create intermediate directory");
+          throw usvfs::shared::windows_error(ush::string_cast<std::string>(
+              fmt::format(L"failed to create intermediate directory {}",
+                          pathCopy.get())));
         }
         // restore the path
       }
-      current[len] = L'\\';
+      current[len] = separator;
     }
     current += len + 1;
   }

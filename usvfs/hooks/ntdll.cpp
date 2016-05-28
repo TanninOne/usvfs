@@ -534,7 +534,7 @@ void gatherVirtualEntries(const UnicodeString &dirName,
             subNode->name(), ush::CodePage::UTF8);
 
         Searches::Info::VirtualMatch m{
-            ush::string_cast<std::wstring>(subNode->data().linkTarget,
+            ush::string_cast<std::wstring>(subNode->data().linkTarget.c_str(),
                                            ush::CodePage::UTF8), vName};
         info.virtualMatches.push_back(m);
 
