@@ -133,6 +133,9 @@ std::ostream &operator<<(std::ostream &os, const Wrap<PUNICODE_STRING> &str);
 std::ostream &operator<<(std::ostream &os, const Wrap<NTSTATUS> &status);
 
 
+spdlog::level::level_enum ConvertLogLevel(LogLevel level);
+LogLevel ConvertLogLevel(spdlog::level::level_enum level);
+
 } // namespace log
 
 } // namespace usvfs

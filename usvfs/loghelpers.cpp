@@ -116,3 +116,24 @@ std::ostream &usvfs::log::operator<<(std::ostream &os, const Wrap<std::wstring> 
 
   return os;
 }
+
+spdlog::level::level_enum usvfs::log::ConvertLogLevel(LogLevel level)
+{
+  switch (level) {
+    case LogLevel::Debug: return spdlog::level::debug;
+    case LogLevel::Info: return spdlog::level::info;
+    case LogLevel::Warning: return spdlog::level::warn;
+    case LogLevel::Error: return spdlog::level::err;
+    default: return spdlog::level::debug;
+  }
+}
+
+LogLevel usvfs::log::ConvertLogLevel(spdlog::level::level_enum level)
+{
+  switch (level) {
+    case spdlog::level::debug: return LogLevel::Debug;
+    case spdlog::level::info:  return LogLevel::Info;
+    case spdlog::level::warn:  return LogLevel::Warning;
+    case spdlog::level::err:   return LogLevel::Error;
+  }
+}

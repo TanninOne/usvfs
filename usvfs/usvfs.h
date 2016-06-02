@@ -112,6 +112,11 @@ DLLEXPORT BOOL WINAPI CreateProcessHooked(
 DLLEXPORT bool WINAPI GetLogMessages(LPSTR buffer, size_t size, bool blocking = false);
 
 /**
+ * @brief change the log level
+ */
+DLLEXPORT void WINAPI SetLogLevel(LogLevel level);
+
+/**
  * retrieves a readable representation of the vfs tree
  * @param buffer the buffer to write to. this may be null if you only want to determine the required
  *               buffer size

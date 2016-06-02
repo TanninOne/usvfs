@@ -21,6 +21,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include "usvfs.h"
 #include "hookmanager.h"
 #include "redirectiontree.h"
+#include "loghelpers.h"
 #include <DbgHelp.h>
 #include <ctime>
 #include <shmlogger.h>
@@ -46,6 +47,7 @@ namespace ush = usvfs::shared;
 namespace bip = boost::interprocess;
 namespace ba  = boost::algorithm;
 
+using usvfs::log::ConvertLogLevel;
 
 usvfs::HookManager *manager = nullptr;
 usvfs::HookContext *context = nullptr;
@@ -142,6 +144,12 @@ extern "C" DLLEXPORT bool WINAPI GetLogMessages(char *buffer, size_t size,
                e.what());
     return false;
   }
+}
+
+extern "C" DLLEXPORT void WINAPI SetLogLevel(LogLevel level)
+{
+  spdlog::get("usvfs")->set_level(ConvertLogLevel(level));
+  spdlog::get("hooks")->set_level(ConvertLogLevel(level));
 }
 
 //
@@ -276,18 +284,6 @@ LONG WINAPI VEHandler(PEXCEPTION_POINTERS exceptionPtrs)
 
   return EXCEPTION_CONTINUE_SEARCH;
 }
-
-spdlog::level::level_enum ConvertLogLevel(LogLevel level)
-{
-  switch (level) {
-    case LogLevel::Debug: return spdlog::level::debug;
-    case LogLevel::Info: return spdlog::level::info;
-    case LogLevel::Warning: return spdlog::level::warn;
-    case LogLevel::Error: return spdlog::level::err;
-    default: return spdlog::level::debug;
-  }
-}
-
 
 //
 // Exported functions

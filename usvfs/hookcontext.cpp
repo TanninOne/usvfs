@@ -25,6 +25,8 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <winapi.h>
 #include <usvfsparameters.h>
 #include <shared_memory.h>
+#include "loghelpers.h"
+
 
 namespace bi = boost::interprocess;
 using usvfs::shared::SharedMemoryT;
@@ -159,6 +161,8 @@ void HookContext::updateParameters() const
 {
   m_Parameters->currentSHMName = m_Tree.shmName().c_str();
   m_Parameters->currentInverseSHMName = m_InverseTree.shmName().c_str();
+
+  m_Parameters->logLevel = usvfs::log::ConvertLogLevel(spdlog::get("usvfs")->level());
 }
 
 USVFSParameters HookContext::callParameters() const
