@@ -179,7 +179,8 @@ void createMiniDump(PEXCEPTION_POINTERS exceptionPtrs)
 #else
       std::wstring dmpPath = winapi::wide::getKnownFolderPath(FOLDERID_LocalAppData) + L"\\usvfs\\uvsfs_x86.dmp";
 #endif
-      winapi::ex::wide::createPath(dmpPath.c_str());
+      std::wstring parent = bfs::path(dmpPath).parent_path().wstring();
+      winapi::ex::wide::createPath(parent.c_str());
       HANDLE dumpFile = winapi::wide::createFile(dmpPath).createAlways().access(GENERIC_WRITE).share(FILE_SHARE_WRITE)();
       if (dumpFile != INVALID_HANDLE_VALUE) {
         _MINIDUMP_EXCEPTION_INFORMATION exceptionInfo;
