@@ -398,8 +398,6 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
       ULONG totalOffset   = 0;
       PVOID lastSkipPos   = nullptr;
 
-      boost::locale::generator gen;
-      auto loc = gen("en_US.UTF-8");
       while (totalOffset < status.Information) {
         ULONG offset;
         std::wstring fileName;
@@ -423,9 +421,7 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
         }
         bool add = true;
         if (fileName.length() > 0) {
-          std::wstring fileNameL = fileName;
-          boost::algorithm::to_lower(fileNameL, loc);
-          auto insertRes = foundFiles.insert(fileNameL);
+          auto insertRes = foundFiles.insert(ush::to_upper(fileName));
           add      = insertRes.second; // add only if we didn't find this file before
         }
         // size of this block is determined by the offset in the info structure,
@@ -525,8 +521,6 @@ void gatherVirtualEntries(const UnicodeString &dirName,
                                           FileName->Buffer, ush::CodePage::UTF8)
                                     : "*.*";
 
-    boost::locale::generator gen;
-    auto loc = gen("en_US.UTF-8");
     for (const auto &subNode : node->find(searchPattern)) {
       if (((subNode->data().linkTarget.length() > 0) || subNode->isDirectory())
           && !subNode->hasFlag(usvfs::shared::FLAG_DUMMY)) {
@@ -537,9 +531,7 @@ void gatherVirtualEntries(const UnicodeString &dirName,
             ush::string_cast<std::wstring>(subNode->data().linkTarget.c_str(),
                                            ush::CodePage::UTF8), vName};
         info.virtualMatches.push_back(m);
-
-        boost::algorithm::to_lower(vName, loc);
-        info.foundFiles.insert(vName);
+        info.foundFiles.insert(ush::to_upper(vName));
       }
     }
   }

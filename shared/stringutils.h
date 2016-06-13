@@ -41,6 +41,13 @@ boost::filesystem::path make_relative(const boost::filesystem::path &from
 
 std::string to_hex(void *bufferIn, size_t bufferSize);
 
+///
+/// \brief convert unicode string to upper-case (locale invariant)
+/// \param input
+/// \return
+///
+std::wstring to_upper(const std::wstring &input);
+
 class FormatGuard {
   std::ostream &m_Stream;
   std::ios::fmtflags m_Flags;

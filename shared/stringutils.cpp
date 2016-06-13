@@ -131,3 +131,11 @@ std::string usvfs::shared::to_hex(void *bufferIn, size_t bufferSize)
   }
   return temp.str();
 }
+
+std::wstring usvfs::shared::to_upper(const std::wstring &input) {
+  std::wstring result;
+  result.resize(input.size());
+  ::LCMapStringW(LOCALE_INVARIANT, LCMAP_UPPERCASE, input.c_str(),
+                 input.size(), &result[0], result.size());
+  return result;
+}
