@@ -974,7 +974,7 @@ DWORD WINAPI usvfs::hooks::GetCurrentDirectoryW(DWORD nBufferLength,
     }
   }
 
-  if (true) {
+  if (!actualCWD.empty()) {
     LOG_CALL().PARAMWRAP(lpBuffer).PARAM(res);
   }
 
@@ -993,11 +993,13 @@ BOOL WINAPI usvfs::hooks::SetCurrentDirectoryW(LPCWSTR lpPathName)
   RerouteW reroute
       = RerouteW::create(context, callContext, lpPathName);
 
-  context->customData<std::wstring>(ActualCWD) = lpPathName;
-
   PRE_REALCALL
   res = ::SetCurrentDirectoryW(reroute.fileName());
   POST_REALCALL
+
+  if (res) {
+    context->customData<std::wstring>(ActualCWD) = lpPathName;
+  }
 
   LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(reroute.fileName()).PARAM(res);
 
