@@ -22,8 +22,14 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 
 #include <string>
 #include <ios>
-#include <boost/filesystem.hpp>
 
+#if 1
+#include <boost/filesystem.hpp>
+namespace fs = boost::filesystem;
+#else
+#include <filesystem>
+namespace fs = std::tr2::sys;
+#endif
 
 namespace usvfs {
 
@@ -36,8 +42,7 @@ bool startswith(const wchar_t *string, const wchar_t *subString);
 
 
 // Return path when appended to a_From will resolve to same as a_To
-boost::filesystem::path make_relative(const boost::filesystem::path &from
-                                      , const boost::filesystem::path &to);
+fs::path make_relative(const fs::path &from, const fs::path &to);
 
 std::string to_hex(void *bufferIn, size_t bufferSize);
 

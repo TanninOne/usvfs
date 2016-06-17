@@ -11,12 +11,17 @@
 #include <stringutils.h>
 #include <stringcast.h>
 #include <set>
-#include <boost/filesystem.hpp>
-
 #include <sstream>
 
+#if 1
+#include <boost/filesystem.hpp>
+namespace fs = boost::filesystem;
+#else
+namespace fs = std::tr2::sys;
+#include <filesystem>
+#endif
+
 namespace ush = usvfs::shared;
-namespace bfs = boost::filesystem;
 using ush::string_cast;
 using ush::CodePage;
 
@@ -140,7 +145,6 @@ public:
     if ((inPath != nullptr) && (inPath[0] != L'\0')
         && !ush::startswith(inPath, L"hid#")) {
       result.m_Buffer   = inPath;
-      result.m_RealPath.assign(inPath);
 
       bool absolute = false;
       if (ush::startswith(inPath, LR"(\\?\)")) {
@@ -154,8 +158,10 @@ public:
       if (!absolute) {
         usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FULL_PATHNAME);
         auto fullPath = winapi::wide::getFullPathName(inPath);
+        result.m_RealPath.assign(fullPath.first);
         lookupPath    = string_cast<std::string>(fullPath.first, CodePage::UTF8);
       } else {
+        result.m_RealPath.assign(inPath);
         lookupPath = string_cast<std::string>(inPath, CodePage::UTF8);
       }
       FindCreateTarget visitor;
@@ -165,15 +171,15 @@ public:
       if (visitor.target.get() != nullptr) {
         // the visitor has found the last (deepest in the directory hierarchy)
         // create-target
-        bfs::path relativePath
-            = ush::make_relative(visitor.target->path(), bfs::path(lookupPath));
-        result.m_Buffer = (bfs::path(visitor.target->data().linkTarget.c_str())
+        fs::path relativePath
+            = ush::make_relative(visitor.target->path(), fs::path(lookupPath));
+        result.m_Buffer = (fs::path(visitor.target->data().linkTarget.c_str())
                            / relativePath)
                               .wstring();
         try {
           usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::ALL_GROUPS);
           winapi::ex::wide::createPath(
-              bfs::path(result.m_Buffer).parent_path().wstring().c_str());
+              fs::path(result.m_Buffer).parent_path().wstring().c_str());
         } catch (const std::exception &e) {
           spdlog::get("hooks")
               ->error("failed to create {}: {}",
@@ -353,9 +359,14 @@ BOOL WINAPI usvfs::hooks::CreateProcessA(
   }
 
   PRE_REALCALL
-  std::string appName = ush::string_cast<std::string>(applicationReroute.fileName());
+  LPCSTR appName = nullptr;
+  std::string appNameBuffer;
+  if (applicationReroute.fileName() != nullptr) {
+    appNameBuffer = ush::string_cast<std::string>(applicationReroute.fileName());
+    appName = appNameBuffer.c_str();
+  }
   res = ::CreateProcessA(
-      appName.c_str(),
+      appName,
       lpCommandLine != nullptr ? &cmdline[0] : nullptr, lpProcessAttributes,
       lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment,
       lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
@@ -590,7 +601,7 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
       create  = reroute.wasRerouted();
 
       if (create) {
-        bfs::path target(reroute.fileName());
+        fs::path target(reroute.fileName());
         winapi::ex::wide::createPath(target.parent_path().wstring().c_str(),
                                      lpSecurityAttributes);
       }
@@ -866,10 +877,6 @@ BOOL WINAPI usvfs::hooks::CopyFileW(LPCWSTR lpExistingFileName,
   POST_REALCALL
 
   if (res) {
-    if (readReroute.wasRerouted()) {
-      readReroute.removeMapping();
-    }
-
     if (writeReroute.wasRerouted()) {
       writeReroute.insertMapping(WRITE_CONTEXT());
     }
@@ -925,10 +932,6 @@ BOOL WINAPI usvfs::hooks::CopyFileExW(LPCWSTR lpExistingFileName,
   POST_REALCALL
 
   if (res) {
-    if (readReroute.wasRerouted()) {
-      readReroute.removeMapping();
-    }
-
     if (writeReroute.wasRerouted()) {
       writeReroute.insertMapping(WRITE_CONTEXT());
     }
@@ -943,6 +946,21 @@ BOOL WINAPI usvfs::hooks::CopyFileExW(LPCWSTR lpExistingFileName,
   }
 
   HOOK_END
+
+  return res;
+}
+
+DWORD WINAPI usvfs::hooks::GetCurrentDirectoryA(DWORD nBufferLength,
+                                                LPSTR lpBuffer)
+{
+  std::wstring buffer;
+  buffer.resize(nBufferLength);
+  DWORD res = usvfs::hooks::GetCurrentDirectoryW(nBufferLength, &buffer[0]);
+
+  if (res > 0) {
+      res = WideCharToMultiByte(CP_ACP, 0, buffer.c_str(), res,
+                                lpBuffer, nBufferLength, nullptr, nullptr);
+  }
 
   return res;
 }
@@ -981,6 +999,11 @@ DWORD WINAPI usvfs::hooks::GetCurrentDirectoryW(DWORD nBufferLength,
   HOOK_END
 
   return res;
+}
+
+BOOL WINAPI usvfs::hooks::SetCurrentDirectoryA(LPCSTR lpPathName) {
+  return usvfs::hooks::SetCurrentDirectoryW(
+      ush::string_cast<std::wstring>(lpPathName).c_str());
 }
 
 BOOL WINAPI usvfs::hooks::SetCurrentDirectoryW(LPCWSTR lpPathName)
@@ -1049,10 +1072,10 @@ DWORD WINAPI usvfs::hooks::GetFullPathNameW(LPCWSTR lpFileName,
 
   std::wstring actualCWD = context->customData<std::wstring>(ActualCWD);
   std::wstring temp;
-  if (actualCWD.empty() || bfs::path(lpFileName).is_absolute()) {
+  if (actualCWD.empty() || fs::path(lpFileName).is_absolute()) {
     temp = lpFileName;
   } else {
-    temp = (bfs::wpath(actualCWD) / lpFileName).wstring();
+    temp = (fs::wpath(actualCWD) / lpFileName).wstring();
   }
   PRE_REALCALL
   res = ::GetFullPathNameW(temp.c_str(), nBufferLength, lpBuffer, lpFilePart);

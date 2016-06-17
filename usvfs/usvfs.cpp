@@ -97,6 +97,7 @@ void InitLoggingInternal(bool toConsole, bool connectExistingSHM)
         SHMLogger::create("usvfs");
       }
     }
+
     // a temporary logger was created in DllMain
     spdlog::drop("usvfs");
     #pragma message("need a customized name for the shm")
@@ -106,6 +107,7 @@ void InitLoggingInternal(bool toConsole, bool connectExistingSHM)
                          : spdlog::create<spdlog::sinks::shm_sink>("usvfs", "usvfs");
       logger->set_pattern("%H:%M:%S.%e [%L] %v");
     }
+    logger->set_level(spdlog::level::debug);
 
     spdlog::drop("hooks");
     logger = spdlog::get("hooks");
@@ -114,11 +116,16 @@ void InitLoggingInternal(bool toConsole, bool connectExistingSHM)
                          : spdlog::create<spdlog::sinks::shm_sink>("hooks", "usvfs");
       logger->set_pattern("%H:%M:%S.%e <%P:%t> [%L] %v");
     }
+    logger->set_level(spdlog::level::debug);
   } catch (const std::exception&) {
     // TODO should really report this
     //OutputDebugStringA((boost::format("init exception: %1%\n") % e.what()).str().c_str());
-    spdlog::create<spdlog::sinks::null_sink>("usvfs");
-    spdlog::create<spdlog::sinks::null_sink>("hooks");
+    if (spdlog::get("usvfs").get() == nullptr) {
+      spdlog::create<spdlog::sinks::null_sink>("usvfs");
+    }
+    if (spdlog::get("hooks").get() == nullptr) {
+      spdlog::create<spdlog::sinks::null_sink>("hooks");
+    }
   }
 }
 
@@ -303,15 +310,14 @@ void __cdecl InitHooks(LPVOID parameters, size_t)
 #pragma message("bug: if the ve handler is called, the process breaks")
 
   USVFSParameters *params = reinterpret_cast<USVFSParameters *>(parameters);
-  spdlog::get("usvfs")->set_level(ConvertLogLevel(params->logLevel));
-  spdlog::get("hooks")->set_level(ConvertLogLevel(params->logLevel));
+  SetLogLevel(params->logLevel);
 
   spdlog::get("usvfs")
       ->debug("inithooks called {0} in process {1} (log level {2})",
               params->instanceName, ::GetCurrentProcessId(),
               static_cast<int>(params->logLevel));
   spdlog::get("usvfs")
-      ->debug("process name: {}", winapi::ansi::getModuleFileName(nullptr));
+      ->info("process name: {}", winapi::ansi::getModuleFileName(nullptr));
 
   try {
     manager = new usvfs::HookManager(*params, dllModule);

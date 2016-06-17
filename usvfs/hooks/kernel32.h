@@ -15,7 +15,9 @@ DLLEXPORT BOOL WINAPI GetFileAttributesExW(LPCWSTR lpFileName, GET_FILEEX_INFO_L
 DLLEXPORT DWORD WINAPI GetFileAttributesW(LPCWSTR lpFileName);
 DLLEXPORT DWORD WINAPI SetFileAttributesW(LPCWSTR lpFileName, DWORD dwFileAttributes);
 
+DLLEXPORT DWORD WINAPI GetCurrentDirectoryA(DWORD nBufferLength, LPSTR lpBuffer);
 DLLEXPORT DWORD WINAPI GetCurrentDirectoryW(DWORD nBufferLength, LPWSTR lpBuffer);
+DLLEXPORT BOOL WINAPI SetCurrentDirectoryA(LPCSTR lpPathName);
 DLLEXPORT BOOL WINAPI SetCurrentDirectoryW(LPCWSTR lpPathName);
 DLLEXPORT DWORD WINAPI GetFullPathNameW(LPCWSTR lpFileName, DWORD nBufferLength, LPWSTR lpBuffer, LPWSTR *lpFilePart);
 

@@ -135,5 +135,6 @@ LogLevel usvfs::log::ConvertLogLevel(spdlog::level::level_enum level)
     case spdlog::level::info:  return LogLevel::Info;
     case spdlog::level::warn:  return LogLevel::Warning;
     case spdlog::level::err:   return LogLevel::Error;
+    default: return LogLevel::Debug;
   }
 }

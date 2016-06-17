@@ -20,20 +20,24 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 */
 #include "directory_tree.h"
 
-
-boost::filesystem::path::iterator usvfs::shared::nextIter(const boost::filesystem::path::iterator &iter
-                                                          , const boost::filesystem::path::iterator &end)
-{
-  static boost::filesystem::path slash("/");
-  static boost::filesystem::path bSlash("\\");
-  static boost::filesystem::path dot(".");
-  boost::filesystem::path::iterator next = iter;
+fs::path::iterator usvfs::shared::nextIter(const fs::path::iterator &iter,
+                                           const fs::path::iterator &end) {
+  fs::path::iterator next = iter;
   ++next;
-  while (   (next != end)
-            && (   (next->compare(slash) == 0)
-                   || (next->compare(bSlash) == 0)
-                   || (next->compare(dot) == 0))) {
+  while ((next != end) &&
+         ((*next->c_str() == L'/') || (*next->c_str() == L'\\') ||
+          (*next->c_str() == L'.') || (*next->c_str() == L'\0'))) {
     ++next;
   }
   return next;
+}
+
+void usvfs::shared::advanceIter(fs::path::iterator &iter,
+                                const fs::path::iterator &end) {
+  ++iter;
+  while ((iter != end) &&
+         ((*iter->c_str() == L'/') || (*iter->c_str() == L'\\') ||
+          (*iter->c_str() == L'.') || (*iter->c_str() == L'\0'))) {
+    ++iter;
+  }
 }

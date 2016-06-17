@@ -136,7 +136,7 @@ SharedParameters *HookContext::retrieveParameters(const USVFSParameters &params)
     spdlog::get("usvfs")
         ->info("access existing config in {}", ::GetCurrentProcessId());
   }
-  spdlog::get("usvfs")->info("{} processes", res.first->processList.size());
+  spdlog::get("usvfs")->info("{} processes - {}", res.first->processList.size(), (int)res.first->logLevel);
   return res.first;
 }
 

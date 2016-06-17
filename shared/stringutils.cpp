@@ -23,15 +23,12 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <iomanip>
 #include <sstream>
 #include <boost/algorithm/string/case_conv.hpp>
+#include <boost/algorithm/string.hpp>
 #include <boost/locale.hpp>
 #include "windows_sane.h"
 #include "windows_error.h"
 
 #pragma warning ( disable : 4996 )
-
-
-namespace bfs = boost::filesystem;
-
 
 void usvfs::shared::strncpy_sz(char *dest, const char *src, size_t destSize)
 {
@@ -63,13 +60,13 @@ bool usvfs::shared::startswith(const wchar_t *string, const wchar_t *subString)
   return *subString == '\0';
 }
 
-static bfs::path normalize(const bfs::path &path)
+static fs::path normalize(const fs::path &path)
 {
-  bfs::path result;
+  fs::path result;
 
   boost::locale::generator gen;
   auto loc = gen("en_US.UTF-8");
-  for (bfs::path::iterator iter = path.begin(); iter != path.end(); ++iter) {
+  for (fs::path::iterator iter = path.begin(); iter != path.end(); ++iter) {
     if (*iter == "..") {
       result = result.parent_path();
     } else if (*iter != ".") {
@@ -79,32 +76,30 @@ static bfs::path normalize(const bfs::path &path)
   return result;
 }
 
-bfs::path usvfs::shared::make_relative(const bfs::path &fromIn,
-                                       const bfs::path &toIn)
-{
+fs::path usvfs::shared::make_relative(const fs::path &fromIn,
+                                      const fs::path &toIn) {
   // converting path to lower case to make iterator comparison work correctly
   // on case-insenstive filesystems
-  bfs::path from(normalize(absolute(fromIn)));
-  bfs::path to(  normalize(absolute(toIn)));
+  fs::path from(fs::absolute(fromIn));
+  fs::path to(fs::absolute(toIn));
 
   // find common base
-  bfs::path::const_iterator fromIter(from.begin());
-  bfs::path::const_iterator toIter(to.begin());
+  fs::path::const_iterator fromIter(from.begin());
+  fs::path::const_iterator toIter(to.begin());
 
   // TODO the following equivalent test is probably quite expensive as new
   // paths are created for each iteration but the case sensitivity depends on
   // the fs
-  while ((fromIter != from.end())
-         && (toIter != to.end())
-         && (*fromIter == *toIter)) {
+  while ((fromIter != from.end()) && (toIter != to.end()) &&
+         (boost::iequals(fromIter->string(), toIter->string()))) {
     ++fromIter;
     ++toIter;
   }
 
   // Navigate backwards in directory to reach previously found base
-  boost::filesystem::path result;
+  fs::path result;
   for (; fromIter != from.end(); ++fromIter) {
-    if(*fromIter != ".") {
+    if (*fromIter != ".") {
       result /= "..";
     }
   }
@@ -136,6 +131,7 @@ std::wstring usvfs::shared::to_upper(const std::wstring &input) {
   std::wstring result;
   result.resize(input.size());
   ::LCMapStringW(LOCALE_INVARIANT, LCMAP_UPPERCASE, input.c_str(),
-                 input.size(), &result[0], result.size());
+                 static_cast<int>(input.size()), &result[0],
+                 static_cast<int>(result.size()));
   return result;
 }

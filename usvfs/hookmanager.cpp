@@ -231,9 +231,9 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "CreateDirectoryW", uhooks::CreateDirectoryW);
   installHook(kbaseMod, k32Mod, "DeleteFileW", uhooks::DeleteFileW);
   installHook(kbaseMod, k32Mod, "DeleteFileA", uhooks::DeleteFileA);
-  installStub(kbaseMod, k32Mod, "GetCurrentDirectoryA");
+  installHook(kbaseMod, k32Mod, "GetCurrentDirectoryA", uhooks::GetCurrentDirectoryA);
   installHook(kbaseMod, k32Mod, "GetCurrentDirectoryW", uhooks::GetCurrentDirectoryW);
-  installStub(kbaseMod, k32Mod, "SetCurrentDirectoryA");
+  installHook(kbaseMod, k32Mod, "SetCurrentDirectoryA", uhooks::SetCurrentDirectoryA);
   installHook(kbaseMod, k32Mod, "SetCurrentDirectoryW", uhooks::SetCurrentDirectoryW);
 
   installHook(kbaseMod, k32Mod, "ExitProcess", uhooks::ExitProcess);

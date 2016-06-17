@@ -99,6 +99,7 @@ applyReroute(const usvfs::HookContext::ConstPtr &context,
     // see if the file exists in the redirection tree
     std::string lookupPath = ush::string_cast<std::string>(
         static_cast<LPCWSTR>(result.first) + 4, ush::CodePage::UTF8);
+spdlog::get("usvfs")->info("find node {}", lookupPath);
     auto node = context->redirectionTable()->findNode(lookupPath.c_str());
     // if so, replace the file name with the path to the mapped file
     if ((node.get() != nullptr) && !node->data().linkTarget.empty()) {

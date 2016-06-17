@@ -26,8 +26,6 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include "logging.h"
 #include "stringutils.h"
 #include <boost/predef.h>
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/detail/utf8_codecvt_facet.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/format.hpp>
 #include "exceptionex.h"
@@ -51,6 +49,14 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <codecvt>
 #include <spdlog.h>
 
+#if 1
+namespace fs = boost::filesystem;
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/detail/utf8_codecvt_facet.hpp>
+#else
+#include <filesystem>
+namespace fs = std::tr2::sys;
+#endif
 
 
 // simplify unit tests by allowing access to private members
@@ -79,13 +85,13 @@ template <typename T> T createDataEmpty(const VoidAllocatorT &allocator);
 
 template <typename T> void dataAssign(T &destination, const T &source);
 
-// crappy little workaround for boost::filesystem::path iterating over path separators
-boost::filesystem::path::iterator nextIter(const boost::filesystem::path::iterator &iter,
-                                           const boost::filesystem::path::iterator &end);
+// crappy little workaround for fs::path iterating over path separators
+fs::path::iterator nextIter(const fs::path::iterator &iter,
+                            const fs::path::iterator &end);
 
+void advanceIter(fs::path::iterator &iter, const fs::path::iterator &end);
 
 namespace bi = boost::interprocess;
-namespace bfs = boost::filesystem;
 namespace bmi = boost::multi_index;
 
 typedef uint8_t TreeFlags;
@@ -224,12 +230,12 @@ public:
   /**
    * @return the full path to the node
    */
-  bfs::path path() const {
+  fs::path path() const {
     if (m_Parent.lock().get() == nullptr) {
       if (m_Name.size() == 0) {
-        return bfs::path();
+        return fs::path();
       } else {
-        return bfs::path(m_Name.c_str()) / "\\";
+        return fs::path(m_Name.c_str()) / "\\";
       }
     } else {
       return m_Parent.lock()->path() / m_Name.c_str();
@@ -288,8 +294,9 @@ public:
    * @param path the path to look up
    * @return a pointer to the node or a null ptr
    */
-  NodePtrT findNode(const boost::filesystem::path &path) {
-    return findNode(path, path.begin());
+  NodePtrT findNode(const fs::path &path) {
+    fs::path::iterator iter = path.begin();
+    return findNode(path, iter);
   }
 
   /**
@@ -297,8 +304,9 @@ public:
    * @param path the path to look up
    * @return a pointer to the node or a null ptr
    */
-  const NodePtrT findNode(const boost::filesystem::path &path) const {
-    return findNode(path, path.begin());
+  const NodePtrT findNode(const fs::path &path) const {
+    fs::path::iterator iter = path.begin();
+    return findNode(path, iter);
   }
 
   /**
@@ -306,8 +314,9 @@ public:
    * @param path the path to visit
    * @param visitor a function called for each node
    */
-  void visitPath(const boost::filesystem::path &path, const VisitorFunction &visitor) const {
-    visitPath(path, path.begin(), visitor);
+  void visitPath(const fs::path &path, const VisitorFunction &visitor) const {
+    fs::path::iterator iter = path.begin();
+    visitPath(path, iter, visitor);
   }
 
   /**
@@ -393,7 +402,7 @@ public:
       // if there is a prefix, search for the node representing that path and
       // search only on that
       NodePtrT node
-          = findNode(bfs::path(pattern.substr(0, fixedPart)));
+          = findNode(fs::path(pattern.substr(0, fixedPart)));
       if (node.get() != nullptr) {
         node->findLocal(result, pattern.substr(fixedPart + 1));
       }
@@ -438,6 +447,7 @@ public:
 
   void removeFromTree() {
     if (auto par = parent()) {
+      spdlog::get("usvfs")->info("remove from tree {}", m_Name);
       auto self = par->m_Nodes.find(m_Name);
       par->erase(self);
     }
@@ -461,10 +471,11 @@ PRIVATE:
     }
   }
 
-  NodePtrT findNode(const boost::filesystem::path &name, boost::filesystem::path::iterator iter) {
+  NodePtrT findNode(const fs::path &name, fs::path::iterator &iter) {
+    std::string l = iter->string();
     auto subNode = m_Nodes.find(iter->string());
-    boost::filesystem::path::iterator next = nextIter(iter, name.end());
-    if (next == name.end()) {
+    advanceIter(iter, name.end());
+    if (iter == name.end()) {
       // last name component, should be a local node
       if (subNode != m_Nodes.end()) {
         return subNode->second;
@@ -473,17 +484,18 @@ PRIVATE:
       }
     } else {
       if (subNode != m_Nodes.end()) {
-        return subNode->second->findNode(name, next);
+        return subNode->second->findNode(name, iter);
       } else {
         return NodePtrT();
       }
     }
   }
 
-  const NodePtrT findNode(const boost::filesystem::path &name, boost::filesystem::path::iterator iter) const {
+  const NodePtrT findNode(const fs::path &name,
+                          fs::path::iterator &iter) const {
     auto subNode = m_Nodes.find(iter->string());
-    boost::filesystem::path::iterator next = nextIter(iter, name.end());
-    if (next == name.end()) {
+    advanceIter(iter, name.end());
+    if (iter == name.end()) {
       // last name component, should be a local node
       if (subNode != m_Nodes.end()) {
         return subNode->second;
@@ -492,22 +504,22 @@ PRIVATE:
       }
     } else {
       if (subNode != m_Nodes.end()) {
-        return subNode->second->findNode(name, next);
+        return subNode->second->findNode(name, iter);
       } else {
         return NodePtrT();
       }
     }
   }
 
-  void visitPath(const boost::filesystem::path &path
-                 , boost::filesystem::path::iterator iter
+  void visitPath(const fs::path &path
+                 , fs::path::iterator &iter
                  , const VisitorFunction &visitor) const {
     auto subNode = m_Nodes.find(iter->string());
     if (subNode != m_Nodes.end()) {
       visitor(subNode->second);
-      auto next = nextIter(iter, path.end());
-      if (next != path.end()) {
-        subNode->second->visitPath(path, next, visitor);
+      advanceIter(iter, path.end());
+      if (iter != path.end()) {
+        subNode->second->visitPath(path, iter, visitor);
       }
     }
   }
@@ -576,8 +588,8 @@ public:
     , m_SHMName(SHMName)
   {
     std::locale global_loc = std::locale();
-    std::locale loc(global_loc, new boost::filesystem::detail::utf8_codecvt_facet);
-    boost::filesystem::path::imbue(loc);
+    std::locale loc(global_loc, new fs::detail::utf8_codecvt_facet);
+    fs::path::imbue(loc);
 
     namespace sp = std::placeholders;
     std::regex pattern(R"exp((.*_)(\d+))exp");
@@ -665,7 +677,7 @@ public:
    * @return pointer to the new node or a null ptr
    **/
   template <typename T>
-  typename TreeT::NodePtrT addFile(const boost::filesystem::path &name
+  typename TreeT::NodePtrT addFile(const fs::path &name
                                    , const T &data
                                    , TreeFlags flags = 0
                                    , bool overwrite = true) {
@@ -689,7 +701,7 @@ public:
    * @return pointer to the new node or a null ptr
    **/
   template <typename T>
-  typename TreeT::NodePtrT addDirectory(const boost::filesystem::path &name,
+  typename TreeT::NodePtrT addDirectory(const fs::path &name,
                                         const T &data, TreeFlags flags = 0,
                                         bool overwrite = true)
   {
@@ -753,13 +765,13 @@ private:
 
   template <typename T>
   typename TreeT::NodePtrT addNode(TreeT *base
-                                   , const boost::filesystem::path &name
-                                   , boost::filesystem::path::iterator iter
+                                   , const fs::path &name
+                                   , fs::path::iterator iter
                                    , const T &data
                                    , bool overwrite
                                    , unsigned int flags
                                    , const VoidAllocatorT &allocator) {
-    boost::filesystem::path::iterator next = nextIter(iter, name.end());
+    fs::path::iterator next = nextIter(iter, name.end());
     StringT iterString(iter->string().c_str(), allocator);
     if (next == name.end()) {
       typename TreeT::NodePtrT newNode = base->node(iter->string().c_str());
