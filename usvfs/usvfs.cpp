@@ -175,7 +175,7 @@ void createMiniDump(PEXCEPTION_POINTERS exceptionPtrs)
   char errorBuffer[errorLen + 1];
   memset(errorBuffer, '\0', errorLen + 1);
 
-  auto logger = spdlog::get("usvfs");
+  auto logger = spdlog::get("hooks");
 
   if (dbgDLL) {
     FuncMiniDumpWriteDump funcDump = reinterpret_cast<FuncMiniDumpWriteDump>(GetProcAddress(dbgDLL, "MiniDumpWriteDump"));
@@ -270,6 +270,7 @@ LONG WINAPI VEHandler(PEXCEPTION_POINTERS exceptionPtrs)
       }
       // re-install exception handler
 //      exceptionHandler = ::AddVectoredExceptionHandler(0, VEHandler);
+      createMiniDump(exceptionPtrs);
       return EXCEPTION_CONTINUE_SEARCH;
     } else {
       // exception in usvfs. damn
@@ -343,6 +344,12 @@ void WINAPI GetCurrentVFSName(char *buffer, size_t size)
 }
 
 
+BOOL WINAPI CreateVFS(const USVFSParameters *params)
+{
+  usvfs::HookContext::remove(params->instanceName);
+  return ConnectVFS(params);
+}
+
 BOOL WINAPI ConnectVFS(const USVFSParameters *params)
 {
   if (spdlog::get("usvfs").get() == nullptr) {
@@ -352,7 +359,6 @@ BOOL WINAPI ConnectVFS(const USVFSParameters *params)
 
   try {
     DisconnectVFS();
-
     context = new usvfs::HookContext(*params, dllModule);
 
     return TRUE;

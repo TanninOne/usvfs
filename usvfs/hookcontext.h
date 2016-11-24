@@ -109,6 +109,7 @@ public:
 
   HookContext &operator=(const HookContext &reference) = delete;
 
+  static void remove(const char *instance);
 
   /**
    * @brief get read access to the context.

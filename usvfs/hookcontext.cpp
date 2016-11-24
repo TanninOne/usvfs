@@ -106,6 +106,11 @@ HookContext::HookContext(const USVFSParameters &params, HMODULE module)
   }
 }
 
+void HookContext::remove(const char *instanceName)
+{
+  bi::shared_memory_object::remove(instanceName);
+}
+
 HookContext::~HookContext()
 {
   spdlog::get("usvfs")->info("releasing hook context");

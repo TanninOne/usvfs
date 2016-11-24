@@ -129,6 +129,7 @@ public:
           result.m_Rerouted = true;
         }
       }
+      std::replace(result.m_Buffer.begin(), result.m_Buffer.end(), L'/', L'\\');
       result.m_FileName = result.m_Buffer.c_str();
     }
     return result;

@@ -83,6 +83,12 @@ DLLEXPORT BOOL WINAPI VirtualLinkDirectoryStatic(LPCWSTR source, LPCWSTR destina
 DLLEXPORT BOOL WINAPI ConnectVFS(const USVFSParameters *parameters);
 
 /**
+ * @brief create a new VFS. This is similar to ConnectVFS except it guarantees
+ *   the vfs is reset before use.
+ */
+DLLEXPORT BOOL WINAPI CreateVFS(const USVFSParameters *parameters);
+
+/**
  * disconnect from a virtual filesystem. This removes hooks if necessary
  */
 DLLEXPORT void WINAPI DisconnectVFS();

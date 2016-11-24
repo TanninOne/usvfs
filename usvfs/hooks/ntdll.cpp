@@ -99,7 +99,6 @@ applyReroute(const usvfs::HookContext::ConstPtr &context,
     // see if the file exists in the redirection tree
     std::string lookupPath = ush::string_cast<std::string>(
         static_cast<LPCWSTR>(result.first) + 4, ush::CodePage::UTF8);
-spdlog::get("usvfs")->info("find node {}", lookupPath);
     auto node = context->redirectionTable()->findNode(lookupPath.c_str());
     // if so, replace the file name with the path to the mapped file
     if ((node.get() != nullptr) && !node->data().linkTarget.empty()) {
@@ -425,13 +424,6 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
           auto insertRes = foundFiles.insert(ush::to_upper(fileName));
           add      = insertRes.second; // add only if we didn't find this file before
         }
-        // size of this block is determined by the offset in the info structure,
-        // unless its the last element, then its size is the remaining buffer
-        // size
-        ULONG size
-            = offset != 0
-                  ? offset
-                  : (static_cast<ULONG>(status.Information) - totalOffset);
         if (!add) {
           if (lastSkipPos == nullptr) {
             lastSkipPos = buffer;
@@ -439,14 +431,20 @@ NTSTATUS addNtSearchData(HANDLE hdl, PUNICODE_STRING FileName,
         } else {
           if (lastSkipPos != nullptr) {
             memmove(lastSkipPos, buffer, status.Information - totalOffset);
-            totalOffset -= static_cast<ULONG>(ush::AddrDiff(buffer, lastSkipPos));
+            ULONG delta = static_cast<ULONG>(ush::AddrDiff(buffer, lastSkipPos));
+            totalOffset -= delta;
+
             buffer = lastSkipPos;
             lastSkipPos = nullptr;
           }
           lastValidRecord = buffer;
         }
-        buffer = ush::AddrAdd(buffer, size);
-        totalOffset += size;
+
+        if (offset == 0) {
+          offset = static_cast<ULONG>(status.Information) - totalOffset;
+        }
+        buffer = ush::AddrAdd(buffer, offset);
+        totalOffset += offset;
       }
 
       if (lastSkipPos != nullptr) {
@@ -669,6 +667,7 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
     gatherVirtualEntries(searchPath, context->redirectionTable(), FileName,
                          infoIter->second);
   }
+
   ULONG dataRead = Length;
   PVOID FileInformationCurrent = FileInformation;
 
@@ -683,7 +682,6 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
     if (handle == INVALID_HANDLE_VALUE) {
       handle = FileHandle;
     }
-
     NTSTATUS subRes = addNtSearchData(
         handle, FileName, L"", FileInformationClass, FileInformationCurrent,
         dataRead, infoIter->second.foundFiles, Event, ApcRoutine, ApcContext,
