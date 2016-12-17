@@ -447,8 +447,8 @@ public:
 
   void removeFromTree() {
     if (auto par = parent()) {
-      spdlog::get("usvfs")->info("remove from tree {}", m_Name);
-      auto self = par->m_Nodes.find(m_Name);
+      spdlog::get("usvfs")->info("remove from tree {}", m_Name.c_str());
+      auto self = par->m_Nodes.find(m_Name.c_str());
       par->erase(self);
     }
   }
