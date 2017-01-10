@@ -344,7 +344,7 @@ BOOL WINAPI usvfs::hooks::CreateProcessA(
       std::stringstream stream;
       stream << "\"" << cmdReroute.fileName() << "\"";
       for (int i = 1; i < argc; ++i) {
-        stream << " " << argv[i];
+        stream << " " << "\"" << argv[i] << "\"";
       }
       cmdline = stream.str();
     }
@@ -451,7 +451,7 @@ BOOL WINAPI usvfs::hooks::CreateProcessW(
       std::wstringstream stream;
       stream << "\"" << cmdReroute.fileName() << "\"";
       for (int i = 1; i < argc; ++i) {
-        stream << " " << argv[i];
+        stream << " " << "\"" << argv[i] << "\"";
       }
       cmdline = stream.str();
     }
