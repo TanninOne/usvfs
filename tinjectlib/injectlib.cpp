@@ -296,8 +296,10 @@ REGWORD WriteInjectionStub(HANDLE processHandle
   // now for the interesting part: write a stub into the target process that is run before any code of the original binary.
 
   JitRuntime runtime;
+  CodeHolder codehold;                        
+  codehold.init(runtime.getCodeInfo());    
 #if BOOST_ARCH_X86_64
-  X86Assembler assembler(&runtime);
+  X86Assembler assembler(&codehold);
   if (returnAddress != 0) {
     // put return address on the stack
     // (this damages rax which hopefully doesn't matter)
@@ -305,7 +307,7 @@ REGWORD WriteInjectionStub(HANDLE processHandle
     assembler.push(rax);
   } // otherwise no return address was specified here. It better be on the stack already
 #else
-  X86Assembler assembler(&runtime);
+  X86Assembler assembler(&codehold);
   if (returnAddress != 0) {
     assembler.push(imm((intptr_t)(void*)data.returnAddress));
   }
@@ -314,7 +316,7 @@ REGWORD WriteInjectionStub(HANDLE processHandle
   addStub(userDataSize, assembler, skipInit, &data, remoteData, initFunction);
   assembler.ret(0);
 
-  size_t stubSize = assembler.getCodeSize();
+  size_t stubSize = codehold.getCodeSize();
 
   // reserve memory for the stub
   PBYTE stubRemote = reinterpret_cast<PBYTE>(VirtualAllocEx(processHandle, nullptr,
@@ -324,8 +326,10 @@ REGWORD WriteInjectionStub(HANDLE processHandle
     throw windows_error("failed to allocate memory for stub");
   }
 
+  codehold.sync();
+  asmjit::CodeBuffer& buf = codehold.getSectionEntry(0)->getBuffer();
   // almost there. copy stub to target process
-  if (!WriteProcessMemory(processHandle, stubRemote, assembler.getBuffer(),
+  if (!WriteProcessMemory(processHandle, stubRemote, buf.getData(),
                             stubSize, &written) ||
       (written != stubSize)) {
     throw windows_error("failed to write stub to target process");
