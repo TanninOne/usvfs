@@ -399,8 +399,9 @@ bool processStillActive(DWORD pid)
     return false;
   }
 
-  ON_BLOCK_EXIT([proc]() {
-    ::CloseHandle(proc);
+  ON_BLOCK_EXIT([&]() {
+	  if (proc != INVALID_HANDLE_VALUE)
+		  ::CloseHandle(proc);
   });
 
   DWORD exitCode;
