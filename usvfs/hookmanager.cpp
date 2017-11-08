@@ -229,6 +229,7 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "CreateFileW", uhooks::CreateFileW); // not all calls seem to translate to a call to NtCreateFile
   installHook(kbaseMod, k32Mod, "CreateFileA", uhooks::CreateFileA);
   installHook(kbaseMod, k32Mod, "CreateDirectoryW", uhooks::CreateDirectoryW);
+  installHook(kbaseMod, k32Mod, "RemoveDirectoryW", uhooks::RemoveDirectoryW);
   installHook(kbaseMod, k32Mod, "DeleteFileW", uhooks::DeleteFileW);
   installHook(kbaseMod, k32Mod, "DeleteFileA", uhooks::DeleteFileA);
   installHook(kbaseMod, k32Mod, "GetCurrentDirectoryA", uhooks::GetCurrentDirectoryA);

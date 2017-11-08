@@ -697,8 +697,8 @@ DWORD WINAPI usvfs::hooks::GetFileAttributesW(LPCWSTR lpFileName)
   return res;
 }
 
-DWORD WINAPI usvfs::hooks::SetFileAttributesW(LPCTSTR lpFileName,
-                                              DWORD dwFileAttributes)
+DWORD WINAPI usvfs::hooks::SetFileAttributesW(
+	LPCWSTR lpFileName, DWORD dwFileAttributes)
 {
   DWORD res = 0UL;
 
@@ -727,7 +727,11 @@ BOOL WINAPI usvfs::hooks::DeleteFileW(LPCWSTR lpFileName)
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
 
   PRE_REALCALL
-  res = ::DeleteFileW(reroute.fileName());
+  if (reroute.wasRerouted()) {
+    res = ::DeleteFileW(reroute.fileName());
+  } else {
+    res = ::DeleteFileW(lpFileName);
+  }
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
@@ -1060,6 +1064,35 @@ DLLEXPORT BOOL WINAPI usvfs::hooks::CreateDirectoryW(
   return res;
 }
 
+DLLEXPORT BOOL WINAPI usvfs::hooks::RemoveDirectoryW(
+	LPCWSTR lpPathName)
+{
+
+	BOOL res = FALSE;
+
+	HOOK_START_GROUP(MutExHookGroup::DELETE_FILE)
+
+	RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpPathName);
+
+	PRE_REALCALL
+	if (reroute.wasRerouted()) {
+		res = ::RemoveDirectoryW(reroute.fileName());
+	}
+	else {
+		res = ::RemoveDirectoryW(lpPathName);
+	}
+	POST_REALCALL
+
+	if (reroute.wasRerouted()) {
+		reroute.removeMapping();
+		LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(reroute.fileName()).PARAM(res);
+	}
+		
+	HOOK_END
+
+	return res;
+}
+
 
 DWORD WINAPI usvfs::hooks::GetFullPathNameW(LPCWSTR lpFileName,
                                             DWORD nBufferLength,
@@ -1335,3 +1368,4 @@ VOID WINAPI usvfs::hooks::ExitProcess(UINT exitCode)
 
   HOOK_END
 }
+

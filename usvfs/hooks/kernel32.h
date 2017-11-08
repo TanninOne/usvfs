@@ -22,6 +22,7 @@ DLLEXPORT BOOL WINAPI SetCurrentDirectoryW(LPCWSTR lpPathName);
 DLLEXPORT DWORD WINAPI GetFullPathNameW(LPCWSTR lpFileName, DWORD nBufferLength, LPWSTR lpBuffer, LPWSTR *lpFilePart);
 
 DLLEXPORT BOOL WINAPI CreateDirectoryW(LPCWSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes);
+DLLEXPORT BOOL WINAPI RemoveDirectoryW(LPCWSTR lpPathName);
 
 DLLEXPORT BOOL WINAPI DeleteFileW(LPCWSTR lpFileName);
 DLLEXPORT BOOL WINAPI DeleteFileA(LPCSTR lpFileName);
