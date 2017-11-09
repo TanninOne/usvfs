@@ -806,8 +806,14 @@ NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
         = makeObjectAttributes(redir, ObjectAttributes);
 
     PRE_REALCALL
-    res = ::NtOpenFile(FileHandle, DesiredAccess, adjustedAttributes.get(),
-                       IoStatusBlock, ShareAccess, OpenOptions);
+		if (redir.second) {
+			res = ::NtOpenFile(FileHandle, DesiredAccess, adjustedAttributes.get(),
+				IoStatusBlock, ShareAccess, OpenOptions);
+		}
+		else {
+			res = ::NtOpenFile(FileHandle, DesiredAccess, ObjectAttributes,
+				IoStatusBlock, ShareAccess, OpenOptions);
+		}
     POST_REALCALL
     if (SUCCEEDED(res) && storePath) {
       // store the original search path for use during iteration
@@ -915,10 +921,18 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
       = makeObjectAttributes(redir, ObjectAttributes); 
 
   PRE_REALCALL
-  res = ::NtCreateFile(FileHandle, DesiredAccess, adjustedAttributes.get(),
-                       IoStatusBlock, AllocationSize, FileAttributes,
-                       ShareAccess, CreateDisposition, CreateOptions, EaBuffer,
-                       EaLength);
+	  if (redir.second) {
+		  res = ::NtCreateFile(FileHandle, DesiredAccess, adjustedAttributes.get(),
+			  IoStatusBlock, AllocationSize, FileAttributes,
+			  ShareAccess, CreateDisposition, CreateOptions, EaBuffer,
+			  EaLength);
+	  }
+	  else {
+		  res = ::NtCreateFile(FileHandle, DesiredAccess, ObjectAttributes,
+			  IoStatusBlock, AllocationSize, FileAttributes,
+			  ShareAccess, CreateDisposition, CreateOptions, EaBuffer,
+			  EaLength);
+	  }
   POST_REALCALL
 
 	if (SUCCEEDED(res)) {
