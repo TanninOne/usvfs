@@ -613,9 +613,15 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
   }
 
   PRE_REALCALL
-  res = ::CreateFileW(reroute.fileName(), dwDesiredAccess, dwShareMode,
+  if (reroute.wasRerouted()) {
+    res = ::CreateFileW(reroute.fileName(), dwDesiredAccess, dwShareMode,
                       lpSecurityAttributes, dwCreationDisposition,
                       dwFlagsAndAttributes, hTemplateFile);
+  } else {
+    res = ::CreateFileW(lpFileName, dwDesiredAccess, dwShareMode,
+                      lpSecurityAttributes, dwCreationDisposition,
+                      dwFlagsAndAttributes, hTemplateFile);
+  }
   POST_REALCALL
 
   if (create && (res != INVALID_HANDLE_VALUE)) {
@@ -1432,6 +1438,14 @@ HANDLE WINAPI usvfs::hooks::FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATA
         = lpFileName;
   }
 
+  if (reroute.wasRerouted()) {
+    LOG_CALL()
+        .PARAMWRAP(lpFileName)
+        .PARAMWRAP(reroute.fileName())
+        .PARAMHEX(res)
+        .PARAMHEX(::GetLastError());
+  }
+
   HOOK_END
 
   return res;
@@ -1442,7 +1456,7 @@ HANDLE WINAPI usvfs::hooks::FindFirstFileExW(LPCTSTR lpFileName,FINDEX_INFO_LEVE
   HANDLE res = INVALID_HANDLE_VALUE;
 
   HOOK_START_GROUP(MutExHookGroup::SEARCH_FILES)
-  
+
   // We need to do some trickery here, since we only want to use the hooked NtQueryDirectoryFile for rerouted locations we need to check if the Directory path has been routed instead of the full path.
   fs::path p(lpFileName);
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, (p.parent_path().wstring()).c_str());
@@ -1521,7 +1535,6 @@ HRESULT WINAPI usvfs::hooks::CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszN
 
 		return res;
 }
-
 
 VOID WINAPI usvfs::hooks::ExitProcess(UINT exitCode)
 {
