@@ -251,6 +251,7 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "CopyFileW", uhooks::CopyFileW);
   installHook(kbaseMod, k32Mod, "CopyFileExA", uhooks::CopyFileExA);
   installHook(kbaseMod, k32Mod, "CopyFileExW", uhooks::CopyFileExW);
+  installHook(kbaseMod, k32Mod, "CopyFile2", uhooks::CopyFile2);
 
   installStub(kbaseMod, k32Mod, "CreateHardLinkA");
   installStub(kbaseMod, k32Mod, "CreateHardLinkW");
