@@ -1428,7 +1428,12 @@ HANDLE WINAPI usvfs::hooks::FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATA
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
 
   PRE_REALCALL
-	  res = ::FindFirstFileW(reroute.fileName(), lpFindFileData);
+  if (reroute.wasRerouted()) {
+	 res = ::FindFirstFileW( reroute.fileName(), lpFindFileData );
+  }
+  else {
+	 res = ::FindFirstFileW( lpFileName, lpFindFileData );
+  }
   POST_REALCALL
 
   if (res != INVALID_HANDLE_VALUE) {
@@ -1535,6 +1540,50 @@ HRESULT WINAPI usvfs::hooks::CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszN
 
 		return res;
 }
+
+HRESULT WINAPI usvfs::hooks::CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszNewFileName,COPYFILE2_EXTENDED_PARAMETERS *pExtendedParameters)
+{
+	BOOL res = FALSE;
+
+	HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
+
+	RerouteW readReroute;
+	RerouteW writeReroute;
+
+	{
+		auto context = READ_CONTEXT();
+		readReroute = RerouteW::create(context, callContext, pwszExistingFileName);
+		writeReroute = RerouteW::createNew(context, callContext, pwszNewFileName);
+	}
+
+	PRE_REALCALL
+		if (!readReroute.wasRerouted() && !writeReroute.wasRerouted()) {
+			res = ::CopyFile2(pwszExistingFileName, pwszNewFileName, pExtendedParameters);
+		}
+		else {
+			res = ::CopyFile2(readReroute.fileName(), writeReroute.fileName(), pExtendedParameters);
+		}
+		POST_REALCALL
+
+			if (res) {
+				if (writeReroute.wasRerouted()) {
+					writeReroute.insertMapping(WRITE_CONTEXT());
+				}
+			}
+
+		if (readReroute.wasRerouted() || writeReroute.wasRerouted()) {
+			LOG_CALL()
+				.PARAMWRAP(readReroute.fileName())
+				.PARAMWRAP(writeReroute.fileName())
+				.PARAM(res)
+				.PARAM(::GetLastError());
+		}
+
+		HOOK_END
+
+		return res;
+}
+
 
 VOID WINAPI usvfs::hooks::ExitProcess(UINT exitCode)
 {
