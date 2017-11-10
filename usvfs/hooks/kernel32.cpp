@@ -612,9 +612,15 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
   }
 
   PRE_REALCALL
+  if (reroute.wasRerouted()) {
   res = ::CreateFileW(reroute.fileName(), dwDesiredAccess, dwShareMode,
                       lpSecurityAttributes, dwCreationDisposition,
                       dwFlagsAndAttributes, hTemplateFile);
+  } else {
+	    res = ::CreateFileW(lpFileName, dwDesiredAccess, dwShareMode,
+                      lpSecurityAttributes, dwCreationDisposition,
+                      dwFlagsAndAttributes, hTemplateFile);
+  }
   POST_REALCALL
 
   if (create && (res != INVALID_HANDLE_VALUE)) {
@@ -1391,7 +1397,7 @@ DWORD WINAPI usvfs::hooks::GetFileVersionInfoSizeExW(DWORD dwFlags, LPCWSTR lpts
 {
   DWORD res = 0UL;
 
-  HOOK_START_GROUP(MutExHookGroup::GET_FILE_VERSION)
+  HOOK_START_GROUP(MutExHookGroup::FIND_FILES)
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lptstrFilename);
   PRE_REALCALL
@@ -1405,6 +1411,78 @@ DWORD WINAPI usvfs::hooks::GetFileVersionInfoSizeExW(DWORD dwFlags, LPCWSTR lpts
 
   if (reroute.wasRerouted()) {
     LOG_CALL().PARAMWRAP(reroute.fileName()).PARAM(res);
+  }
+
+  HOOK_END
+
+  return res;
+}
+
+HANDLE WINAPI usvfs::hooks::FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATAW lpFindFileData)
+{
+  HANDLE res = INVALID_HANDLE_VALUE;
+
+  HOOK_START_GROUP(MutExHookGroup::GET_FILE_VERSION)
+
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
+  PRE_REALCALL
+  if (reroute.wasRerouted()) {
+	  ::FindFirstFileW( reroute.fileName(), lpFindFileData );
+  }
+  else {
+	  ::FindFirstFileW( lpFileName, lpFindFileData );
+  }
+  POST_REALCALL
+
+  if (res != INVALID_HANDLE_VALUE) {
+    // store the original search path for use during iteration
+    WRITE_CONTEXT()
+        ->customData<SearchHandleMap>(SearchHandles)[res]
+        = lpFileName;
+  }
+
+  if (reroute.wasRerouted()) {
+    LOG_CALL()
+        .PARAM(lpFileName)
+        .PARAM(reroute.fileName())
+        .PARAMHEX(res)
+        .PARAMHEX(::GetLastError());
+  }
+
+  HOOK_END
+
+  return res;
+}
+
+HANDLE WINAPI usvfs::hooks::FindFirstFileExW(LPCTSTR lpFileName,FINDEX_INFO_LEVELS fInfoLevelId, LPVOID lpFindFileData, FINDEX_SEARCH_OPS  fSearchOp, LPVOID lpSearchFilter, DWORD dwAdditionalFlags)
+{
+  HANDLE res = INVALID_HANDLE_VALUE;
+
+  HOOK_START_GROUP(MutExHookGroup::FIND_FILES)
+
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
+  PRE_REALCALL
+  if (reroute.wasRerouted()) {
+	  res = ::FindFirstFileExW( reroute.fileName(), fInfoLevelId, lpFindFileData,  fSearchOp, lpSearchFilter, dwAdditionalFlags);
+  }
+  else {
+	  res = ::FindFirstFileExW(lpFileName, fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
+  }
+  POST_REALCALL
+
+   if (res != INVALID_HANDLE_VALUE) {
+    // store the original search path for use during iteration
+    WRITE_CONTEXT()
+        ->customData<SearchHandleMap>(SearchHandles)[res]
+        = lpFileName;
+  }
+
+  if (reroute.wasRerouted()) {
+    LOG_CALL()
+        .PARAM(lpFileName)
+        .PARAM(reroute.fileName())
+        .PARAMHEX(res)
+        .PARAMHEX(::GetLastError());
   }
 
   HOOK_END
