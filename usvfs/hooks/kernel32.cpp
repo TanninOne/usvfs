@@ -1565,7 +1565,7 @@ HRESULT WINAPI usvfs::hooks::CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszN
 		}
 		POST_REALCALL
 
-			if (res) {
+			if (res == S_OK) {
 				if (writeReroute.wasRerouted()) {
 					writeReroute.insertMapping(WRITE_CONTEXT());
 				}
