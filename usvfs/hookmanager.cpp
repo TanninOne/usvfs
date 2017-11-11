@@ -34,6 +34,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <directory_tree.h>
 #include <usvfsparameters.h>
 #include <winapi.h>
+#include <VersionHelpers.h>
 
 
 using namespace HookLib;
