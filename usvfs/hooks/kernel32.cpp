@@ -595,33 +595,25 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
   {
     auto context = READ_CONTEXT();
     reroute      = RerouteW::create(context, callContext, lpFileName);
-	  if (reroute.wasRerouted()) {
-		  if (((dwCreationDisposition == CREATE_ALWAYS)
-			  || (dwCreationDisposition == CREATE_NEW))
-			  && !reroute.wasRerouted() && !fileExists(lpFileName)) {
-			  // the file will be created so now we need to know where
-			  reroute = RerouteW::createNew(context, callContext, lpFileName);
-			  create = reroute.wasRerouted();
+    if (((dwCreationDisposition == CREATE_ALWAYS)
+         || (dwCreationDisposition == CREATE_NEW))
+        && !reroute.wasRerouted() && !fileExists(lpFileName)) {
+      // the file will be created so now we need to know where
+      reroute = RerouteW::createNew(context, callContext, lpFileName);
+      create  = reroute.wasRerouted();
 
-			  if (create) {
-				  fs::path target(reroute.fileName());
-				  winapi::ex::wide::createPath(target.parent_path().wstring().c_str(),
-					  lpSecurityAttributes);
-			  }
-		  }
+      if (create) {
+        fs::path target(reroute.fileName());
+        winapi::ex::wide::createPath(target.parent_path().wstring().c_str(),
+                                     lpSecurityAttributes);
       }
+    }
   }
 
   PRE_REALCALL
-  if (reroute.wasRerouted()) {
   res = ::CreateFileW(reroute.fileName(), dwDesiredAccess, dwShareMode,
                       lpSecurityAttributes, dwCreationDisposition,
                       dwFlagsAndAttributes, hTemplateFile);
-  } else {
-	    res = ::CreateFileW(lpFileName, dwDesiredAccess, dwShareMode,
-                      lpSecurityAttributes, dwCreationDisposition,
-                      dwFlagsAndAttributes, hTemplateFile);
-  }
   POST_REALCALL
 
   if (create && (res != INVALID_HANDLE_VALUE)) {
@@ -664,14 +656,8 @@ BOOL WINAPI usvfs::hooks::GetFileAttributesExW(
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
   PRE_REALCALL
-  if (reroute.wasRerouted()) {
-	  res = ::GetFileAttributesExW(reroute.fileName(), fInfoLevelId,
-		  lpFileInformation);
-  }
-  else {
-	  res = ::GetFileAttributesExW(lpFileName, fInfoLevelId,
-		  lpFileInformation);
-  }
+  res = ::GetFileAttributesExW(reroute.fileName(), fInfoLevelId,
+                               lpFileInformation);
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
@@ -694,14 +680,8 @@ DWORD WINAPI usvfs::hooks::GetFileAttributesW(LPCWSTR lpFileName)
   HOOK_START_GROUP(MutExHookGroup::FILE_ATTRIBUTES)
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
-
   PRE_REALCALL
-	  if (reroute.wasRerouted()) {
-		  res = ::GetFileAttributesW(reroute.fileName());
-	  }
-	  else {
-		  res = ::GetFileAttributesW(lpFileName);
-	  }
+  res = ::GetFileAttributesW(reroute.fileName());
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
@@ -727,12 +707,7 @@ DWORD WINAPI usvfs::hooks::SetFileAttributesW(
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
   PRE_REALCALL
-	  if (reroute.wasRerouted()) {
-		  res = ::SetFileAttributesW(reroute.fileName(), dwFileAttributes);
-	  }
-	  else {
-		  res = ::SetFileAttributesW(lpFileName, dwFileAttributes);
-	  }
+  res = ::SetFileAttributesW(reroute.fileName(), dwFileAttributes);
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
@@ -801,12 +776,7 @@ BOOL WINAPI usvfs::hooks::MoveFileW(LPCWSTR lpExistingFileName,
   }
 
   PRE_REALCALL
-	  if (!readReroute.wasRerouted() && !writeReroute.wasRerouted()) {
-		  res = ::MoveFileW(lpExistingFileName, lpNewFileName);
-	  }
-	  else {
-		  res = ::MoveFileW(readReroute.fileName(), writeReroute.fileName());
-	  }
+  res = ::MoveFileW(readReroute.fileName(), writeReroute.fileName());
   POST_REALCALL
 
   if (res) {
@@ -857,12 +827,7 @@ BOOL WINAPI usvfs::hooks::MoveFileExW(LPCWSTR lpExistingFileName,
   }
 
   PRE_REALCALL
-	  if (!readReroute.wasRerouted() && !writeReroute.wasRerouted()) {
-		  res = ::MoveFileExW(lpExistingFileName, lpNewFileName, dwFlags);
-	  }
-	  else {
-		  res = ::MoveFileExW(readReroute.fileName(), writeReroute.fileName(), dwFlags);
-	  }
+  res = ::MoveFileExW(readReroute.fileName(), writeReroute.fileName(), dwFlags);
   POST_REALCALL
 
   if (res) {
@@ -913,14 +878,8 @@ BOOL WINAPI usvfs::hooks::CopyFileW(LPCWSTR lpExistingFileName,
   }
 
   PRE_REALCALL
-  if (!readReroute.wasRerouted() && !writeReroute.wasRerouted()) {
-	  res = ::CopyFileW(lpExistingFileName, lpNewFileName,
-		  bFailIfExists);
-  }
-  else {
-	  res = ::CopyFileW(readReroute.fileName(), writeReroute.fileName(),
-		  bFailIfExists);
-  }
+  res = ::CopyFileW(readReroute.fileName(), writeReroute.fileName(),
+                    bFailIfExists);
   POST_REALCALL
 
   if (res) {
@@ -974,14 +933,8 @@ BOOL WINAPI usvfs::hooks::CopyFileExW(LPCWSTR lpExistingFileName,
   }
 
   PRE_REALCALL
-  if (!readReroute.wasRerouted() && !writeReroute.wasRerouted()) {
-	  res = ::CopyFileExW(lpExistingFileName, lpNewFileName,
-		  lpProgressRoutine, lpData, pbCancel, dwCopyFlags);
-  }
-  else {
-	  res = ::CopyFileExW(readReroute.fileName(), writeReroute.fileName(),
-		  lpProgressRoutine, lpData, pbCancel, dwCopyFlags);
-  }
+  res = ::CopyFileExW(readReroute.fileName(), writeReroute.fileName(),
+                      lpProgressRoutine, lpData, pbCancel, dwCopyFlags);
   POST_REALCALL
 
   if (res) {
@@ -1070,12 +1023,7 @@ BOOL WINAPI usvfs::hooks::SetCurrentDirectoryW(LPCWSTR lpPathName)
       = RerouteW::create(context, callContext, lpPathName);
 
   PRE_REALCALL
-	  if (reroute.wasRerouted()) {
-		  res = ::SetCurrentDirectoryW(reroute.fileName());
-	  }
-	  else {
-		  res = ::SetCurrentDirectoryW(lpPathName);
-	  }
+  res = ::SetCurrentDirectoryW(reroute.fileName());
   POST_REALCALL
 
   if (res) {
@@ -1253,12 +1201,7 @@ HMODULE WINAPI usvfs::hooks::GetModuleHandleW(LPCWSTR lpModuleName)
   RerouteW reroute
       = RerouteW::create(READ_CONTEXT(), callContext, lpModuleName);
   PRE_REALCALL
-	  if (reroute.wasRerouted()) {
-		  res = ::GetModuleHandleW(reroute.fileName());
-	  }
-	  else {
-		  res = ::GetModuleHandleW(lpModuleName);
-	  }
+  res = ::GetModuleHandleW(reroute.fileName());
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
@@ -1290,12 +1233,7 @@ BOOL WINAPI usvfs::hooks::GetModuleHandleExW(DWORD dwFlags,
   RerouteW reroute
       = RerouteW::create(READ_CONTEXT(), callContext, lpModuleName);
   PRE_REALCALL
-  if (reroute.wasRerouted()) {
-	  res = ::GetModuleHandleExW(dwFlags, reroute.fileName(), phModule);
-  }
-  else {
-	  res = ::GetModuleHandleExW(dwFlags, lpModuleName, phModule);
-  }
+  res = ::GetModuleHandleExW(dwFlags, reroute.fileName(), phModule);
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
@@ -1327,12 +1265,7 @@ BOOL WINAPI usvfs::hooks::GetFileVersionInfoW(LPCWSTR lptstrFilename, DWORD dwHa
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lptstrFilename);
   PRE_REALCALL
-	  if (reroute.wasRerouted()) {
-		  res = ::GetFileVersionInfoW(reroute.fileName(), dwHandle, dwLen, lpData);
-	  }
-	  else {
-		  res = ::GetFileVersionInfoW(lptstrFilename, dwHandle, dwLen, lpData);
-	  }
+  res = ::GetFileVersionInfoW(reroute.fileName(), dwHandle, dwLen, lpData);
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
@@ -1352,12 +1285,7 @@ BOOL WINAPI usvfs::hooks::GetFileVersionInfoExW(DWORD dwFlags, LPCWSTR lptstrFil
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lptstrFilename);
   PRE_REALCALL
-  if (reroute.wasRerouted()) {
-	  res = ::GetFileVersionInfoExW(dwFlags, reroute.fileName(), dwHandle, dwLen, lpData);
-  }
-  else {
-	  res = ::GetFileVersionInfoExW(dwFlags, lptstrFilename, dwHandle, dwLen, lpData);
-  }
+  res = ::GetFileVersionInfoExW(dwFlags, reroute.fileName(), dwHandle, dwLen, lpData);
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
@@ -1377,12 +1305,7 @@ DWORD WINAPI usvfs::hooks::GetFileVersionInfoSizeW(LPCWSTR lptstrFilename, LPDWO
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lptstrFilename);
   PRE_REALCALL
-  if (reroute.wasRerouted()) {
-	  res = ::GetFileVersionInfoSizeW(reroute.fileName(), lpdwHandle);
-  }
-  else {
-	  res = ::GetFileVersionInfoSizeW(lptstrFilename, lpdwHandle);
-  }
+  res = ::GetFileVersionInfoSizeW(reroute.fileName(), lpdwHandle);
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
@@ -1398,16 +1321,11 @@ DWORD WINAPI usvfs::hooks::GetFileVersionInfoSizeExW(DWORD dwFlags, LPCWSTR lpts
 {
   DWORD res = 0UL;
 
-  HOOK_START_GROUP(MutExHookGroup::FIND_FILES)
+  HOOK_START_GROUP(MutExHookGroup::GET_FILE_VERSION)
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lptstrFilename);
   PRE_REALCALL
-  if (reroute.wasRerouted()) {
-	  res = ::GetFileVersionInfoSizeExW(dwFlags, reroute.fileName(), lpdwHandle);
-  }
-  else {
-	  res = ::GetFileVersionInfoSizeExW(dwFlags, lptstrFilename, lpdwHandle);
-  }
+  res = ::GetFileVersionInfoSizeExW(dwFlags, reroute.fileName(), lpdwHandle);
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
@@ -1471,9 +1389,13 @@ HRESULT WINAPI usvfs::hooks::CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszN
 
 	typedef HRESULT(WINAPI * CopyFile2_t)(PCWSTR, PCWSTR, COPYFILE2_EXTENDED_PARAMETERS *);
 
+	HMODULE kernelbase = ::GetModuleHandle(L"kernelbase.dll");
 	HMODULE kernel = ::GetModuleHandle(L"kernel32.dll");
-	if (kernel == NULL) return res;
-	CopyFile2_t dCopyFile2 = (CopyFile2_t)::GetProcAddress(kernel, "CopyFile2");
+	CopyFile2_t dCopyFile2;
+	if (kernelbase != NULL)
+		dCopyFile2 = (CopyFile2_t)::GetProcAddress(kernelbase, "CopyFile2");
+	if (dCopyFile2 == NULL && kernel != NULL)
+		dCopyFile2 = (CopyFile2_t)::GetProcAddress(kernel, "CopyFile2");
 	if (dCopyFile2 == NULL) return res;
 
 	HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)

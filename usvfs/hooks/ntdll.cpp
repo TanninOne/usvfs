@@ -806,14 +806,8 @@ NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
         = makeObjectAttributes(redir, ObjectAttributes);
 
     PRE_REALCALL
-		if (redir.second) {
-			res = ::NtOpenFile(FileHandle, DesiredAccess, adjustedAttributes.get(),
-				IoStatusBlock, ShareAccess, OpenOptions);
-		}
-		else {
-			res = ::NtOpenFile(FileHandle, DesiredAccess, ObjectAttributes,
-				IoStatusBlock, ShareAccess, OpenOptions);
-		}
+    res = ::NtOpenFile(FileHandle, DesiredAccess, adjustedAttributes.get(),
+                       IoStatusBlock, ShareAccess, OpenOptions);
     POST_REALCALL
     if (SUCCEEDED(res) && storePath) {
       // store the original search path for use during iteration
@@ -838,7 +832,6 @@ NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
     POST_REALCALL
   }
   HOOK_END
-  
 
   return res;
 }
@@ -863,13 +856,12 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
 {
   NTSTATUS res = STATUS_NO_SUCH_FILE;
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
- 
   if (!callContext.active()) {
-		  return ::NtCreateFile(FileHandle, DesiredAccess, ObjectAttributes,
-			  IoStatusBlock, AllocationSize, FileAttributes,
-			  ShareAccess, CreateDisposition, CreateOptions,
-			  EaBuffer, EaLength);
-   }
+    return ::NtCreateFile(FileHandle, DesiredAccess, ObjectAttributes,
+                          IoStatusBlock, AllocationSize, FileAttributes,
+                          ShareAccess, CreateDisposition, CreateOptions,
+                          EaBuffer, EaLength);
+  }
 
   UnicodeString inPath = CreateUnicodeString(ObjectAttributes);
 
@@ -886,61 +878,47 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
   std::pair<UnicodeString, bool> redir(UnicodeString(), false);
 
   { // limit context scope
-      FunctionGroupLock lock(MutExHookGroup::ALL_GROUPS);
-      HookContext::ConstPtr context = READ_CONTEXT();
-      redir = applyReroute(context, callContext, inPath);
-      if (redir.second) {
-        // TODO would be neat if this could (optionally) reroute all potential write
-        // accesses to the create target.
-        //   This could be achived by copying the file to the target here in case
-        //   the createdisposition or the requested access rights make that
-        //   necessary
-        if (((CreateDisposition == FILE_SUPERSEDE)
-           || (CreateDisposition == FILE_CREATE)
-           || (CreateDisposition == FILE_OPEN_IF)
-           || (CreateDisposition == FILE_OVERWRITE_IF))
-           && !redir.second && !fileExists(inPath)) {
-           // the file will be created so now we need to know where
-          std::pair<UnicodeString, UnicodeString> createTarget
-            = findCreateTarget(context, inPath);
-	      if (createTarget.second.size() != 0) {
-		    // there is a reroute target for new files so adjust the path
-		    redir.first.resize(4);
-		    redir.first.appendPath(static_cast<PUNICODE_STRING>(createTarget.second));
+    FunctionGroupLock lock(MutExHookGroup::ALL_GROUPS);
+    HookContext::ConstPtr context = READ_CONTEXT();
 
-		    spdlog::get("hooks")->info(
-			    "reroute write access: {}",
-			    ush::string_cast<std::string>(static_cast<LPCWSTR>(redir.first))
-			    .c_str());
-	      }
-        }
-     }
+    redir = applyReroute(context, callContext, inPath);
+
+    // TODO would be neat if this could (optionally) reroute all potential write
+    // accesses to the create target.
+    //   This could be achived by copying the file to the target here in case
+    //   the createdisposition or the requested access rights make that
+    //   necessary
+    if (((CreateDisposition == FILE_SUPERSEDE)
+         || (CreateDisposition == FILE_CREATE)
+         || (CreateDisposition == FILE_OPEN_IF)
+         || (CreateDisposition == FILE_OVERWRITE_IF))
+        && !redir.second && !fileExists(inPath)) {
+      // the file will be created so now we need to know where
+      std::pair<UnicodeString, UnicodeString> createTarget
+          = findCreateTarget(context, inPath);
+
+      if (createTarget.second.size() != 0) {
+        // there is a reroute target for new files so adjust the path
+        redir.first.resize(4);
+        redir.first.appendPath(static_cast<PUNICODE_STRING>(createTarget.second));
+
+        spdlog::get("hooks")->info(
+            "reroute write access: {}",
+            ush::string_cast<std::string>(static_cast<LPCWSTR>(redir.first))
+                .c_str());
+      }
+    }
   }
 
   unique_ptr_deleter<OBJECT_ATTRIBUTES> adjustedAttributes
-      = makeObjectAttributes(redir, ObjectAttributes); 
+      = makeObjectAttributes(redir, ObjectAttributes);
 
   PRE_REALCALL
-	  if (redir.second) {
-		  res = ::NtCreateFile(FileHandle, DesiredAccess, adjustedAttributes.get(),
-			  IoStatusBlock, AllocationSize, FileAttributes,
-			  ShareAccess, CreateDisposition, CreateOptions, EaBuffer,
-			  EaLength);
-	  }
-	  else {
-		  res = ::NtCreateFile(FileHandle, DesiredAccess, ObjectAttributes,
-			  IoStatusBlock, AllocationSize, FileAttributes,
-			  ShareAccess, CreateDisposition, CreateOptions, EaBuffer,
-			  EaLength);
-	  }
+  res = ::NtCreateFile(FileHandle, DesiredAccess, adjustedAttributes.get(),
+                       IoStatusBlock, AllocationSize, FileAttributes,
+                       ShareAccess, CreateDisposition, CreateOptions, EaBuffer,
+                       EaLength);
   POST_REALCALL
-
-	if (SUCCEEDED(res)) {
-		  // store the original search path for use during iteration
-		  READ_CONTEXT()
-			  ->customData<SearchHandleMap>(SearchHandles)[*FileHandle]
-			  = static_cast<LPCWSTR>(inPath);
-	  }
 
   if (redir.second) {
     LOG_CALL()
@@ -950,8 +928,6 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
         .PARAM(*FileHandle)
         .PARAMWRAP(res);
   }
-  
- 
 
   HOOK_END
 
@@ -1018,12 +994,7 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryAttributesFile(
       = makeObjectAttributes(redir, ObjectAttributes);
 
   PRE_REALCALL
-  if (redir.second) {
-	  res = ::NtQueryAttributesFile(adjustedAttributes.get(), FileInformation);
-  }
-  else {
-	  res = ::NtQueryAttributesFile(ObjectAttributes, FileInformation);
-  }
+  res = ::NtQueryAttributesFile(adjustedAttributes.get(), FileInformation);
   POST_REALCALL
 
   if (redir.second) {
@@ -1060,15 +1031,10 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryFullAttributesFile(
   std::pair<UnicodeString, bool> redir
       = applyReroute(READ_CONTEXT(), callContext, inPath);
   unique_ptr_deleter<OBJECT_ATTRIBUTES> adjustedAttributes
-	  = makeObjectAttributes(redir, ObjectAttributes);
+      = makeObjectAttributes(redir, ObjectAttributes);
 
   PRE_REALCALL
-	  if (redir.second) {
-		  res = ::NtQueryFullAttributesFile(adjustedAttributes.get(), FileInformation);
-	  }
-	  else {
-		  res = ::NtQueryFullAttributesFile(ObjectAttributes, FileInformation);
-	  }
+  res = ::NtQueryFullAttributesFile(adjustedAttributes.get(), FileInformation);
   POST_REALCALL
 
   if (redir.second) {

@@ -266,6 +266,11 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "GetFileVersionInfoSizeExW", uhooks::GetFileVersionInfoSizeExW);
   installHook(kbaseMod, k32Mod, "FindFirstFileW", uhooks::FindFirstFileW);
   installHook(kbaseMod, k32Mod, "FindFirstFileExW", uhooks::FindFirstFileExW);
+  
+  //Only functions in kbaseMod
+  if(IsWindows8OrGreater()) {
+  	installHook(kbaseMod, nullptr, "CopyFile2", uhooks::CopyFile2);
+  }
 
   HMODULE ntdllMod = GetModuleHandleA("ntdll.dll");
   spdlog::get("usvfs")->debug("ntdll.dll at {0:x}", reinterpret_cast<uintptr_t>(ntdllMod));
