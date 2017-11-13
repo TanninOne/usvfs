@@ -1337,6 +1337,23 @@ DWORD WINAPI usvfs::hooks::GetFileVersionInfoSizeExW(DWORD dwFlags, LPCWSTR lpts
   return res;
 }
 
+HANDLE WINAPI usvfs::hooks::FindFirstFileA(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData)
+{
+	WIN32_FIND_DATAW tempData;
+	HANDLE tempHandle = usvfs::hooks::FindFirstFileW(ush::string_cast<std::wstring>(lpFileName).c_str(), &tempData);
+	lpFindFileData->dwFileAttributes = tempData.dwFileAttributes;
+	lpFindFileData->ftCreationTime = tempData.ftCreationTime;
+	lpFindFileData->ftLastAccessTime = tempData.ftLastAccessTime;
+	lpFindFileData->ftLastWriteTime = tempData.ftLastWriteTime;
+	lpFindFileData->nFileSizeHigh = tempData.nFileSizeHigh;
+	lpFindFileData->nFileSizeLow = tempData.nFileSizeLow;
+	lpFindFileData->dwReserved0 = tempData.dwReserved0;
+	lpFindFileData->dwReserved1 = tempData.dwReserved1;
+	strcpy_s(lpFindFileData->cFileName, ush::string_cast<std::string>(tempData.cFileName).c_str());
+	strcpy_s(lpFindFileData->cAlternateFileName, ush::string_cast<std::string>(tempData.cAlternateFileName).c_str());
+	return tempHandle;
+}
+
 HANDLE WINAPI usvfs::hooks::FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATAW lpFindFileData)
 {
   HANDLE res = INVALID_HANDLE_VALUE;
@@ -1355,12 +1372,38 @@ HANDLE WINAPI usvfs::hooks::FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATA
         = lpFileName;
   }
 
+  if (reroute.wasRerouted()) {
+	  LOG_CALL()
+		  .PARAMWRAP(reroute.fileName())
+		  .PARAMHEX(::GetLastError())
+		  .PARAM(res);
+  }
+
   HOOK_END
 
   return res;
 }
 
-HANDLE WINAPI usvfs::hooks::FindFirstFileExW(LPCTSTR lpFileName,FINDEX_INFO_LEVELS fInfoLevelId, LPVOID lpFindFileData, FINDEX_SEARCH_OPS  fSearchOp, LPVOID lpSearchFilter, DWORD dwAdditionalFlags)
+HANDLE WINAPI usvfs::hooks::FindFirstFileExA(LPCSTR lpFileName, FINDEX_INFO_LEVELS fInfoLevelId, LPVOID lpFindFileData, FINDEX_SEARCH_OPS  fSearchOp, LPVOID lpSearchFilter, DWORD dwAdditionalFlags)
+{
+	LPWIN32_FIND_DATAA origData = static_cast<LPWIN32_FIND_DATAA>(lpFindFileData);
+
+	WIN32_FIND_DATAW tempData;
+	HANDLE tempHandle = usvfs::hooks::FindFirstFileExW(ush::string_cast<std::wstring>(lpFileName).c_str(), fInfoLevelId, &tempData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
+	origData->dwFileAttributes = tempData.dwFileAttributes;
+	origData->ftCreationTime = tempData.ftCreationTime;
+	origData->ftLastAccessTime = tempData.ftLastAccessTime;
+	origData->ftLastWriteTime = tempData.ftLastWriteTime;
+	origData->nFileSizeHigh = tempData.nFileSizeHigh;
+	origData->nFileSizeLow = tempData.nFileSizeLow;
+	origData->dwReserved0 = tempData.dwReserved0;
+	origData->dwReserved1 = tempData.dwReserved1;
+	strcpy_s(origData->cFileName, ush::string_cast<std::string>(tempData.cFileName).c_str());
+	strcpy_s(origData->cAlternateFileName, ush::string_cast<std::string>(tempData.cAlternateFileName).c_str());
+	return tempHandle;
+}
+
+HANDLE WINAPI usvfs::hooks::FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVELS fInfoLevelId, LPVOID lpFindFileData, FINDEX_SEARCH_OPS  fSearchOp, LPVOID lpSearchFilter, DWORD dwAdditionalFlags)
 {
   HANDLE res = INVALID_HANDLE_VALUE;
 
@@ -1378,9 +1421,85 @@ HANDLE WINAPI usvfs::hooks::FindFirstFileExW(LPCTSTR lpFileName,FINDEX_INFO_LEVE
         = lpFileName;
   }
 
+  if (reroute.wasRerouted()) {
+	  LOG_CALL()
+		  .PARAMWRAP(reroute.fileName())
+		  .PARAMHEX(fInfoLevelId)
+		  .PARAMHEX(fSearchOp)
+		  .PARAMHEX(lpSearchFilter)
+		  .PARAMHEX(dwAdditionalFlags)
+		  .PARAMHEX(::GetLastError())
+		  .PARAM(res);
+  }
+
   HOOK_END
 
   return res;
+}
+
+BOOL WINAPI usvfs::hooks::FindNextFileA(HANDLE hFindFile, LPWIN32_FIND_DATAA lpFindFileData)
+{
+	LPWIN32_FIND_DATAA origData = static_cast<LPWIN32_FIND_DATAA>(lpFindFileData);
+
+	WIN32_FIND_DATAW tempData;
+	BOOL result = usvfs::hooks::FindNextFileW(hFindFile, &tempData);
+	origData->dwFileAttributes = tempData.dwFileAttributes;
+	origData->ftCreationTime = tempData.ftCreationTime;
+	origData->ftLastAccessTime = tempData.ftLastAccessTime;
+	origData->ftLastWriteTime = tempData.ftLastWriteTime;
+	origData->nFileSizeHigh = tempData.nFileSizeHigh;
+	origData->nFileSizeLow = tempData.nFileSizeLow;
+	origData->dwReserved0 = tempData.dwReserved0;
+	origData->dwReserved1 = tempData.dwReserved1;
+	strcpy_s(origData->cFileName, ush::string_cast<std::string>(tempData.cFileName).c_str());
+	strcpy_s(origData->cAlternateFileName, ush::string_cast<std::string>(tempData.cAlternateFileName).c_str());
+	return result;
+}
+
+BOOL WINAPI usvfs::hooks::FindNextFileW(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData)
+{
+	BOOL res = ::FindNextFileW(hFindFile, lpFindFileData);
+	HOOK_START_GROUP(MutExHookGroup::FIND_FILES)
+	RerouteW reroute;
+
+	PRE_REALCALL
+	if (!res) {
+		if (WRITE_CONTEXT()->customData<SearchHandleMap>(SearchHandles).count(hFindFile)) {
+			std::wstring searchString = WRITE_CONTEXT()->customData<SearchHandleMap>(SearchHandles)[hFindFile];
+			reroute = RerouteW::create(READ_CONTEXT(), callContext, searchString.c_str());
+			if (reroute.wasRerouted()) {
+				WIN32_FIND_DATAW tempData;
+				HANDLE rerouteHandle = ::FindFirstFileW(searchString.c_str(), &tempData);
+				if (rerouteHandle != INVALID_HANDLE_VALUE) {
+					WRITE_CONTEXT()->customData<SearchHandleMap>(SearchHandles).erase(hFindFile);
+					::CloseHandle(hFindFile);
+					hFindFile = rerouteHandle;
+					lpFindFileData->dwFileAttributes = tempData.dwFileAttributes;
+					lpFindFileData->ftCreationTime = tempData.ftCreationTime;
+					lpFindFileData->ftLastAccessTime = tempData.ftLastAccessTime;
+					lpFindFileData->ftLastWriteTime = tempData.ftLastWriteTime;
+					lpFindFileData->nFileSizeHigh = tempData.nFileSizeHigh;
+					lpFindFileData->nFileSizeLow = tempData.nFileSizeLow;
+					lpFindFileData->dwReserved0 = tempData.dwReserved0;
+					lpFindFileData->dwReserved1 = tempData.dwReserved1;
+					wcscpy(lpFindFileData->cFileName, tempData.cFileName);
+					wcscpy(lpFindFileData->cAlternateFileName, tempData.cAlternateFileName);
+					res = TRUE;
+				}
+			}
+		}
+	}
+	POST_REALCALL
+
+	if (reroute.wasRerouted()) {
+		LOG_CALL()
+			.PARAMWRAP(reroute.fileName())
+			.PARAMHEX(::GetLastError())
+			.PARAM(res);
+	}
+	HOOK_END
+
+	return res;
 }
 
 HRESULT WINAPI usvfs::hooks::CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszNewFileName, COPYFILE2_EXTENDED_PARAMETERS *pExtendedParameters)
@@ -1391,7 +1510,7 @@ HRESULT WINAPI usvfs::hooks::CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszN
 
 	HMODULE kernelbase = ::GetModuleHandle(L"kernelbase.dll");
 	HMODULE kernel = ::GetModuleHandle(L"kernel32.dll");
-	CopyFile2_t dCopyFile2;
+	CopyFile2_t dCopyFile2 = NULL;
 	if (kernelbase != NULL)
 		dCopyFile2 = (CopyFile2_t)::GetProcAddress(kernelbase, "CopyFile2");
 	if (dCopyFile2 == NULL && kernel != NULL)
