@@ -261,7 +261,9 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "GetFileVersionInfoExW", uhooks::GetFileVersionInfoExW);
   installHook(kbaseMod, k32Mod, "GetFileVersionInfoSizeW", uhooks::GetFileVersionInfoSizeW);
   installHook(kbaseMod, k32Mod, "GetFileVersionInfoSizeExW", uhooks::GetFileVersionInfoSizeExW);
+  installHook(kbaseMod, k32Mod, "FindFirstFileA", uhooks::FindFirstFileA);
   installHook(kbaseMod, k32Mod, "FindFirstFileW", uhooks::FindFirstFileW);
+  installHook(kbaseMod, k32Mod, "FindFirstFileExA", uhooks::FindFirstFileExA);
   installHook(kbaseMod, k32Mod, "FindFirstFileExW", uhooks::FindFirstFileExW);
 
   //Only functions in kbaseMod
