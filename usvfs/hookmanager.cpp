@@ -252,7 +252,7 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "CopyFileW", uhooks::CopyFileW);
   installHook(kbaseMod, k32Mod, "CopyFileExA", uhooks::CopyFileExA);
   installHook(kbaseMod, k32Mod, "CopyFileExW", uhooks::CopyFileExW);
-  if(IsWindows8OrGreater) {
+  if(IsWindows8OrGreater()) {
 	installHook(kbaseMod, k32Mod, "CopyFile2", uhooks::CopyFile2);
   }
 
