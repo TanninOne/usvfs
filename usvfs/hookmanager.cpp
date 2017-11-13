@@ -252,6 +252,9 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "CopyFileW", uhooks::CopyFileW);
   installHook(kbaseMod, k32Mod, "CopyFileExA", uhooks::CopyFileExA);
   installHook(kbaseMod, k32Mod, "CopyFileExW", uhooks::CopyFileExW);
+  if(IsWindows8OrGreater()) {
+	installHook(kbaseMod, k32Mod, "CopyFile2", uhooks::CopyFile2);
+  }
 
   installStub(kbaseMod, k32Mod, "CreateHardLinkA");
   installStub(kbaseMod, k32Mod, "CreateHardLinkW");
@@ -263,11 +266,6 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "GetFileVersionInfoSizeExW", uhooks::GetFileVersionInfoSizeExW);
   installHook(kbaseMod, k32Mod, "FindFirstFileW", uhooks::FindFirstFileW);
   installHook(kbaseMod, k32Mod, "FindFirstFileExW", uhooks::FindFirstFileExW);
-  
-  //Only functions in kbaseMod
-  if(IsWindows8OrGreater()) {
-  	installHook(kbaseMod, nullptr, "CopyFile2", uhooks::CopyFile2);
-  }
 
   HMODULE ntdllMod = GetModuleHandleA("ntdll.dll");
   spdlog::get("usvfs")->debug("ntdll.dll at {0:x}", reinterpret_cast<uintptr_t>(ntdllMod));

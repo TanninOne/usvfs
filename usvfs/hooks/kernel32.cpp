@@ -1396,9 +1396,16 @@ HANDLE WINAPI usvfs::hooks::FindFirstFileExW(LPCTSTR lpFileName,FINDEX_INFO_LEVE
   return res;
 }
 
-HRESULT WINAPI usvfs::hooks::CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszNewFileName,COPYFILE2_EXTENDED_PARAMETERS *pExtendedParameters)
+HRESULT WINAPI usvfs::hooks::CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszNewFileName, COPYFILE2_EXTENDED_PARAMETERS *pExtendedParameters)
 {
 	BOOL res = FALSE;
+
+	typedef HRESULT(WINAPI * CopyFile2_t)(PCWSTR, PCWSTR, COPYFILE2_EXTENDED_PARAMETERS *);
+
+	HMODULE kernel = ::GetModuleHandle(L"kernel32.dll");
+	if (kernel == NULL) return res;
+	CopyFile2_t dCopyFile2 = (CopyFile2_t)::GetProcAddress(kernel, "CopyFile2");
+	if (dCopyFile2 == NULL) return res;
 
 	HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
 
@@ -1413,10 +1420,10 @@ HRESULT WINAPI usvfs::hooks::CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszN
 
 	PRE_REALCALL
 		if (!readReroute.wasRerouted() && !writeReroute.wasRerouted()) {
-			res = ::CopyFile2(pwszExistingFileName, pwszNewFileName, pExtendedParameters);
+			res = dCopyFile2(pwszExistingFileName, pwszNewFileName, pExtendedParameters);
 		}
 		else {
-			res = ::CopyFile2(readReroute.fileName(), writeReroute.fileName(), pExtendedParameters);
+			res = dCopyFile2(readReroute.fileName(), writeReroute.fileName(), pExtendedParameters);
 		}
 		POST_REALCALL
 
