@@ -13,6 +13,7 @@
 #include <stringcast.h>
 #include <set>
 #include <sstream>
+#include <shlwapi.h>
 
 #if 1
 #include <boost/filesystem.hpp>
@@ -119,6 +120,19 @@ public:
           lookupPath = string_cast<std::string>(inPath, CodePage::UTF8);
         }
 
+        // Path_1 destination buffer.
+        char buffer_1[MAX_PATH] = "";
+        char *lpStr1;
+        lpStr1 = buffer_1;
+
+        // Path_2 to be Canonicalized.
+        char buffer_2[MAX_PATH];
+        strcpy_s(buffer_2, lookupPath.c_str());
+        char *lpStr2;
+        lpStr2 = buffer_2;
+        if (::PathCanonicalizeA(lpStr1, lpStr2))
+          lookupPath = lpStr1;
+
         const usvfs::RedirectionTreeContainer &table
             = inverse ? context->inverseTable() : context->redirectionTable();
         result.m_FileNode = table->findNode(lookupPath.c_str());
@@ -166,6 +180,20 @@ public:
         result.m_RealPath.assign(inPath);
         lookupPath = string_cast<std::string>(inPath, CodePage::UTF8);
       }
+
+      // Path_1 destination buffer.
+      char buffer_1[MAX_PATH] = "";
+      char *lpStr1;
+      lpStr1 = buffer_1;
+
+      // Path_2 to be Canonicalized.
+      char buffer_2[MAX_PATH];
+      strcpy_s(buffer_2, lookupPath.c_str());
+      char *lpStr2;
+      lpStr2 = buffer_2;
+      if (::PathCanonicalizeA(lpStr1, lpStr2))
+        lookupPath = lpStr1;
+
       FindCreateTarget visitor;
       usvfs::RedirectionTree::VisitorFunction visitorWrapper = [&](
           const usvfs::RedirectionTree::NodePtrT &node) { visitor(node); };
@@ -646,6 +674,125 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
   return res;
 }
 
+HANDLE WINAPI usvfs::hooks::CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, DWORD dwCreationDisposition, LPCREATEFILE2_EXTENDED_PARAMETERS pCreateExParams)
+{
+  HANDLE res = INVALID_HANDLE_VALUE;
+
+  typedef HANDLE(WINAPI * CreateFile2_t)(LPCWSTR, DWORD, DWORD, DWORD, LPCREATEFILE2_EXTENDED_PARAMETERS);
+
+  HMODULE kernelbase = ::GetModuleHandle(L"kernelbase.dll");
+  HMODULE kernel = ::GetModuleHandle(L"kernel32.dll");
+  CreateFile2_t dCreateFile2 = NULL;
+  if (kernelbase != NULL)
+    dCreateFile2 = (CreateFile2_t)::GetProcAddress(kernelbase, "CreateFile2");
+  if (dCreateFile2 == NULL && kernel != NULL)
+    dCreateFile2 = (CreateFile2_t)::GetProcAddress(kernel, "CreateFile2");
+  if (dCreateFile2 == NULL) return res;
+
+  HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
+
+  if (!callContext.active()) {
+    return dCreateFile2(lpFileName, dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
+  }
+
+  bool storePath = false;
+  bool isDir = false;
+  if ((pCreateExParams->dwFileFlags & FILE_FLAG_BACKUP_SEMANTICS) != 0UL) {
+    // this may be an attempt to open a directory handle for iterating.
+    // If so we need to treat it a little bit differently
+    bool exists = false;
+    { // first check in the original location!
+      DWORD attributes = fileAttributesRegular(lpFileName);
+      exists = attributes != INVALID_FILE_ATTRIBUTES;
+      if (exists) {
+        isDir = (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0UL;
+      }
+    }
+    if (!exists) {
+      // if the file/directory doesn't exist in the original location,
+      // we need to check in rerouted locations as well
+      DWORD attributes = GetFileAttributesW(lpFileName);
+      isDir = (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0UL;
+    }
+
+    if (isDir) {
+      if (exists) {
+        // if its a directory and it exists in the original location, open that
+        return dCreateFile2(lpFileName, dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
+      }
+      else {
+        // if its a directory and it only exists "virtually" then we need to
+        // store the path for when the caller iterates the directory
+        storePath = true;
+      }
+    }
+  }
+
+  bool create = false;
+
+  RerouteW reroute;
+  {
+    auto context = READ_CONTEXT();
+    reroute = RerouteW::create(context, callContext, lpFileName);
+    if (((dwCreationDisposition == CREATE_ALWAYS)
+      || (dwCreationDisposition == CREATE_NEW) || (isDir && storePath))
+      && !reroute.wasRerouted() && !fileExists(lpFileName)) {
+      // the file will be created so now we need to know where
+      reroute = RerouteW::createNew(context, callContext, lpFileName);
+      create = (reroute.wasRerouted() || (isDir && storePath));
+
+      if (create) {
+        fs::path target(reroute.fileName());
+        winapi::ex::wide::createPath(target.parent_path().wstring().c_str(),
+          pCreateExParams->lpSecurityAttributes);
+      }
+    }
+  }
+
+  PRE_REALCALL
+    res = dCreateFile2(reroute.fileName(), dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
+  POST_REALCALL
+
+    if (create && (res != INVALID_HANDLE_VALUE)) {
+      spdlog::get("hooks")
+        ->info("add file to vfs: {}",
+          ush::string_cast<std::string>(lpFileName, ush::CodePage::UTF8));
+      // new file was created in a mapped directory, insert to vitual structure
+      reroute.insertMapping(WRITE_CONTEXT());
+    }
+
+  if ((res != INVALID_HANDLE_VALUE) && storePath) {
+    // store the original search path for use during iteration
+    WRITE_CONTEXT()
+      ->customData<SearchHandleMap>(SearchHandles)[res]
+      = lpFileName;
+  }
+
+  if (storePath || reroute.wasRerouted()) {
+    LOG_CALL()
+      .PARAM(lpFileName)
+      .PARAM(reroute.fileName())
+      .PARAM(isDir)
+      .PARAM(storePath)
+      .PARAMHEX(dwDesiredAccess)
+      .PARAMHEX(dwCreationDisposition)
+      .PARAMHEX(pCreateExParams->dwFileAttributes)
+      .PARAMHEX(pCreateExParams->dwFileFlags)
+      .PARAMHEX(res)
+      .PARAMHEX(::GetLastError());
+  }
+  HOOK_END
+
+  return res;
+}
+
+BOOL WINAPI usvfs::hooks::GetFileAttributesExA(
+  LPCSTR lpFileName, GET_FILEEX_INFO_LEVELS fInfoLevelId,
+  LPVOID lpFileInformation)
+{
+  return usvfs::hooks::GetFileAttributesExW(ush::string_cast<std::wstring>(lpFileName).c_str(), fInfoLevelId, lpFileInformation);
+}
+
 BOOL WINAPI usvfs::hooks::GetFileAttributesExW(
     LPCWSTR lpFileName, GET_FILEEX_INFO_LEVELS fInfoLevelId,
     LPVOID lpFileInformation)
@@ -671,6 +818,11 @@ BOOL WINAPI usvfs::hooks::GetFileAttributesExW(
   HOOK_END
 
   return res;
+}
+
+DWORD WINAPI usvfs::hooks::GetFileAttributesA(LPCSTR lpFileName)
+{
+  return usvfs::hooks::GetFileAttributesW(ush::string_cast<std::wstring>(lpFileName).c_str());
 }
 
 DWORD WINAPI usvfs::hooks::GetFileAttributesW(LPCWSTR lpFileName)
@@ -1088,7 +1240,7 @@ DLLEXPORT BOOL WINAPI usvfs::hooks::RemoveDirectoryW(
 		reroute.removeMapping();
 		LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(reroute.fileName()).PARAM(res);
 	}
-		
+
 	HOOK_END
 
 	return res;
@@ -1337,225 +1489,232 @@ DWORD WINAPI usvfs::hooks::GetFileVersionInfoSizeExW(DWORD dwFlags, LPCWSTR lpts
   return res;
 }
 
-HANDLE WINAPI usvfs::hooks::FindFirstFileA(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData)
-{
-	WIN32_FIND_DATAW tempData;
-	HANDLE tempHandle = usvfs::hooks::FindFirstFileW(ush::string_cast<std::wstring>(lpFileName).c_str(), &tempData);
-	lpFindFileData->dwFileAttributes = tempData.dwFileAttributes;
-	lpFindFileData->ftCreationTime = tempData.ftCreationTime;
-	lpFindFileData->ftLastAccessTime = tempData.ftLastAccessTime;
-	lpFindFileData->ftLastWriteTime = tempData.ftLastWriteTime;
-	lpFindFileData->nFileSizeHigh = tempData.nFileSizeHigh;
-	lpFindFileData->nFileSizeLow = tempData.nFileSizeLow;
-	lpFindFileData->dwReserved0 = tempData.dwReserved0;
-	lpFindFileData->dwReserved1 = tempData.dwReserved1;
-	strcpy_s(lpFindFileData->cFileName, ush::string_cast<std::string>(tempData.cFileName).c_str());
-	strcpy_s(lpFindFileData->cAlternateFileName, ush::string_cast<std::string>(tempData.cAlternateFileName).c_str());
-	return tempHandle;
-}
-
-HANDLE WINAPI usvfs::hooks::FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATAW lpFindFileData)
-{
-  HANDLE res = INVALID_HANDLE_VALUE;
-
-  HOOK_START_GROUP(MutExHookGroup::FIND_FILES)
-
-  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
-  PRE_REALCALL
-	 res = ::FindFirstFileW( reroute.fileName(), lpFindFileData );
-  POST_REALCALL
-
-  if (res != INVALID_HANDLE_VALUE) {
-    // store the original search path for use during iteration
-    WRITE_CONTEXT()
-        ->customData<SearchHandleMap>(SearchHandles)[res]
-        = lpFileName;
-  }
-
-  if (reroute.wasRerouted()) {
-	  LOG_CALL()
-		  .PARAMWRAP(reroute.fileName())
-		  .PARAMHEX(::GetLastError())
-		  .PARAM(res);
-  }
-
-  HOOK_END
-
-  return res;
-}
-
-HANDLE WINAPI usvfs::hooks::FindFirstFileExA(LPCSTR lpFileName, FINDEX_INFO_LEVELS fInfoLevelId, LPVOID lpFindFileData, FINDEX_SEARCH_OPS  fSearchOp, LPVOID lpSearchFilter, DWORD dwAdditionalFlags)
-{
-	LPWIN32_FIND_DATAA origData = static_cast<LPWIN32_FIND_DATAA>(lpFindFileData);
-
-	WIN32_FIND_DATAW tempData;
-	HANDLE tempHandle = usvfs::hooks::FindFirstFileExW(ush::string_cast<std::wstring>(lpFileName).c_str(), fInfoLevelId, &tempData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
-	origData->dwFileAttributes = tempData.dwFileAttributes;
-	origData->ftCreationTime = tempData.ftCreationTime;
-	origData->ftLastAccessTime = tempData.ftLastAccessTime;
-	origData->ftLastWriteTime = tempData.ftLastWriteTime;
-	origData->nFileSizeHigh = tempData.nFileSizeHigh;
-	origData->nFileSizeLow = tempData.nFileSizeLow;
-	origData->dwReserved0 = tempData.dwReserved0;
-	origData->dwReserved1 = tempData.dwReserved1;
-	strcpy_s(origData->cFileName, ush::string_cast<std::string>(tempData.cFileName).c_str());
-	strcpy_s(origData->cAlternateFileName, ush::string_cast<std::string>(tempData.cAlternateFileName).c_str());
-	return tempHandle;
-}
-
-HANDLE WINAPI usvfs::hooks::FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVELS fInfoLevelId, LPVOID lpFindFileData, FINDEX_SEARCH_OPS  fSearchOp, LPVOID lpSearchFilter, DWORD dwAdditionalFlags)
-{
-  HANDLE res = INVALID_HANDLE_VALUE;
-
-  HOOK_START_GROUP(MutExHookGroup::FIND_FILES)
-
-  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
-  PRE_REALCALL
-	  res = ::FindFirstFileExW( reroute.fileName(), fInfoLevelId, lpFindFileData,  fSearchOp, lpSearchFilter, dwAdditionalFlags);
-  POST_REALCALL
-
-   if (res != INVALID_HANDLE_VALUE) {
-    // store the original search path for use during iteration
-    WRITE_CONTEXT()
-        ->customData<SearchHandleMap>(SearchHandles)[res]
-        = lpFileName;
-  }
-
-  if (reroute.wasRerouted()) {
-	  LOG_CALL()
-		  .PARAMWRAP(reroute.fileName())
-		  .PARAMHEX(fInfoLevelId)
-		  .PARAMHEX(fSearchOp)
-		  .PARAMHEX(lpSearchFilter)
-		  .PARAMHEX(dwAdditionalFlags)
-		  .PARAMHEX(::GetLastError())
-		  .PARAM(res);
-  }
-
-  HOOK_END
-
-  return res;
-}
-
-BOOL WINAPI usvfs::hooks::FindNextFileA(HANDLE hFindFile, LPWIN32_FIND_DATAA lpFindFileData)
-{
-	LPWIN32_FIND_DATAA origData = static_cast<LPWIN32_FIND_DATAA>(lpFindFileData);
-
-	WIN32_FIND_DATAW tempData;
-	BOOL result = usvfs::hooks::FindNextFileW(hFindFile, &tempData);
-	origData->dwFileAttributes = tempData.dwFileAttributes;
-	origData->ftCreationTime = tempData.ftCreationTime;
-	origData->ftLastAccessTime = tempData.ftLastAccessTime;
-	origData->ftLastWriteTime = tempData.ftLastWriteTime;
-	origData->nFileSizeHigh = tempData.nFileSizeHigh;
-	origData->nFileSizeLow = tempData.nFileSizeLow;
-	origData->dwReserved0 = tempData.dwReserved0;
-	origData->dwReserved1 = tempData.dwReserved1;
-	strcpy_s(origData->cFileName, ush::string_cast<std::string>(tempData.cFileName).c_str());
-	strcpy_s(origData->cAlternateFileName, ush::string_cast<std::string>(tempData.cAlternateFileName).c_str());
-	return result;
-}
-
-BOOL WINAPI usvfs::hooks::FindNextFileW(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData)
-{
-	BOOL res = ::FindNextFileW(hFindFile, lpFindFileData);
-	HOOK_START_GROUP(MutExHookGroup::FIND_FILES)
-	RerouteW reroute;
-
-	PRE_REALCALL
-	if (!res) {
-		if (WRITE_CONTEXT()->customData<SearchHandleMap>(SearchHandles).count(hFindFile)) {
-			std::wstring searchString = WRITE_CONTEXT()->customData<SearchHandleMap>(SearchHandles)[hFindFile];
-			reroute = RerouteW::create(READ_CONTEXT(), callContext, searchString.c_str());
-			if (reroute.wasRerouted()) {
-				WIN32_FIND_DATAW tempData;
-				HANDLE rerouteHandle = ::FindFirstFileW(searchString.c_str(), &tempData);
-				if (rerouteHandle != INVALID_HANDLE_VALUE) {
-					WRITE_CONTEXT()->customData<SearchHandleMap>(SearchHandles).erase(hFindFile);
-					::CloseHandle(hFindFile);
-					hFindFile = rerouteHandle;
-					lpFindFileData->dwFileAttributes = tempData.dwFileAttributes;
-					lpFindFileData->ftCreationTime = tempData.ftCreationTime;
-					lpFindFileData->ftLastAccessTime = tempData.ftLastAccessTime;
-					lpFindFileData->ftLastWriteTime = tempData.ftLastWriteTime;
-					lpFindFileData->nFileSizeHigh = tempData.nFileSizeHigh;
-					lpFindFileData->nFileSizeLow = tempData.nFileSizeLow;
-					lpFindFileData->dwReserved0 = tempData.dwReserved0;
-					lpFindFileData->dwReserved1 = tempData.dwReserved1;
-					wcscpy(lpFindFileData->cFileName, tempData.cFileName);
-					wcscpy(lpFindFileData->cAlternateFileName, tempData.cAlternateFileName);
-					res = TRUE;
-				}
-			}
-		}
-	}
-	POST_REALCALL
-
-	if (reroute.wasRerouted()) {
-		LOG_CALL()
-			.PARAMWRAP(reroute.fileName())
-			.PARAMHEX(::GetLastError())
-			.PARAM(res);
-	}
-	HOOK_END
-
-	return res;
-}
-
 HRESULT WINAPI usvfs::hooks::CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszNewFileName, COPYFILE2_EXTENDED_PARAMETERS *pExtendedParameters)
 {
-	BOOL res = FALSE;
+  BOOL res = FALSE;
 
-	typedef HRESULT(WINAPI * CopyFile2_t)(PCWSTR, PCWSTR, COPYFILE2_EXTENDED_PARAMETERS *);
+  typedef HRESULT(WINAPI * CopyFile2_t)(PCWSTR, PCWSTR, COPYFILE2_EXTENDED_PARAMETERS *);
 
-	HMODULE kernelbase = ::GetModuleHandle(L"kernelbase.dll");
-	HMODULE kernel = ::GetModuleHandle(L"kernel32.dll");
-	CopyFile2_t dCopyFile2 = NULL;
-	if (kernelbase != NULL)
-		dCopyFile2 = (CopyFile2_t)::GetProcAddress(kernelbase, "CopyFile2");
-	if (dCopyFile2 == NULL && kernel != NULL)
-		dCopyFile2 = (CopyFile2_t)::GetProcAddress(kernel, "CopyFile2");
-	if (dCopyFile2 == NULL) return res;
+  HMODULE kernelbase = ::GetModuleHandle(L"kernelbase.dll");
+  HMODULE kernel = ::GetModuleHandle(L"kernel32.dll");
+  CopyFile2_t dCopyFile2 = NULL;
+  if (kernelbase != NULL)
+    dCopyFile2 = (CopyFile2_t)::GetProcAddress(kernelbase, "CopyFile2");
+  if (dCopyFile2 == NULL && kernel != NULL)
+    dCopyFile2 = (CopyFile2_t)::GetProcAddress(kernel, "CopyFile2");
+  if (dCopyFile2 == NULL) return res;
 
-	HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
+  HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
+  RerouteW readReroute;
+  RerouteW writeReroute;
 
-	RerouteW readReroute;
-	RerouteW writeReroute;
+  {
+    auto context = READ_CONTEXT();
+    readReroute = RerouteW::create(context, callContext, pwszExistingFileName);
+    writeReroute = RerouteW::createNew(context, callContext, pwszNewFileName);
+  }
 
-	{
-		auto context = READ_CONTEXT();
-		readReroute = RerouteW::create(context, callContext, pwszExistingFileName);
-		writeReroute = RerouteW::createNew(context, callContext, pwszNewFileName);
-	}
+  PRE_REALCALL
+    res = dCopyFile2(readReroute.fileName(), writeReroute.fileName(), pExtendedParameters);
+  POST_REALCALL
 
-	PRE_REALCALL
-		if (!readReroute.wasRerouted() && !writeReroute.wasRerouted()) {
-			res = dCopyFile2(pwszExistingFileName, pwszNewFileName, pExtendedParameters);
-		}
-		else {
-			res = dCopyFile2(readReroute.fileName(), writeReroute.fileName(), pExtendedParameters);
-		}
-		POST_REALCALL
+  if (res) {
+    if (writeReroute.wasRerouted()) {
+      writeReroute.insertMapping(WRITE_CONTEXT());
+    }
+  }
 
-			if (res == S_OK) {
-				if (writeReroute.wasRerouted()) {
-					writeReroute.insertMapping(WRITE_CONTEXT());
-				}
-			}
+  if (readReroute.wasRerouted() || writeReroute.wasRerouted()) {
+    LOG_CALL()
+      .PARAMWRAP(readReroute.fileName())
+      .PARAMWRAP(writeReroute.fileName())
+      .PARAM(res)
+      .PARAM(::GetLastError());
+  }
 
-		if (readReroute.wasRerouted() || writeReroute.wasRerouted()) {
-			LOG_CALL()
-				.PARAMWRAP(readReroute.fileName())
-				.PARAMWRAP(writeReroute.fileName())
-				.PARAM(res)
-				.PARAM(::GetLastError());
-		}
+  HOOK_END
 
-		HOOK_END
-
-		return res;
+  return res;
 }
 
+DWORD WINAPI usvfs::hooks::GetPrivateProfileSectionNamesA(LPSTR lpszReturnBuffer, DWORD nSize, LPCSTR lpFileName)
+{
+  DWORD res = 0;
+
+  HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
+
+    if (!callContext.active()) {
+      return ::GetPrivateProfileSectionNamesA(lpszReturnBuffer, nSize, lpFileName);
+    }
+
+  auto context = READ_CONTEXT();
+  RerouteW reroute = RerouteW::create(context, callContext, ush::string_cast<std::wstring>(lpFileName).c_str());
+  PRE_REALCALL
+    res = ::GetPrivateProfileSectionNamesA(lpszReturnBuffer, nSize, ush::string_cast<std::string>(reroute.fileName()).c_str());
+  POST_REALCALL
+
+    if (reroute.wasRerouted()) {
+      LOG_CALL()
+        .PARAMHEX(nSize)
+        .PARAMWRAP(reroute.fileName())
+        .PARAMHEX(res)
+        .PARAMHEX(::GetLastError());
+    }
+  HOOK_END
+
+    return res;
+}
+
+DWORD WINAPI usvfs::hooks::GetPrivateProfileSectionNamesW(LPWSTR lpszReturnBuffer, DWORD nSize, LPCWSTR lpFileName)
+{
+  DWORD res = 0;
+
+  HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
+
+    if (!callContext.active()) {
+      return ::GetPrivateProfileSectionNamesW(lpszReturnBuffer, nSize, lpFileName);
+    }
+
+  auto context = READ_CONTEXT();
+  RerouteW reroute = RerouteW::create(context, callContext, lpFileName);
+  PRE_REALCALL
+    res = ::GetPrivateProfileSectionNamesW(lpszReturnBuffer, nSize, reroute.fileName());
+  POST_REALCALL
+
+    if (reroute.wasRerouted()) {
+      LOG_CALL()
+        .PARAMHEX(nSize)
+        .PARAMWRAP(reroute.fileName())
+        .PARAMHEX(res)
+        .PARAMHEX(::GetLastError());
+    }
+  HOOK_END
+
+    return res;
+}
+
+DWORD WINAPI usvfs::hooks::GetPrivateProfileSectionA(LPCSTR lpAppName, LPSTR lpReturnedString, DWORD nSize, LPCSTR lpFileName)
+{
+  DWORD res = 0;
+
+  HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
+
+    if (!callContext.active()) {
+      return ::GetPrivateProfileSectionA(lpAppName, lpReturnedString, nSize, lpFileName);
+    }
+
+  auto context = READ_CONTEXT();
+  RerouteW reroute = RerouteW::create(context, callContext, ush::string_cast<std::wstring>(lpFileName).c_str());
+  PRE_REALCALL
+    res = ::GetPrivateProfileSectionA(lpAppName, lpReturnedString, nSize, ush::string_cast<std::string>(reroute.fileName()).c_str());
+  POST_REALCALL
+
+    if (reroute.wasRerouted()) {
+      LOG_CALL()
+        .PARAMHEX(nSize)
+        .PARAMWRAP(reroute.fileName())
+        .PARAMHEX(res)
+        .PARAMHEX(::GetLastError());
+    }
+  HOOK_END
+
+    return res;
+}
+
+DWORD WINAPI usvfs::hooks::GetPrivateProfileSectionW(LPCWSTR lpAppName, LPWSTR lpReturnedString, DWORD nSize, LPCWSTR lpFileName)
+{
+  DWORD res = 0;
+
+  HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
+
+    if (!callContext.active()) {
+      return ::GetPrivateProfileSectionW(lpAppName, lpReturnedString, nSize, lpFileName);
+    }
+
+  auto context = READ_CONTEXT();
+  RerouteW reroute = RerouteW::create(context, callContext, lpFileName);
+  PRE_REALCALL
+    res = ::GetPrivateProfileSectionW(lpAppName, lpReturnedString, nSize, reroute.fileName());
+  POST_REALCALL
+
+    if (reroute.wasRerouted()) {
+      LOG_CALL()
+        .PARAMHEX(nSize)
+        .PARAMWRAP(reroute.fileName())
+        .PARAMHEX(res)
+        .PARAMHEX(::GetLastError());
+    }
+  HOOK_END
+
+    return res;
+}
+
+BOOL WINAPI usvfs::hooks::WritePrivateProfileStringA(LPCSTR lpAppName, LPCSTR lpKeyName, LPCSTR lpString, LPCSTR lpFileName)
+{
+  return WritePrivateProfileStringW(
+    ush::string_cast<std::wstring>(lpAppName).c_str(),
+    ush::string_cast<std::wstring>(lpKeyName).c_str(),
+    ush::string_cast<std::wstring>(lpString).c_str(),
+    ush::string_cast<std::wstring>(lpFileName).c_str()
+  );
+}
+
+BOOL WINAPI usvfs::hooks::WritePrivateProfileStringW(LPCWSTR lpAppName, LPCWSTR lpKeyName, LPCWSTR lpString, LPCWSTR lpFileName)
+{
+  BOOL res = false;
+
+  HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
+
+    if (!callContext.active()) {
+      return ::WritePrivateProfileStringW(lpAppName, lpKeyName, lpString, lpFileName);
+    }
+
+  bool create = false;
+
+  RerouteW reroute;
+  {
+    auto context = READ_CONTEXT();
+    reroute = RerouteW::create(context, callContext, lpFileName);
+    if (!reroute.wasRerouted() && !fileExists(lpFileName)) {
+      // the file will be created so now we need to know where
+      reroute = RerouteW::createNew(context, callContext, lpFileName);
+      create = (reroute.wasRerouted());
+
+      if (create) {
+        fs::path target(reroute.fileName());
+        winapi::ex::wide::createPath(target.parent_path().wstring().c_str());
+      }
+    }
+  }
+
+  PRE_REALCALL
+    res = ::WritePrivateProfileStringW(lpAppName, lpKeyName, lpString, reroute.fileName());
+  POST_REALCALL
+
+
+    if (create && (res != FALSE)) {
+      spdlog::get("hooks")
+        ->info("add file to vfs: {}",
+          ush::string_cast<std::string>(lpFileName, ush::CodePage::UTF8));
+      // new file was created in a mapped directory, insert to vitual structure
+      reroute.insertMapping(WRITE_CONTEXT());
+    }
+
+  if (reroute.wasRerouted()) {
+    LOG_CALL()
+      .PARAM(lpAppName)
+      .PARAM(lpKeyName)
+      .PARAM(lpString)
+      .PARAMWRAP(lpFileName)
+      .PARAMWRAP(reroute.fileName())
+      .PARAMHEX(res)
+      .PARAMHEX(::GetLastError());
+  }
+
+  HOOK_END
+
+  return res;
+}
 
 VOID WINAPI usvfs::hooks::ExitProcess(UINT exitCode)
 {
@@ -1589,4 +1748,3 @@ VOID WINAPI usvfs::hooks::ExitProcess(UINT exitCode)
 
   HOOK_END
 }
-
