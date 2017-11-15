@@ -104,10 +104,11 @@ public:
       result.m_Rerouted = false;
       if (callContext.active()) {
         bool absolute = false;
-        if (ush::startswith(inPath, LR"(\\?\)")) {
+        if (ush::startswith(inPath, LR"(\\?\)") || ush::startswith(inPath, LR"(\??\)")) {
           absolute = true;
           inPath += 4;
-        } else if (inPath[1] == L':') {
+        }
+        else if (inPath[1] == L':') {
           absolute = true;
         }
 
@@ -138,9 +139,15 @@ public:
         result.m_FileNode = table->findNode(lookupPath.c_str());
 
         if (result.m_FileNode.get()
-            && !result.m_FileNode->data().linkTarget.empty()) {
-          result.m_Buffer = string_cast<std::wstring>(
+          && (!result.m_FileNode->data().linkTarget.empty() || result.m_FileNode->isDirectory())) {
+          if (!result.m_FileNode->data().linkTarget.empty()) {
+            result.m_Buffer = string_cast<std::wstring>(
               result.m_FileNode->data().linkTarget.c_str(), CodePage::UTF8);
+          }
+          else
+          {
+            result.m_Buffer = result.m_FileNode->path().wstring();
+          }
           result.m_Rerouted = true;
         }
       }
@@ -163,7 +170,7 @@ public:
       result.m_Buffer   = inPath;
 
       bool absolute = false;
-      if (ush::startswith(inPath, LR"(\\?\)")) {
+      if (ush::startswith(inPath, LR"(\\?\)") || ush::startswith(inPath, LR"(\??\)")) {
         absolute = true;
         inPath += 4;
       } else if (inPath[1] == L':') {
