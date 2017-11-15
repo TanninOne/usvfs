@@ -224,8 +224,8 @@ void HookManager::initHooks()
 
   installHook(kbaseMod, k32Mod, "GetFileAttributesExW", uhooks::GetFileAttributesExW);
   installHook(kbaseMod, k32Mod, "GetFileAttributesW", uhooks::GetFileAttributesW);
-  //installStub(kbaseMod, k32Mod, "GetFileAttributesExA");
-  //installStub(kbaseMod, k32Mod, "GetFileAttributesA");
+  installHook(kbaseMod, k32Mod, "GetFileAttributesExA", uhooks::GetFileAttributesExA);
+  installHook(kbaseMod, k32Mod, "GetFileAttributesA", uhooks::GetFileAttributesA);
   installHook(kbaseMod, k32Mod, "SetFileAttributesW", uhooks::SetFileAttributesW);
   installHook(kbaseMod, k32Mod, "CreateFileW", uhooks::CreateFileW); // not all calls seem to translate to a call to NtCreateFile
   installHook(kbaseMod, k32Mod, "CreateFileA", uhooks::CreateFileA);
@@ -253,6 +253,18 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "CopyFileExA", uhooks::CopyFileExA);
   installHook(kbaseMod, k32Mod, "CopyFileExW", uhooks::CopyFileExW);
 
+  if (IsWindows8OrGreater()) {
+    installHook(kbaseMod, k32Mod, "CreateFile2", uhooks::CreateFile2);
+    installHook(kbaseMod, k32Mod, "CopyFile2", uhooks::CopyFile2);
+  }
+
+  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionNamesA", uhooks::GetPrivateProfileSectionNamesA);
+  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionNamesW", uhooks::GetPrivateProfileSectionNamesW);
+  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionA", uhooks::GetPrivateProfileSectionA);
+  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionW", uhooks::GetPrivateProfileSectionW);
+  installHook(kbaseMod, k32Mod, "WritePrivateProfileStringA", uhooks::WritePrivateProfileStringA);
+  installHook(kbaseMod, k32Mod, "WritePrivateProfileStringW", uhooks::WritePrivateProfileStringW);
+
   installStub(kbaseMod, k32Mod, "CreateHardLinkA");
   installStub(kbaseMod, k32Mod, "CreateHardLinkW");
   installHook(kbaseMod, k32Mod, "GetFullPathNameW", uhooks::GetFullPathNameW);
@@ -265,11 +277,6 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "FindFirstFileW", uhooks::FindFirstFileW);
   installHook(kbaseMod, k32Mod, "FindFirstFileExA", uhooks::FindFirstFileExA);
   installHook(kbaseMod, k32Mod, "FindFirstFileExW", uhooks::FindFirstFileExW);
-
-  //Only functions in kbaseMod
-  if(IsWindows8OrGreater()) {
-  	installHook(kbaseMod, nullptr, "CopyFile2", uhooks::CopyFile2);
-  }
 
   HMODULE ntdllMod = GetModuleHandleA("ntdll.dll");
   spdlog::get("usvfs")->debug("ntdll.dll at {0:x}", reinterpret_cast<uintptr_t>(ntdllMod));
