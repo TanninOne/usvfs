@@ -84,7 +84,7 @@ void usvfs::injectProcess(const std::wstring &applicationPath
   if (sameBitness) {
     std::string libName = std::string("usvfs_") + (proc64 ? "x64" : "x86");
 #ifdef _DEBUG
-    std::wstring dllPath = (binPath / (libName + "-d.dll").wstring();
+    std::wstring dllPath = (binPath / (libName + "-d.dll")).wstring();
 #else // DEBUG
     std::wstring dllPath = (binPath / (libName + ".dll")).wstring();
 #endif // DEBUG
