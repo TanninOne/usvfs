@@ -60,7 +60,7 @@ DLLEXPORT BOOL WINAPI GetFileVersionInfoExW(DWORD dwFlags, LPCWSTR lptstrFilenam
 DLLEXPORT DWORD WINAPI GetFileVersionInfoSizeW(LPCWSTR lptstrFilename, LPDWORD lpdwHandle);
 DLLEXPORT DWORD WINAPI GetFileVersionInfoSizeExW(DWORD dwFlags, LPCWSTR lptstrFilename, LPDWORD lpdwHandle);
 
-DLLEXPORT HANDLE WINAPI FindFirstFileW(LPCTSTR lpFileName, LPWIN32_FIND_DATA lpFindFileData);
+DLLEXPORT HANDLE WINAPI FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATA lpFindFileData);
 DLLEXPORT HANDLE WINAPI FindFirstFileExW(LPCTSTR lpFileName,FINDEX_INFO_LEVELS fInfoLevelId, LPVOID lpFindFileData, FINDEX_SEARCH_OPS  fSearchOp, LPVOID lpSearchFilter, DWORD dwAdditionalFlags);
 
 DLLEXPORT VOID WINAPI ExitProcess(UINT exitCode);
