@@ -34,6 +34,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <directory_tree.h>
 #include <usvfsparameters.h>
 #include <winapi.h>
+#include <VersionHelpers.h>
 
 
 using namespace HookLib;
@@ -229,6 +230,7 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "CreateFileW", uhooks::CreateFileW); // not all calls seem to translate to a call to NtCreateFile
   installHook(kbaseMod, k32Mod, "CreateFileA", uhooks::CreateFileA);
   installHook(kbaseMod, k32Mod, "CreateDirectoryW", uhooks::CreateDirectoryW);
+  installHook(kbaseMod, k32Mod, "RemoveDirectoryW", uhooks::RemoveDirectoryW);
   installHook(kbaseMod, k32Mod, "DeleteFileW", uhooks::DeleteFileW);
   installHook(kbaseMod, k32Mod, "DeleteFileA", uhooks::DeleteFileA);
   installHook(kbaseMod, k32Mod, "GetCurrentDirectoryA", uhooks::GetCurrentDirectoryA);
@@ -259,6 +261,13 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "GetFileVersionInfoExW", uhooks::GetFileVersionInfoExW);
   installHook(kbaseMod, k32Mod, "GetFileVersionInfoSizeW", uhooks::GetFileVersionInfoSizeW);
   installHook(kbaseMod, k32Mod, "GetFileVersionInfoSizeExW", uhooks::GetFileVersionInfoSizeExW);
+  installHook(kbaseMod, k32Mod, "FindFirstFileW", uhooks::FindFirstFileW);
+  installHook(kbaseMod, k32Mod, "FindFirstFileExW", uhooks::FindFirstFileExW);
+  
+  //Only functions in kbaseMod
+  if(IsWindows8OrGreater()) {
+  	installHook(kbaseMod, nullptr, "CopyFile2", uhooks::CopyFile2);
+  }
 
   HMODULE ntdllMod = GetModuleHandleA("ntdll.dll");
   spdlog::get("usvfs")->debug("ntdll.dll at {0:x}", reinterpret_cast<uintptr_t>(ntdllMod));
