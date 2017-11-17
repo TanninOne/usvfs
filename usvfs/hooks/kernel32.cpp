@@ -1247,7 +1247,7 @@ DLLEXPORT BOOL WINAPI usvfs::hooks::RemoveDirectoryW(
 		reroute.removeMapping();
 		LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(reroute.fileName()).PARAM(res);
 	}
-
+		
 	HOOK_END
 
 	return res;
@@ -1496,6 +1496,65 @@ DWORD WINAPI usvfs::hooks::GetFileVersionInfoSizeExW(DWORD dwFlags, LPCWSTR lpts
   return res;
 }
 
+HANDLE WINAPI usvfs::hooks::FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATAW lpFindFileData)
+{
+  HANDLE res = INVALID_HANDLE_VALUE;
+
+  HOOK_START_GROUP(MutExHookGroup::SEARCH_FILES)
+
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
+
+  PRE_REALCALL
+	  res = ::FindFirstFileW(reroute.fileName(), lpFindFileData);
+  POST_REALCALL
+
+  if (res != INVALID_HANDLE_VALUE) {
+    // store the original search path for use during iteration
+    WRITE_CONTEXT()
+        ->customData<SearchHandleMap>(SearchHandles)[res]
+        = lpFileName;
+  }
+
+  HOOK_END
+
+  return res;
+}
+
+HANDLE WINAPI usvfs::hooks::FindFirstFileExW(LPCTSTR lpFileName,FINDEX_INFO_LEVELS fInfoLevelId, LPVOID lpFindFileData, FINDEX_SEARCH_OPS  fSearchOp, LPVOID lpSearchFilter, DWORD dwAdditionalFlags)
+{
+  HANDLE res = INVALID_HANDLE_VALUE;
+
+  HOOK_START_GROUP(MutExHookGroup::SEARCH_FILES)
+
+  // We need to do some trickery here, since we only want to use the hooked NtQueryDirectoryFile for rerouted locations we need to check if the Directory path has been routed instead of the full path.
+  fs::path p(lpFileName);
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, (p.parent_path().wstring()).c_str());
+
+  PRE_REALCALL
+	  if (reroute.wasRerouted()) {
+		  res = ::FindFirstFileExW(lpFileName, fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
+	  }
+	  else {
+		  //Force the mutEXHook to match NtQueryDirectoryFile so it calls the non hooked NtQueryDirectoryFile.
+		  FunctionGroupLock lock(MutExHookGroup::FIND_FILES);
+		  HookContext::ConstPtr context = READ_CONTEXT();
+		  res = ::FindFirstFileExW(lpFileName, fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
+	  }
+
+  POST_REALCALL
+
+   if (res != INVALID_HANDLE_VALUE) {
+    // store the original search path for use during iteration
+    WRITE_CONTEXT()
+        ->customData<SearchHandleMap>(SearchHandles)[res]
+        = lpFileName;
+  }
+
+  HOOK_END
+
+  return res;
+}
+
 HRESULT WINAPI usvfs::hooks::CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszNewFileName, COPYFILE2_EXTENDED_PARAMETERS *pExtendedParameters)
 {
   BOOL res = FALSE;
@@ -1521,9 +1580,14 @@ HRESULT WINAPI usvfs::hooks::CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszN
     writeReroute = RerouteW::createNew(context, callContext, pwszNewFileName);
   }
 
-  PRE_REALCALL
-    res = dCopyFile2(readReroute.fileName(), writeReroute.fileName(), pExtendedParameters);
-  POST_REALCALL
+	PRE_REALCALL
+    if (!readReroute.wasRerouted() && !writeReroute.wasRerouted()) {
+        res = dCopyFile2(pwszExistingFileName, pwszNewFileName, pExtendedParameters);
+    }
+    else {
+        res = dCopyFile2(readReroute.fileName(), writeReroute.fileName(), pExtendedParameters);
+    }
+    POST_REALCALL
 
   if (res) {
     if (writeReroute.wasRerouted()) {
