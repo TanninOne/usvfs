@@ -36,7 +36,7 @@ SET(default_project_path "${CMAKE_SOURCE_DIR}/..")
 GET_FILENAME_COMPONENT(${default_project_path} ${default_project_path} REALPATH)
 
 SET(project_path "${default_project_path}" CACHE PATH "path to the other mo projects")
-SET(lib_path "${project_path}/../install/libs")
+SET(lib_path "${CMAKE_INSTALL_PREFIX}/libs")
 LINK_DIRECTORIES("${lib_path}")
 
 FIND_PROGRAM(IWYU_PATH NAMES include-what-you-use iwyu PATHS ${project_path}/include-what-you-use/bin)
