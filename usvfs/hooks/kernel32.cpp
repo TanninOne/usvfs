@@ -1343,7 +1343,7 @@ HANDLE WINAPI usvfs::hooks::FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATA
 
   HOOK_START_GROUP(MutExHookGroup::SEARCH_FILES)
 
-  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, (p.parent_path().wstring()).c_str());
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
 
   PRE_REALCALL
 	  res = ::FindFirstFileW(reroute.fileName(), lpFindFileData);
