@@ -1523,8 +1523,6 @@ HANDLE WINAPI usvfs::hooks::FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATA
   fs::path p(lpFileName);
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, (p.parent_path().wstring()).c_str());
 
-  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
-
   PRE_REALCALL
 
   if (reroute.wasRerouted()) {
