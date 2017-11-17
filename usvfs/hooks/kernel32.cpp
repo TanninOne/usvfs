@@ -1517,16 +1517,24 @@ HANDLE WINAPI usvfs::hooks::FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATA
 {
   HANDLE res = INVALID_HANDLE_VALUE;
 
-  HOOK_START_GROUP(MutExHookGroup::FIND_FILES)
+  HOOK_START_GROUP(MutExHookGroup::SEARCH_FILES)
+
+  // We need to do some trickery here, since we only want to use the hooked NtQueryDirectoryFile for rerouted locations we need to check if the Directory path has been routed instead of the full path.
+  fs::path p(lpFileName);
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, (p.parent_path().wstring()).c_str());
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
 
   PRE_REALCALL
+
   if (reroute.wasRerouted()) {
-	 res = ::FindFirstFileW( reroute.fileName(), lpFindFileData );
+	  res = ::FindFirstFileW(lpFileName, lpFindFileData);
   }
   else {
-	 res = ::FindFirstFileW( lpFileName, lpFindFileData );
+	  //Force the mutEXHook to match NtQueryDirectoryFile so it calls the non hooked NtQueryDirectoryFile.
+	  FunctionGroupLock lock(MutExHookGroup::FIND_FILES);
+	  HookContext::ConstPtr context = READ_CONTEXT();
+	  res = ::FindFirstFileW(lpFileName, lpFindFileData);
   }
   POST_REALCALL
 
