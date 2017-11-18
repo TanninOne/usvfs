@@ -526,9 +526,18 @@ void gatherVirtualEntries(const UnicodeString &dirName,
         std::wstring vName = ush::string_cast<std::wstring>(
             subNode->name(), ush::CodePage::UTF8);
 
-        Searches::Info::VirtualMatch m{
-            ush::string_cast<std::wstring>(subNode->data().linkTarget.c_str(),
-                                           ush::CodePage::UTF8), vName};
+        Searches::Info::VirtualMatch m;
+        if (subNode->data().linkTarget.length() > 0)
+        {
+          m = { ush::string_cast<std::wstring>(subNode->data().linkTarget.c_str(),
+                                         ush::CodePage::UTF8), vName };
+        }
+        else
+        {
+          m = { ush::string_cast<std::wstring>(subNode->path().c_str(),
+            ush::CodePage::UTF8), vName };
+        }
+              
         info.virtualMatches.push_back(m);
         info.foundFiles.insert(ush::to_upper(vName));
       }
