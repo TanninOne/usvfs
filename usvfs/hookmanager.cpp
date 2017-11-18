@@ -34,6 +34,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <directory_tree.h>
 #include <usvfsparameters.h>
 #include <winapi.h>
+#include <VersionHelpers.h>
 
 
 using namespace HookLib;
@@ -223,12 +224,13 @@ void HookManager::initHooks()
 
   installHook(kbaseMod, k32Mod, "GetFileAttributesExW", uhooks::GetFileAttributesExW);
   installHook(kbaseMod, k32Mod, "GetFileAttributesW", uhooks::GetFileAttributesW);
-  //installStub(kbaseMod, k32Mod, "GetFileAttributesExA");
-  //installStub(kbaseMod, k32Mod, "GetFileAttributesA");
+  installHook(kbaseMod, k32Mod, "GetFileAttributesExA", uhooks::GetFileAttributesExA);
+  installHook(kbaseMod, k32Mod, "GetFileAttributesA", uhooks::GetFileAttributesA);
   installHook(kbaseMod, k32Mod, "SetFileAttributesW", uhooks::SetFileAttributesW);
   installHook(kbaseMod, k32Mod, "CreateFileW", uhooks::CreateFileW); // not all calls seem to translate to a call to NtCreateFile
   installHook(kbaseMod, k32Mod, "CreateFileA", uhooks::CreateFileA);
   installHook(kbaseMod, k32Mod, "CreateDirectoryW", uhooks::CreateDirectoryW);
+  installHook(kbaseMod, k32Mod, "RemoveDirectoryW", uhooks::RemoveDirectoryW);
   installHook(kbaseMod, k32Mod, "DeleteFileW", uhooks::DeleteFileW);
   installHook(kbaseMod, k32Mod, "DeleteFileA", uhooks::DeleteFileA);
   installHook(kbaseMod, k32Mod, "GetCurrentDirectoryA", uhooks::GetCurrentDirectoryA);
@@ -250,6 +252,18 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "CopyFileW", uhooks::CopyFileW);
   installHook(kbaseMod, k32Mod, "CopyFileExA", uhooks::CopyFileExA);
   installHook(kbaseMod, k32Mod, "CopyFileExW", uhooks::CopyFileExW);
+
+  if (IsWindows8OrGreater()) {
+    installHook(kbaseMod, k32Mod, "CreateFile2", uhooks::CreateFile2);
+    installHook(kbaseMod, k32Mod, "CopyFile2", uhooks::CopyFile2);
+  }
+
+  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionNamesA", uhooks::GetPrivateProfileSectionNamesA);
+  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionNamesW", uhooks::GetPrivateProfileSectionNamesW);
+  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionA", uhooks::GetPrivateProfileSectionA);
+  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionW", uhooks::GetPrivateProfileSectionW);
+  installHook(kbaseMod, k32Mod, "WritePrivateProfileStringA", uhooks::WritePrivateProfileStringA);
+  installHook(kbaseMod, k32Mod, "WritePrivateProfileStringW", uhooks::WritePrivateProfileStringW);
 
   installStub(kbaseMod, k32Mod, "CreateHardLinkA");
   installStub(kbaseMod, k32Mod, "CreateHardLinkW");

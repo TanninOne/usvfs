@@ -1,0 +1,22 @@
+--- boost/move/detail/type_traits.hpp	Thu Dec 22 14:33:17 2016
++++ boost_new/move/detail/type_traits.hpp	Sat Apr 15 08:11:45 2017
+@@ -737,7 +737,10 @@
+ #endif
+ 
+ template<class T>
+-struct is_copy_constructible
++#if _MSC_VER && !__INTEL_COMPILER
++   struct is_copy_constructible : public std::is_copy_constructible<T> {
++#else
++   struct is_copy_constructible
+ {
+    // Intel compiler has problems with SFINAE for copy constructors and deleted functions:
+    //
+@@ -760,6 +763,7 @@
+    #else
+    static const bool value = !has_boost_move_no_copy_constructor_or_assign_type<T>::value;
+    #endif
++#endif
+ };
+ 
+ 

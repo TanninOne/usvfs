@@ -44,8 +44,9 @@ enum class MutExHookGroup : int {
   DELETE_FILE = 8,
   GET_FILE_VERSION = 9,
   GET_MODULE_HANDLE = 10,
+  SEARCH_FILES = 11,
 
-  NO_GROUP = 11,
+  NO_GROUP = 12,
   LAST = NO_GROUP,
 };
 
