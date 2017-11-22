@@ -1524,15 +1524,14 @@ HANDLE WINAPI usvfs::hooks::FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATA
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, (p.parent_path().wstring()).c_str());
 
   PRE_REALCALL
-
   if (reroute.wasRerouted()) {
-	  res = ::FindFirstFileW(lpFileName, lpFindFileData);
+    res = ::FindFirstFileW(lpFileName, lpFindFileData);
   }
   else {
-	  //Force the mutEXHook to match NtQueryDirectoryFile so it calls the non hooked NtQueryDirectoryFile.
-	  FunctionGroupLock lock(MutExHookGroup::FIND_FILES);
-	  HookContext::ConstPtr context = READ_CONTEXT();
-	  res = ::FindFirstFileW(lpFileName, lpFindFileData);
+    //Force the mutEXHook to match NtQueryDirectoryFile so it calls the non hooked NtQueryDirectoryFile.
+    FunctionGroupLock lock(MutExHookGroup::FIND_FILES);
+    HookContext::ConstPtr context = READ_CONTEXT();
+    res = ::FindFirstFileW(lpFileName, lpFindFileData);
   }
   POST_REALCALL
 
