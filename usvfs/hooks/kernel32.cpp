@@ -1496,65 +1496,6 @@ DWORD WINAPI usvfs::hooks::GetFileVersionInfoSizeExW(DWORD dwFlags, LPCWSTR lpts
   return res;
 }
 
-HANDLE WINAPI usvfs::hooks::FindFirstFileA(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData)
-{
-	WIN32_FIND_DATAW tempData;
-	HANDLE tempHandle = usvfs::hooks::FindFirstFileW(ush::string_cast<std::wstring>(lpFileName).c_str(), &tempData);
-	lpFindFileData->dwFileAttributes = tempData.dwFileAttributes;
-	lpFindFileData->ftCreationTime = tempData.ftCreationTime;
-	lpFindFileData->ftLastAccessTime = tempData.ftLastAccessTime;
-	lpFindFileData->ftLastWriteTime = tempData.ftLastWriteTime;
-	lpFindFileData->nFileSizeHigh = tempData.nFileSizeHigh;
-	lpFindFileData->nFileSizeLow = tempData.nFileSizeLow;
-	lpFindFileData->dwReserved0 = tempData.dwReserved0;
-	lpFindFileData->dwReserved1 = tempData.dwReserved1;
-	strcpy_s(lpFindFileData->cFileName, ush::string_cast<std::string>(tempData.cFileName).c_str());
-	strcpy_s(lpFindFileData->cAlternateFileName, ush::string_cast<std::string>(tempData.cAlternateFileName).c_str());
-	return tempHandle;
-}
-
-HANDLE WINAPI usvfs::hooks::FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATAW lpFindFileData)
-{
-  HANDLE res = INVALID_HANDLE_VALUE;
-
-  HOOK_START_GROUP(MutExHookGroup::SEARCH_FILES)
-
-  // We need to do some trickery here, since we only want to use the hooked NtQueryDirectoryFile for rerouted locations we need to check if the Directory path has been routed instead of the full path.
-  fs::path p(lpFileName);
-  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, (p.parent_path().wstring()).c_str());
-
-  PRE_REALCALL
-  if (reroute.wasRerouted()) {
-    res = ::FindFirstFileW(lpFileName, lpFindFileData);
-  }
-  else {
-    //Force the mutEXHook to match NtQueryDirectoryFile so it calls the non hooked NtQueryDirectoryFile.
-    FunctionGroupLock lock(MutExHookGroup::FIND_FILES);
-    HookContext::ConstPtr context = READ_CONTEXT();
-    res = ::FindFirstFileW(lpFileName, lpFindFileData);
-  }
-  POST_REALCALL
-
-  if (res != INVALID_HANDLE_VALUE) {
-    // store the original search path for use during iteration
-    WRITE_CONTEXT()
-        ->customData<SearchHandleMap>(SearchHandles)[res]
-        = lpFileName;
-  }
-
-  if (reroute.wasRerouted()) {
-    LOG_CALL()
-        .PARAMWRAP(lpFileName)
-        .PARAMWRAP(reroute.fileName())
-        .PARAMHEX(res)
-        .PARAMHEX(::GetLastError());
-  }
-
-  HOOK_END
-
-  return res;
-}
-
 HANDLE WINAPI usvfs::hooks::FindFirstFileExA(LPCSTR lpFileName, FINDEX_INFO_LEVELS fInfoLevelId, LPVOID lpFindFileData, FINDEX_SEARCH_OPS  fSearchOp, LPVOID lpSearchFilter, DWORD dwAdditionalFlags)
 {
 	LPWIN32_FIND_DATAA origData = static_cast<LPWIN32_FIND_DATAA>(lpFindFileData);

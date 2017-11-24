@@ -101,9 +101,20 @@ applyReroute(const usvfs::HookContext::ConstPtr &context,
         static_cast<LPCWSTR>(result.first) + 4, ush::CodePage::UTF8);
     auto node = context->redirectionTable()->findNode(lookupPath.c_str());
     // if so, replace the file name with the path to the mapped file
-    if ((node.get() != nullptr) && !node->data().linkTarget.empty()) {
-      std::wstring reroutePath = ush::string_cast<std::wstring>(
+    if ((node.get() != nullptr) && (!node->data().linkTarget.empty() || node->isDirectory())) {
+      std::wstring reroutePath;
+
+      if (node->data().linkTarget.length() > 0)
+      {
+        reroutePath = ush::string_cast<std::wstring>(
           node->data().linkTarget.c_str(), ush::CodePage::UTF8);
+      }
+      else
+      {
+        reroutePath = ush::string_cast<std::wstring>(
+          node->path().c_str(),
+          ush::CodePage::UTF8);
+      } 
       if ((*reroutePath.rbegin() == L'\\') && (*lookupPath.rbegin() != '\\')) {
         reroutePath.resize(reroutePath.size() - 1);
       }
