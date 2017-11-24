@@ -108,6 +108,15 @@ public:
           absolute = true;
           inPath += 4;
         }
+        else if ((ush::startswith(inPath, LR"(\\localhost\)") || ush::startswith(inPath, LR"(\\127.0.0.1\)")) && inPath[13] == L'$') {
+          absolute = true;
+          std::wstring newPath = L"";
+          newPath += towupper(inPath[12]);
+          inPath += 14;
+          newPath += L':';
+          newPath += ush::string_cast<std::wstring>(inPath);
+          inPath = newPath.c_str();
+        }
         else if (inPath[1] == L':') {
           absolute = true;
         }
@@ -173,7 +182,17 @@ public:
       if (ush::startswith(inPath, LR"(\\?\)") || ush::startswith(inPath, LR"(\??\)")) {
         absolute = true;
         inPath += 4;
-      } else if (inPath[1] == L':') {
+      }
+      else if ((ush::startswith(inPath, LR"(\\localhost\)") || ush::startswith(inPath, LR"(\\127.0.0.1\)")) && inPath[13] == L'$') {
+        absolute = true;
+        std::wstring newPath = L"";
+        newPath += towupper(inPath[12]);
+        inPath += 14;
+        newPath += L':';
+        newPath += ush::string_cast<std::wstring>(inPath);
+        inPath = newPath.c_str();
+      }
+      else if (inPath[1] == L':') {
         absolute = true;
       }
 
@@ -1524,37 +1543,29 @@ HANDLE WINAPI usvfs::hooks::FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEV
   // We need to do some trickery here, since we only want to use the hooked NtQueryDirectoryFile for rerouted locations we need to check if the Directory path has been routed instead of the full path.
   fs::path p(lpFileName);
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, (p.parent_path().wstring()).c_str());
+  WCHAR appDataLocal[MAX_PATH];
+  ::SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, appDataLocal);
+  fs::path temp = fs::path(appDataLocal) / "Temp";
 
   PRE_REALCALL
-	  if (reroute.wasRerouted()) {
-		  res = ::FindFirstFileExW(lpFileName, fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
-	  }
-	  else {
-		  //Force the mutEXHook to match NtQueryDirectoryFile so it calls the non hooked NtQueryDirectoryFile.
-		  FunctionGroupLock lock(MutExHookGroup::FIND_FILES);
-		  HookContext::ConstPtr context = READ_CONTEXT();
-		  res = ::FindFirstFileExW(lpFileName, fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
-	  }
-
+  if (reroute.wasRerouted() || p.wstring().find(temp.wstring()) == std::string::npos) {
+    res = ::FindFirstFileExW(lpFileName, fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
+  }
+  else {
+    //Force the mutEXHook to match NtQueryDirectoryFile so it calls the non hooked NtQueryDirectoryFile.
+    FunctionGroupLock lock(MutExHookGroup::FIND_FILES);
+    res = ::FindFirstFileExW(lpFileName, fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
+  }
   POST_REALCALL
 
-   if (res != INVALID_HANDLE_VALUE) {
-    // store the original search path for use during iteration
-    WRITE_CONTEXT()
-        ->customData<SearchHandleMap>(SearchHandles)[res]
-        = lpFileName;
+  if (res != INVALID_HANDLE_VALUE) {
+  // store the original search path for use during iteration
+  WRITE_CONTEXT()
+      ->customData<SearchHandleMap>(SearchHandles)[res]
+      = lpFileName;
   }
 
-  if (reroute.wasRerouted()) {
-	  LOG_CALL()
-		  .PARAMWRAP(reroute.fileName())
-		  .PARAMHEX(fInfoLevelId)
-		  .PARAMHEX(fSearchOp)
-		  .PARAMHEX(lpSearchFilter)
-		  .PARAMHEX(dwAdditionalFlags)
-		  .PARAMHEX(::GetLastError())
-		  .PARAM(res);
-  }
+  LOG_CALL().PARAMWRAP(p.c_str()).PARAM(res);
 
   HOOK_END
 
@@ -1586,9 +1597,14 @@ HRESULT WINAPI usvfs::hooks::CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszN
     writeReroute = RerouteW::createNew(context, callContext, pwszNewFileName);
   }
 
-  PRE_REALCALL
-    res = dCopyFile2(readReroute.fileName(), writeReroute.fileName(), pExtendedParameters);
-  POST_REALCALL
+	PRE_REALCALL
+    if (!readReroute.wasRerouted() && !writeReroute.wasRerouted()) {
+        res = dCopyFile2(pwszExistingFileName, pwszNewFileName, pExtendedParameters);
+    }
+    else {
+        res = dCopyFile2(readReroute.fileName(), writeReroute.fileName(), pExtendedParameters);
+    }
+    POST_REALCALL
 
   if (res) {
     if (writeReroute.wasRerouted()) {
