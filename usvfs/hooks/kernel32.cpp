@@ -723,33 +723,35 @@ HANDLE WINAPI usvfs::hooks::CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAcces
 
   bool storePath = false;
   bool isDir = false;
-  if ((pCreateExParams->dwFileFlags & FILE_FLAG_BACKUP_SEMANTICS) != 0UL) {
-    // this may be an attempt to open a directory handle for iterating.
-    // If so we need to treat it a little bit differently
-    bool exists = false;
-    { // first check in the original location!
-      DWORD attributes = fileAttributesRegular(lpFileName);
-      exists = attributes != INVALID_FILE_ATTRIBUTES;
-      if (exists) {
+  if (pCreateExParams != nullptr) {
+    if ((pCreateExParams->dwFileFlags & FILE_FLAG_BACKUP_SEMANTICS) != 0UL) {
+      // this may be an attempt to open a directory handle for iterating.
+      // If so we need to treat it a little bit differently
+      bool exists = false;
+      { // first check in the original location!
+        DWORD attributes = fileAttributesRegular(lpFileName);
+        exists = attributes != INVALID_FILE_ATTRIBUTES;
+        if (exists) {
+          isDir = (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0UL;
+        }
+      }
+      if (!exists) {
+        // if the file/directory doesn't exist in the original location,
+        // we need to check in rerouted locations as well
+        DWORD attributes = GetFileAttributesW(lpFileName);
         isDir = (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0UL;
       }
-    }
-    if (!exists) {
-      // if the file/directory doesn't exist in the original location,
-      // we need to check in rerouted locations as well
-      DWORD attributes = GetFileAttributesW(lpFileName);
-      isDir = (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0UL;
-    }
 
-    if (isDir) {
-      if (exists) {
-        // if its a directory and it exists in the original location, open that
-        return dCreateFile2(lpFileName, dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
-      }
-      else {
-        // if its a directory and it only exists "virtually" then we need to
-        // store the path for when the caller iterates the directory
-        storePath = true;
+      if (isDir) {
+        if (exists) {
+          // if its a directory and it exists in the original location, open that
+          return dCreateFile2(lpFileName, dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
+        }
+        else {
+          // if its a directory and it only exists "virtually" then we need to
+          // store the path for when the caller iterates the directory
+          storePath = true;
+        }
       }
     }
   }
@@ -769,23 +771,26 @@ HANDLE WINAPI usvfs::hooks::CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAcces
 
       if (create) {
         fs::path target(reroute.fileName());
-        winapi::ex::wide::createPath(target.parent_path().wstring().c_str(),
-          pCreateExParams->lpSecurityAttributes);
+        if (pCreateExParams != nullptr)
+          winapi::ex::wide::createPath(target.parent_path().wstring().c_str(),
+            pCreateExParams->lpSecurityAttributes);
+        else
+          winapi::ex::wide::createPath(target.parent_path().wstring().c_str());
       }
     }
   }
 
   PRE_REALCALL
-    res = dCreateFile2(reroute.fileName(), dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
+  res = dCreateFile2(reroute.fileName(), dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
   POST_REALCALL
 
-    if (create && (res != INVALID_HANDLE_VALUE)) {
-      spdlog::get("hooks")
-        ->info("add file to vfs: {}",
-          ush::string_cast<std::string>(lpFileName, ush::CodePage::UTF8));
-      // new file was created in a mapped directory, insert to vitual structure
-      reroute.insertMapping(WRITE_CONTEXT());
-    }
+  if (create && (res != INVALID_HANDLE_VALUE)) {
+    spdlog::get("hooks")
+      ->info("add file to vfs: {}",
+        ush::string_cast<std::string>(lpFileName, ush::CodePage::UTF8));
+    // new file was created in a mapped directory, insert to vitual structure
+    reroute.insertMapping(WRITE_CONTEXT());
+  }
 
   if ((res != INVALID_HANDLE_VALUE) && storePath) {
     // store the original search path for use during iteration
@@ -1196,19 +1201,42 @@ BOOL WINAPI usvfs::hooks::SetCurrentDirectoryW(LPCWSTR lpPathName)
 
   HOOK_START
 
+  std::wstring finalRoute;
+  BOOL found = FALSE;
+
   auto context = READ_CONTEXT();
-  RerouteW reroute
-      = RerouteW::create(context, callContext, lpPathName);
+
+  WCHAR processDir[MAX_PATH];
+  if (::GetModuleFileNameW(NULL, processDir, MAX_PATH) != 0 && ::PathRemoveFileSpecW(processDir)) {
+    WCHAR processName[MAX_PATH];
+    ::GetModuleFileNameW(NULL, processName, MAX_PATH);
+    fs::path process(processName);
+    fs::path routedName = lpPathName / process.filename();
+    RerouteW rerouteTest = RerouteW::create(context, callContext, routedName.wstring().c_str());
+    if (rerouteTest.wasRerouted()) {
+      std::wstring reroutedPath = rerouteTest.fileName();
+      if (routedName.wstring().find(processDir) != std::string::npos) {
+        fs::path finalPath(reroutedPath);
+        finalRoute = finalPath.parent_path().wstring();
+        found = TRUE;
+      }
+    }
+  }
+
+  if (!found) {
+    RerouteW reroute = RerouteW::create(context, callContext, lpPathName);
+    finalRoute = reroute.fileName();
+  }
 
   PRE_REALCALL
-  res = ::SetCurrentDirectoryW(reroute.fileName());
+  res = ::SetCurrentDirectoryW(finalRoute.c_str());
   POST_REALCALL
 
   if (res) {
     context->customData<std::wstring>(ActualCWD) = lpPathName;
   }
 
-  LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(reroute.fileName()).PARAM(res);
+  LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(finalRoute.c_str()).PARAM(res);
 
   HOOK_END
 
@@ -1546,10 +1574,15 @@ HANDLE WINAPI usvfs::hooks::FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEV
   WCHAR appDataLocal[MAX_PATH];
   ::SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, appDataLocal);
   fs::path temp = fs::path(appDataLocal) / "Temp";
+  std::wstring finalPath = L"";
+  if (reroute.wasRerouted())
+    finalPath = reroute.fileName() + p.filename().wstring();
 
   PRE_REALCALL
   if (reroute.wasRerouted() || p.wstring().find(temp.wstring()) == std::string::npos) {
     res = ::FindFirstFileExW(lpFileName, fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
+    if (res == INVALID_HANDLE_VALUE && !finalPath.empty())
+      res = ::FindFirstFileExW(finalPath.c_str(), fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
   }
   else {
     //Force the mutEXHook to match NtQueryDirectoryFile so it calls the non hooked NtQueryDirectoryFile.
@@ -1565,7 +1598,7 @@ HANDLE WINAPI usvfs::hooks::FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEV
       = lpFileName;
   }
 
-  LOG_CALL().PARAMWRAP(p.c_str()).PARAM(res);
+  LOG_CALL().PARAMWRAP(p.c_str()).PARAMWRAP(finalPath.c_str()).PARAM(res);
 
   HOOK_END
 
