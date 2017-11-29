@@ -600,6 +600,7 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
     DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
 {
   HANDLE res = INVALID_HANDLE_VALUE;
+  DWORD error = 0;
 
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
 
@@ -670,6 +671,17 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
                       dwFlagsAndAttributes, hTemplateFile);
   POST_REALCALL
 
+  if (res == INVALID_HANDLE_VALUE) {
+    switch (dwCreationDisposition) {
+    case 3:
+    case 5:
+      error = ERROR_FILE_NOT_FOUND;
+      break;
+    default:
+      error = ::GetLastError();
+    }
+  }
+
   if (create && (res != INVALID_HANDLE_VALUE)) {
     spdlog::get("hooks")
         ->info("add file to vfs: {}",
@@ -687,15 +699,17 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
 
   if (storePath || reroute.wasRerouted()) {
     LOG_CALL()
-        .PARAM(lpFileName)
-        .PARAM(reroute.fileName())
-        .PARAMHEX(dwDesiredAccess)
-        .PARAMHEX(dwCreationDisposition)
-        .PARAMHEX(dwFlagsAndAttributes)
-        .PARAMHEX(res)
-        .PARAMHEX(::GetLastError());
+      .PARAMWRAP(lpFileName)
+      .PARAMWRAP(reroute.fileName())
+      .PARAMHEX(dwDesiredAccess)
+      .PARAMHEX(dwCreationDisposition)
+      .PARAMHEX(dwFlagsAndAttributes)
+      .PARAMHEX(res)
+      .PARAMHEX(error);
   }
   HOOK_END
+
+  ::SetLastError(error);
 
   return res;
 }
@@ -703,6 +717,7 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
 HANDLE WINAPI usvfs::hooks::CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, DWORD dwCreationDisposition, LPCREATEFILE2_EXTENDED_PARAMETERS pCreateExParams)
 {
   HANDLE res = INVALID_HANDLE_VALUE;
+  DWORD error = 0;
 
   typedef HANDLE(WINAPI * CreateFile2_t)(LPCWSTR, DWORD, DWORD, DWORD, LPCREATEFILE2_EXTENDED_PARAMETERS);
 
@@ -784,6 +799,17 @@ HANDLE WINAPI usvfs::hooks::CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAcces
   res = dCreateFile2(reroute.fileName(), dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
   POST_REALCALL
 
+  if (res == INVALID_HANDLE_VALUE) {
+    switch (dwCreationDisposition) {
+    case 3:
+    case 5:
+      error = ERROR_FILE_NOT_FOUND;
+      break;
+    default:
+      error = ::GetLastError();
+    }
+  }
+
   if (create && (res != INVALID_HANDLE_VALUE)) {
     spdlog::get("hooks")
       ->info("add file to vfs: {}",
@@ -800,6 +826,12 @@ HANDLE WINAPI usvfs::hooks::CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAcces
   }
 
   if (storePath || reroute.wasRerouted()) {
+    DWORD dwFileAttributes = 0;
+    DWORD dwFileFlags = 0;
+    if (pCreateExParams != nullptr) {
+      dwFileAttributes = pCreateExParams->dwFileAttributes;
+      dwFileFlags = pCreateExParams->dwFileFlags;
+    }
     LOG_CALL()
       .PARAM(lpFileName)
       .PARAM(reroute.fileName())
@@ -807,12 +839,14 @@ HANDLE WINAPI usvfs::hooks::CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAcces
       .PARAM(storePath)
       .PARAMHEX(dwDesiredAccess)
       .PARAMHEX(dwCreationDisposition)
-      .PARAMHEX(pCreateExParams->dwFileAttributes)
-      .PARAMHEX(pCreateExParams->dwFileFlags)
+      .PARAMHEX(dwFileAttributes)
+      .PARAMHEX(dwFileFlags)
       .PARAMHEX(res)
-      .PARAMHEX(::GetLastError());
+      .PARAMHEX(error);
   }
   HOOK_END
+
+  ::SetLastError(error);
 
   return res;
 }
