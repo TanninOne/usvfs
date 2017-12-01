@@ -101,9 +101,20 @@ applyReroute(const usvfs::HookContext::ConstPtr &context,
         static_cast<LPCWSTR>(result.first) + 4, ush::CodePage::UTF8);
     auto node = context->redirectionTable()->findNode(lookupPath.c_str());
     // if so, replace the file name with the path to the mapped file
-    if ((node.get() != nullptr) && !node->data().linkTarget.empty()) {
-      std::wstring reroutePath = ush::string_cast<std::wstring>(
+    if ((node.get() != nullptr) && (!node->data().linkTarget.empty() || node->isDirectory())) {
+      std::wstring reroutePath;
+
+      if (node->data().linkTarget.length() > 0)
+      {
+        reroutePath = ush::string_cast<std::wstring>(
           node->data().linkTarget.c_str(), ush::CodePage::UTF8);
+      }
+      else
+      {
+        reroutePath = ush::string_cast<std::wstring>(
+          node->path().c_str(),
+          ush::CodePage::UTF8);
+      } 
       if ((*reroutePath.rbegin() == L'\\') && (*lookupPath.rbegin() != '\\')) {
         reroutePath.resize(reroutePath.size() - 1);
       }
@@ -526,9 +537,18 @@ void gatherVirtualEntries(const UnicodeString &dirName,
         std::wstring vName = ush::string_cast<std::wstring>(
             subNode->name(), ush::CodePage::UTF8);
 
-        Searches::Info::VirtualMatch m{
-            ush::string_cast<std::wstring>(subNode->data().linkTarget.c_str(),
-                                           ush::CodePage::UTF8), vName};
+        Searches::Info::VirtualMatch m;
+        if (subNode->data().linkTarget.length() > 0)
+        {
+          m = { ush::string_cast<std::wstring>(subNode->data().linkTarget.c_str(),
+                                         ush::CodePage::UTF8), vName };
+        }
+        else
+        {
+          m = { ush::string_cast<std::wstring>(subNode->path().c_str(),
+            ush::CodePage::UTF8), vName };
+        }
+              
         info.virtualMatches.push_back(m);
         info.foundFiles.insert(ush::to_upper(vName));
       }
