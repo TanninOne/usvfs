@@ -1641,7 +1641,7 @@ HANDLE WINAPI usvfs::hooks::FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEV
 
 HRESULT WINAPI usvfs::hooks::CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszNewFileName, COPYFILE2_EXTENDED_PARAMETERS *pExtendedParameters)
 {
-  BOOL res = FALSE;
+  HRESULT res = E_FAIL;
 
   typedef HRESULT(WINAPI * CopyFile2_t)(PCWSTR, PCWSTR, COPYFILE2_EXTENDED_PARAMETERS *);
 
@@ -1673,7 +1673,7 @@ HRESULT WINAPI usvfs::hooks::CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszN
     }
     POST_REALCALL
 
-  if (res) {
+  if (SUCCEEDED(res)) {
     if (writeReroute.wasRerouted()) {
       writeReroute.insertMapping(WRITE_CONTEXT());
     }
