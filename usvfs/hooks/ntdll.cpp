@@ -792,11 +792,21 @@ NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
 
   UnicodeString fullName = CreateUnicodeString(ObjectAttributes);
 
+  UnicodeString Path;
+  Path.setFromHandle(ObjectAttributes->RootDirectory);
+
+  std::wstring checkpath = ush::string_cast<std::wstring>(
+    static_cast<LPCWSTR>(Path), ush::CodePage::UTF8);
+
   if ((fullName.size() == 0)
       || (GetFileSize(ObjectAttributes->RootDirectory, nullptr)
           != INVALID_FILE_SIZE)) {
-    return ::NtOpenFile(FileHandle, DesiredAccess, ObjectAttributes,
+	  //	//relative paths that we don't have permission over will fail here due that we can't get the filesize of the root directory
+	  //	//We should try again to see if it is a directory using another method
+	  if ((fullName.size() == 0) || (GetFileAttributesW((LPCWSTR)checkpath.c_str()) == INVALID_FILE_ATTRIBUTES)) {
+          return ::NtOpenFile(FileHandle, DesiredAccess, ObjectAttributes,
                         IoStatusBlock, ShareAccess, OpenOptions);
+	  }
   }
 
   try {
