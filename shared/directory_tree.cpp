@@ -23,21 +23,14 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 fs::path::iterator usvfs::shared::nextIter(const fs::path::iterator &iter,
                                            const fs::path::iterator &end) {
   fs::path::iterator next = iter;
-  ++next;
-  while ((next != end) &&
-         ((*next->c_str() == L'/') || (*next->c_str() == L'\\') ||
-          (*next->c_str() == L'.') || (*next->c_str() == L'\0'))) {
-    ++next;
-  }
+  advanceIter(next, end);
   return next;
 }
 
 void usvfs::shared::advanceIter(fs::path::iterator &iter,
                                 const fs::path::iterator &end) {
   ++iter;
-  while ((iter != end) &&
-         ((*iter->c_str() == L'/') || (*iter->c_str() == L'\\') ||
-          (*iter->c_str() == L'.') || (*iter->c_str() == L'\0'))) {
+  while (iter != end &&
+         (iter->wstring() == L"/" || iter->wstring() == L"\\" || iter->wstring() == L"."))
     ++iter;
-  }
 }
