@@ -137,7 +137,7 @@ public:
 
         // Path_2 to be Canonicalized.
         char buffer_2[MAX_PATH];
-        strcpy_s(buffer_2, lookupPath.c_str());
+        strncpy_s(buffer_2, lookupPath.c_str(), _TRUNCATE);
         char *lpStr2;
         lpStr2 = buffer_2;
         if (::PathCanonicalizeA(lpStr1, lpStr2))
@@ -214,7 +214,7 @@ public:
 
       // Path_2 to be Canonicalized.
       char buffer_2[MAX_PATH];
-      strcpy_s(buffer_2, lookupPath.c_str());
+      strncpy_s(buffer_2, lookupPath.c_str(), _TRUNCATE);
       char *lpStr2;
       lpStr2 = buffer_2;
       if (::PathCanonicalizeA(lpStr1, lpStr2))
@@ -1591,8 +1591,8 @@ HANDLE WINAPI usvfs::hooks::FindFirstFileExA(LPCSTR lpFileName, FINDEX_INFO_LEVE
 	origData->nFileSizeLow = tempData.nFileSizeLow;
 	origData->dwReserved0 = tempData.dwReserved0;
 	origData->dwReserved1 = tempData.dwReserved1;
-	strcpy_s(origData->cFileName, ush::string_cast<std::string>(tempData.cFileName).c_str());
-	strcpy_s(origData->cAlternateFileName, ush::string_cast<std::string>(tempData.cAlternateFileName).c_str());
+	strncpy_s(origData->cFileName, ush::string_cast<std::string>(tempData.cFileName).c_str(), _TRUNCATE);
+	strncpy_s(origData->cAlternateFileName, ush::string_cast<std::string>(tempData.cAlternateFileName).c_str(), _TRUNCATE);
 	return tempHandle;
 }
 
