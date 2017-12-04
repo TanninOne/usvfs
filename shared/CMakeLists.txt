@@ -19,6 +19,7 @@ SET(shared_HDRS
     exceptionex.h
     ntdll_declarations.h
     unicodestring.h
+	initguard.h
     )
 
 SET(shared_SRCS
@@ -36,6 +37,7 @@ SET(shared_SRCS
     exceptionex.cpp
     ntdll_declarations.cpp
     unicodestring.cpp
+	initguard.cpp
     )
 
 INCLUDE_DIRECTORIES("${Boost_INCLUDE_DIRS}"
