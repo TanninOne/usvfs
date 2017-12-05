@@ -397,12 +397,20 @@ BOOL WINAPI usvfs::hooks::CreateProcessA(
 
       RerouteW cmdReroute = RerouteW::create(context, callContext, argv[0]);
 
+      // find start of "real" arguments in lpCommandLine instead of using argv[1], ...
+      // because CommandLineToArgvW can change quoted/escaped sequences and we
+      // want to preserve them
+      LPCSTR args = lpCommandLine;
+      for (; *args && *args != ' '; ++args)
+        if (*args == '"') {
+          int escaped = 0;
+          for (++args; *args && (*args != '"' || escaped % 2 != 0); ++args)
+            escaped = *args == '\\' ? escaped + 1 : 0;
+        }
+
       // recompose command line
       std::stringstream stream;
-      stream << "\"" << cmdReroute.fileName() << "\"";
-      for (int i = 1; i < argc; ++i) {
-        stream << " " << "\"" << argv[i] << "\"";
-      }
+      stream << "\"" << ush::string_cast<std::string>(cmdReroute.fileName()) << "\"" << args;
       cmdline = stream.str();
     }
 
@@ -504,12 +512,20 @@ BOOL WINAPI usvfs::hooks::CreateProcessW(
 
       RerouteW cmdReroute = RerouteW::create(context, callContext, argv[0]);
 
+      // find start of "real" arguments in lpCommandLine instead of using argv[1], ...
+      // because CommandLineToArgvW can change quoted/escaped sequences and we
+      // want to preserve them
+      LPCWSTR args = lpCommandLine;
+      for (; *args && *args != ' '; ++args)
+      if (*args == '"') {
+        int escaped = 0;
+        for (++args; *args && (*args != '"' || escaped % 2 != 0); ++args)
+          escaped = *args == '\\' ? escaped + 1 : 0;
+      }
+
       // recompose command line
       std::wstringstream stream;
-      stream << "\"" << cmdReroute.fileName() << "\"";
-      for (int i = 1; i < argc; ++i) {
-        stream << " " << "\"" << argv[i] << "\"";
-      }
+      stream << L"\"" << cmdReroute.fileName() << L"\"" << args;
       cmdline = stream.str();
     }
 
