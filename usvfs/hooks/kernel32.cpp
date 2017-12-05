@@ -410,7 +410,7 @@ BOOL WINAPI usvfs::hooks::CreateProcessA(
 
       // recompose command line
       std::stringstream stream;
-      stream << "\"" << ush::string_cast<std::string>(cmdReroute.fileName()) << "\"" << args;
+      stream << "\"" << ush::string_cast<std::string>(cmdReroute.fileName(), CodePage::UTF8) << "\"" << args;
       cmdline = stream.str();
     }
 
@@ -428,7 +428,7 @@ BOOL WINAPI usvfs::hooks::CreateProcessA(
   LPCSTR appName = nullptr;
   std::string appNameBuffer;
   if (applicationReroute.fileName() != nullptr) {
-    appNameBuffer = ush::string_cast<std::string>(applicationReroute.fileName());
+    appNameBuffer = ush::string_cast<std::string>(applicationReroute.fileName(), CodePage::UTF8);
     appName = appNameBuffer.c_str();
   }
   res = ::CreateProcessA(
