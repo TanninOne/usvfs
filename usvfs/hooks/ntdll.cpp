@@ -584,6 +584,8 @@ bool addVirtualSearchResult(PVOID &FileInformation,
   }
   if (info.currentSearchHandle == INVALID_HANDLE_VALUE) {
     std::wstring dirName     = fullPath.parent_path().wstring();
+    if (dirName.length() >= MAX_PATH && !ush::startswith(dirName.c_str(), LR"(\\?\)"))
+      dirName = LR"(\\?\)" + dirName;
     info.currentSearchHandle = CreateFileW(
         dirName.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
         nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);

@@ -157,6 +157,8 @@ public:
           {
             result.m_Buffer = result.m_FileNode->path().wstring();
           }
+          if (result.m_Buffer.length() >= MAX_PATH && !ush::startswith(result.m_Buffer.c_str(), LR"(\\?\)"))
+            result.m_Buffer = LR"(\\?\)" + result.m_Buffer;
           result.m_Rerouted = true;
         }
       }
