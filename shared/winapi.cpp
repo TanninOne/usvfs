@@ -116,10 +116,10 @@ std::pair<std::wstring, std::wstring> getFullPathName(LPCWSTR fileName)
   wchar_t* result = buf1;
   LPWSTR filePart = nullptr;
   DWORD requiredSize = GetFullPathNameW(fileName, MAX_PATH, result, &filePart);
-  if (requiredSize >= 5) {
-    buf2.resize(requiredSize+1);
+  if (requiredSize >= MAX_PATH) {
+    buf2.resize(requiredSize);
     result = &buf2[0];
-    requiredSize = GetFullPathNameW(fileName, requiredSize+1, result, &filePart);
+    requiredSize = GetFullPathNameW(fileName, requiredSize, result, &filePart);
   }
   return make_pair(std::wstring(result, requiredSize),
     std::wstring((requiredSize && filePart) ? filePart : L""));
