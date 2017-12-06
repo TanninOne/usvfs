@@ -324,6 +324,7 @@ TEST_F(USVFSTestAuto, CanCreateMultipleLinks)
 {
   static LPCWSTR outFile = LR"(C:\np.exe)";
   static LPCWSTR outDir  = LR"(C:\logs)";
+  static LPCWSTR outDirCanonizeTest = LR"(C:\.\not/../logs\.\a\.\b\.\c\..\.\..\.\..\)";
   EXPECT_EQ(TRUE, VirtualLinkFile(REAL_FILEW, outFile, 0));
   EXPECT_EQ(TRUE, VirtualLinkDirectoryStatic(REAL_DIRW, outDir, 0));
 
@@ -332,6 +333,7 @@ TEST_F(USVFSTestAuto, CanCreateMultipleLinks)
   EXPECT_NE(INVALID_FILE_ATTRIBUTES, uhooks::GetFileAttributesW(outDir));
   EXPECT_EQ(0UL, uhooks::GetFileAttributesW(outFile) & FILE_ATTRIBUTE_DIRECTORY);
   EXPECT_NE(0UL, uhooks::GetFileAttributesW(outDir)  & FILE_ATTRIBUTE_DIRECTORY);
+  EXPECT_NE(0UL, uhooks::GetFileAttributesW(outDirCanonizeTest) & FILE_ATTRIBUTE_DIRECTORY);
 }
 
 int main(int argc, char **argv) {

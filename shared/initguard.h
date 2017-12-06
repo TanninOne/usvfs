@@ -18,19 +18,31 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 */
-#include "directory_tree.h"
+#pragma once
 
-fs::path::iterator usvfs::shared::nextIter(const fs::path::iterator &iter,
-                                           const fs::path::iterator &end) {
-  fs::path::iterator next = iter;
-  advanceIter(next, end);
-  return next;
-}
+#include <atomic>
 
-void usvfs::shared::advanceIter(fs::path::iterator &iter,
-                                const fs::path::iterator &end) {
-  ++iter;
-  while (iter != end &&
-         (iter->wstring() == L"/" || iter->wstring() == L"\\" || iter->wstring() == L"."))
-    ++iter;
-}
+namespace usvfs {
+
+namespace shared {
+
+// InitGuard is aimed to be a proper guard meaning one day it might actually
+// guarantee that if you create an InitGuard object and it is true, then any
+// deinitialize request (in a different thread) will be delayed until the
+// InitGuard object reaches the end of its life.
+// For now its more of an init flag and just checks if deinitialize has not
+// been called yet.
+class InitGuard {
+public:
+	operator bool() { return _initialized; }
+
+	static void initialize();
+	static void deinitialize();
+
+private:
+	static std::atomic<bool> _initialized;
+};
+
+} // namespace shared
+
+} // namespace usvfs

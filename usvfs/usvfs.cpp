@@ -40,7 +40,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #pragma warning (pop)
 #include <fmt/format.h>
 #include <codecvt>
-
+#include <initguard.h>
 
 namespace bfs = boost::filesystem;
 namespace ush = usvfs::shared;
@@ -572,11 +572,14 @@ BOOL WINAPI VirtualLinkDirectoryStatic(LPCWSTR source, LPCWSTR destination, unsi
           (flags & LINKFLAG_CREATETARGET) != 0);
 
     if ((flags & LINKFLAG_RECURSIVE) != 0) {
-      std::wstring sourceW      = std::wstring(source) + L"\\";
+      std::wstring sourceP(source);
+      std::wstring sourceW      = sourceP + L"\\";
       std::wstring destinationW = std::wstring(destination) + L"\\";
+      if (sourceP.length() >= MAX_PATH && !ush::startswith(sourceP.c_str(), LR"(\\?\)"))
+        sourceP = LR"(\\?\)" + sourceP;
 
       for (winapi::ex::wide::FileResult file :
-           winapi::ex::wide::quickFindFiles(source, L"*")) {
+           winapi::ex::wide::quickFindFiles(sourceP.c_str(), L"*")) {
         if (file.attributes & FILE_ATTRIBUTE_DIRECTORY) {
           if ((file.fileName != L".") && (file.fileName != L"..")) {
             VirtualLinkDirectoryStatic((sourceW + file.fileName).c_str(),
@@ -736,8 +739,10 @@ BOOL APIENTRY DllMain(HMODULE module,
   switch (reasonForCall) {
     case DLL_PROCESS_ATTACH: {
       dllModule = module;
+      ush::InitGuard::initialize();
     } break;
     case DLL_PROCESS_DETACH: {
+      ush::InitGuard::deinitialize();
     } break;
     case DLL_THREAD_ATTACH: {
     } break;

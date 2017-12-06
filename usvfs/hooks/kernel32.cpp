@@ -93,6 +93,34 @@ public:
     }
   }
 
+  static fs::path absolute_path(const wchar_t *inPath)
+  {
+    if (ush::startswith(inPath, LR"(\\?\)") || ush::startswith(inPath, LR"(\??\)")) {
+      inPath += 4;
+      return inPath;
+    }
+    else if ((ush::startswith(inPath, LR"(\\localhost\)") || ush::startswith(inPath, LR"(\\127.0.0.1\)")) && inPath[13] == L'$') {
+      std::wstring newPath;
+      newPath += towupper(inPath[12]);
+      newPath += L':';
+      newPath += &inPath[14];
+      return newPath;
+    }
+    else if (inPath[0] == L'\0' || inPath[1] == L':') {
+      return inPath;
+    }
+    usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FULL_PATHNAME);
+    return winapi::wide::getFullPathName(inPath).first;
+  }
+
+  static fs::path canonize_path(const fs::path& inPath)
+  {
+    fs::path p = inPath.lexically_normal();
+    if (p.filename_is_dot())
+      p = p.remove_filename();
+    return p.make_preferred();
+  }
+
   static RerouteW create(const usvfs::HookContext::ConstPtr &context,
                          const usvfs::HookCallContext &callContext,
                          const wchar_t *inPath, bool inverse = false)
@@ -103,49 +131,11 @@ public:
       result.m_Buffer   = std::wstring(inPath);
       result.m_Rerouted = false;
       if (callContext.active()) {
-        bool absolute = false;
-        if (ush::startswith(inPath, LR"(\\?\)") || ush::startswith(inPath, LR"(\??\)")) {
-          absolute = true;
-          inPath += 4;
-        }
-        else if ((ush::startswith(inPath, LR"(\\localhost\)") || ush::startswith(inPath, LR"(\\127.0.0.1\)")) && inPath[13] == L'$') {
-          absolute = true;
-          std::wstring newPath = L"";
-          newPath += towupper(inPath[12]);
-          inPath += 14;
-          newPath += L':';
-          newPath += ush::string_cast<std::wstring>(inPath);
-          inPath = newPath.c_str();
-        }
-        else if (inPath[1] == L':') {
-          absolute = true;
-        }
-
-        std::string lookupPath;
-        if (!absolute) {
-          usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FULL_PATHNAME);
-          auto fullPath = winapi::wide::getFullPathName(inPath);
-          lookupPath    = string_cast<std::string>(fullPath.first, CodePage::UTF8);
-        } else {
-          lookupPath = string_cast<std::string>(inPath, CodePage::UTF8);
-        }
-
-        // Path_1 destination buffer.
-        char buffer_1[MAX_PATH] = "";
-        char *lpStr1;
-        lpStr1 = buffer_1;
-
-        // Path_2 to be Canonicalized.
-        char buffer_2[MAX_PATH];
-        strcpy_s(buffer_2, lookupPath.c_str());
-        char *lpStr2;
-        lpStr2 = buffer_2;
-        if (::PathCanonicalizeA(lpStr1, lpStr2))
-          lookupPath = lpStr1;
+        fs::path lookupPath = canonize_path(absolute_path(inPath));
 
         const usvfs::RedirectionTreeContainer &table
             = inverse ? context->inverseTable() : context->redirectionTable();
-        result.m_FileNode = table->findNode(lookupPath.c_str());
+        result.m_FileNode = table->findNode(lookupPath);
 
         if (result.m_FileNode.get()
           && (!result.m_FileNode->data().linkTarget.empty() || result.m_FileNode->isDirectory())) {
@@ -157,6 +147,8 @@ public:
           {
             result.m_Buffer = result.m_FileNode->path().wstring();
           }
+          if (result.m_Buffer.length() >= MAX_PATH && !ush::startswith(result.m_Buffer.c_str(), LR"(\\?\)"))
+            result.m_Buffer = LR"(\\?\)" + result.m_Buffer;
           result.m_Rerouted = true;
         }
       }
@@ -177,48 +169,9 @@ public:
     if ((inPath != nullptr) && (inPath[0] != L'\0')
         && !ush::startswith(inPath, L"hid#")) {
       result.m_Buffer   = inPath;
-
-      bool absolute = false;
-      if (ush::startswith(inPath, LR"(\\?\)") || ush::startswith(inPath, LR"(\??\)")) {
-        absolute = true;
-        inPath += 4;
-      }
-      else if ((ush::startswith(inPath, LR"(\\localhost\)") || ush::startswith(inPath, LR"(\\127.0.0.1\)")) && inPath[13] == L'$') {
-        absolute = true;
-        std::wstring newPath = L"";
-        newPath += towupper(inPath[12]);
-        inPath += 14;
-        newPath += L':';
-        newPath += ush::string_cast<std::wstring>(inPath);
-        inPath = newPath.c_str();
-      }
-      else if (inPath[1] == L':') {
-        absolute = true;
-      }
-
-      std::string lookupPath;
-      if (!absolute) {
-        usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FULL_PATHNAME);
-        auto fullPath = winapi::wide::getFullPathName(inPath);
-        result.m_RealPath.assign(fullPath.first);
-        lookupPath    = string_cast<std::string>(fullPath.first, CodePage::UTF8);
-      } else {
-        result.m_RealPath.assign(inPath);
-        lookupPath = string_cast<std::string>(inPath, CodePage::UTF8);
-      }
-
-      // Path_1 destination buffer.
-      char buffer_1[MAX_PATH] = "";
-      char *lpStr1;
-      lpStr1 = buffer_1;
-
-      // Path_2 to be Canonicalized.
-      char buffer_2[MAX_PATH];
-      strcpy_s(buffer_2, lookupPath.c_str());
-      char *lpStr2;
-      lpStr2 = buffer_2;
-      if (::PathCanonicalizeA(lpStr1, lpStr2))
-        lookupPath = lpStr1;
+      fs::path lookupPath = absolute_path(inPath);
+      result.m_RealPath = lookupPath.c_str();
+      lookupPath = canonize_path(lookupPath);
 
       FindCreateTarget visitor;
       usvfs::RedirectionTree::VisitorFunction visitorWrapper = [&](
@@ -228,7 +181,7 @@ public:
         // the visitor has found the last (deepest in the directory hierarchy)
         // create-target
         fs::path relativePath
-            = ush::make_relative(visitor.target->path(), fs::path(lookupPath));
+            = ush::make_relative(visitor.target->path(), lookupPath);
         result.m_Buffer = (fs::path(visitor.target->data().linkTarget.c_str())
                            / relativePath)
                               .wstring();
@@ -395,12 +348,20 @@ BOOL WINAPI usvfs::hooks::CreateProcessA(
 
       RerouteW cmdReroute = RerouteW::create(context, callContext, argv[0]);
 
+      // find start of "real" arguments in lpCommandLine instead of using argv[1], ...
+      // because CommandLineToArgvW can change quoted/escaped sequences and we
+      // want to preserve them
+      LPCSTR args = lpCommandLine;
+      for (; *args && *args != ' '; ++args)
+        if (*args == '"') {
+          int escaped = 0;
+          for (++args; *args && (*args != '"' || escaped % 2 != 0); ++args)
+            escaped = *args == '\\' ? escaped + 1 : 0;
+        }
+
       // recompose command line
       std::stringstream stream;
-      stream << "\"" << cmdReroute.fileName() << "\"";
-      for (int i = 1; i < argc; ++i) {
-        stream << " " << "\"" << argv[i] << "\"";
-      }
+      stream << "\"" << ush::string_cast<std::string>(cmdReroute.fileName(), CodePage::UTF8) << "\"" << args;
       cmdline = stream.str();
     }
 
@@ -418,7 +379,7 @@ BOOL WINAPI usvfs::hooks::CreateProcessA(
   LPCSTR appName = nullptr;
   std::string appNameBuffer;
   if (applicationReroute.fileName() != nullptr) {
-    appNameBuffer = ush::string_cast<std::string>(applicationReroute.fileName());
+    appNameBuffer = ush::string_cast<std::string>(applicationReroute.fileName(), CodePage::UTF8);
     appName = appNameBuffer.c_str();
   }
   res = ::CreateProcessA(
@@ -502,12 +463,20 @@ BOOL WINAPI usvfs::hooks::CreateProcessW(
 
       RerouteW cmdReroute = RerouteW::create(context, callContext, argv[0]);
 
+      // find start of "real" arguments in lpCommandLine instead of using argv[1], ...
+      // because CommandLineToArgvW can change quoted/escaped sequences and we
+      // want to preserve them
+      LPCWSTR args = lpCommandLine;
+      for (; *args && *args != ' '; ++args)
+      if (*args == '"') {
+        int escaped = 0;
+        for (++args; *args && (*args != '"' || escaped % 2 != 0); ++args)
+          escaped = *args == '\\' ? escaped + 1 : 0;
+      }
+
       // recompose command line
       std::wstringstream stream;
-      stream << "\"" << cmdReroute.fileName() << "\"";
-      for (int i = 1; i < argc; ++i) {
-        stream << " " << "\"" << argv[i] << "\"";
-      }
+      stream << L"\"" << cmdReroute.fileName() << L"\"" << args;
       cmdline = stream.str();
     }
 
@@ -1591,8 +1560,8 @@ HANDLE WINAPI usvfs::hooks::FindFirstFileExA(LPCSTR lpFileName, FINDEX_INFO_LEVE
 	origData->nFileSizeLow = tempData.nFileSizeLow;
 	origData->dwReserved0 = tempData.dwReserved0;
 	origData->dwReserved1 = tempData.dwReserved1;
-	strcpy_s(origData->cFileName, ush::string_cast<std::string>(tempData.cFileName).c_str());
-	strcpy_s(origData->cAlternateFileName, ush::string_cast<std::string>(tempData.cAlternateFileName).c_str());
+	strncpy_s(origData->cFileName, ush::string_cast<std::string>(tempData.cFileName).c_str(), _TRUNCATE);
+	strncpy_s(origData->cAlternateFileName, ush::string_cast<std::string>(tempData.cAlternateFileName).c_str(), _TRUNCATE);
 	return tempHandle;
 }
 

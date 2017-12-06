@@ -18,19 +18,25 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 */
-#include "directory_tree.h"
+#include "initguard.h"
 
-fs::path::iterator usvfs::shared::nextIter(const fs::path::iterator &iter,
-                                           const fs::path::iterator &end) {
-  fs::path::iterator next = iter;
-  advanceIter(next, end);
-  return next;
+namespace usvfs {
+
+namespace shared {
+
+//static
+std::atomic<bool> InitGuard::_initialized = false;
+
+//static
+void InitGuard::initialize() {
+	_initialized = true;
 }
 
-void usvfs::shared::advanceIter(fs::path::iterator &iter,
-                                const fs::path::iterator &end) {
-  ++iter;
-  while (iter != end &&
-         (iter->wstring() == L"/" || iter->wstring() == L"\\" || iter->wstring() == L"."))
-    ++iter;
+//static
+void InitGuard::deinitialize() {
+	_initialized = false;
 }
+
+} // namespace shared
+
+} // namespace usvfs

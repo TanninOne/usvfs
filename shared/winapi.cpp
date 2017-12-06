@@ -111,20 +111,18 @@ std::wstring getModuleFileName(HMODULE module, HANDLE process)
 
 std::pair<std::wstring, std::wstring> getFullPathName(LPCWSTR fileName)
 {
-  static const int INIT_SIZE = 128;
-  std::wstring result;
-  result.resize(INIT_SIZE);
+  wchar_t buf1[MAX_PATH];
+  std::vector<wchar_t> buf2;
+  wchar_t* result = buf1;
   LPWSTR filePart = nullptr;
-  DWORD requiredSize = GetFullPathNameW(fileName, INIT_SIZE, &result[0], &filePart);
-  if (requiredSize >= INIT_SIZE) {
-    result.resize(requiredSize);
-    GetFullPathNameW(fileName, requiredSize, &result[0], &filePart);
+  DWORD requiredSize = GetFullPathNameW(fileName, MAX_PATH, result, &filePart);
+  if (requiredSize >= MAX_PATH) {
+    buf2.resize(requiredSize);
+    result = &buf2[0];
+    requiredSize = GetFullPathNameW(fileName, requiredSize, result, &filePart);
   }
-  if (requiredSize != 0UL) {
-    return make_pair(result, std::wstring(filePart != nullptr ? filePart : L""));
-  } else {
-    return make_pair(result, std::wstring());
-  }
+  return make_pair(std::wstring(result, requiredSize),
+    std::wstring((requiredSize && filePart) ? filePart : L""));
 }
 
 std::wstring getCurrentDirectory()
