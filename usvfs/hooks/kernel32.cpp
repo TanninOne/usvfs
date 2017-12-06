@@ -115,22 +115,10 @@ public:
 
   static fs::path canonize_path(const fs::path& inPath)
   {
-    std::string lookupPath = ush::string_cast<std::string>(inPath.c_str(), CodePage::UTF8);
-
-    // Path_1 destination buffer.
-    char buffer_1[MAX_PATH] = "";
-    char *lpStr1;
-    lpStr1 = buffer_1;
-
-    // Path_2 to be Canonicalized.
-    char buffer_2[MAX_PATH];
-    strncpy_s(buffer_2, lookupPath.c_str(), _TRUNCATE);
-    char *lpStr2;
-    lpStr2 = buffer_2;
-    if (::PathCanonicalizeA(lpStr1, lpStr2))
-      return lpStr1;
-    else
-      return lookupPath;
+    fs::path p = inPath.lexically_normal();
+    if (p.filename_is_dot())
+      p = p.remove_filename();
+    return p.make_preferred();
   }
 
   static RerouteW create(const usvfs::HookContext::ConstPtr &context,
