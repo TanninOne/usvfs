@@ -93,6 +93,46 @@ public:
     }
   }
 
+  static fs::path absolute_path(const wchar_t *inPath)
+  {
+    if (ush::startswith(inPath, LR"(\\?\)") || ush::startswith(inPath, LR"(\??\)")) {
+      inPath += 4;
+      return inPath;
+    }
+    else if ((ush::startswith(inPath, LR"(\\localhost\)") || ush::startswith(inPath, LR"(\\127.0.0.1\)")) && inPath[13] == L'$') {
+      std::wstring newPath;
+      newPath += towupper(inPath[12]);
+      newPath += L':';
+      newPath += &inPath[14];
+      return newPath;
+    }
+    else if (inPath[0] == L'\0' || inPath[1] == L':') {
+      return inPath;
+    }
+    usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FULL_PATHNAME);
+    return winapi::wide::getFullPathName(inPath).first;
+  }
+
+  static fs::path canonize_path(const fs::path& inPath)
+  {
+    std::string lookupPath = ush::string_cast<std::string>(inPath.c_str(), CodePage::UTF8);
+
+    // Path_1 destination buffer.
+    char buffer_1[MAX_PATH] = "";
+    char *lpStr1;
+    lpStr1 = buffer_1;
+
+    // Path_2 to be Canonicalized.
+    char buffer_2[MAX_PATH];
+    strncpy_s(buffer_2, lookupPath.c_str(), _TRUNCATE);
+    char *lpStr2;
+    lpStr2 = buffer_2;
+    if (::PathCanonicalizeA(lpStr1, lpStr2))
+      return lpStr1;
+    else
+      return lookupPath;
+  }
+
   static RerouteW create(const usvfs::HookContext::ConstPtr &context,
                          const usvfs::HookCallContext &callContext,
                          const wchar_t *inPath, bool inverse = false)
@@ -103,49 +143,11 @@ public:
       result.m_Buffer   = std::wstring(inPath);
       result.m_Rerouted = false;
       if (callContext.active()) {
-        bool absolute = false;
-        if (ush::startswith(inPath, LR"(\\?\)") || ush::startswith(inPath, LR"(\??\)")) {
-          absolute = true;
-          inPath += 4;
-        }
-        else if ((ush::startswith(inPath, LR"(\\localhost\)") || ush::startswith(inPath, LR"(\\127.0.0.1\)")) && inPath[13] == L'$') {
-          absolute = true;
-          std::wstring newPath = L"";
-          newPath += towupper(inPath[12]);
-          inPath += 14;
-          newPath += L':';
-          newPath += ush::string_cast<std::wstring>(inPath);
-          inPath = newPath.c_str();
-        }
-        else if (inPath[1] == L':') {
-          absolute = true;
-        }
-
-        std::string lookupPath;
-        if (!absolute) {
-          usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FULL_PATHNAME);
-          auto fullPath = winapi::wide::getFullPathName(inPath);
-          lookupPath    = string_cast<std::string>(fullPath.first, CodePage::UTF8);
-        } else {
-          lookupPath = string_cast<std::string>(inPath, CodePage::UTF8);
-        }
-
-        // Path_1 destination buffer.
-        char buffer_1[MAX_PATH] = "";
-        char *lpStr1;
-        lpStr1 = buffer_1;
-
-        // Path_2 to be Canonicalized.
-        char buffer_2[MAX_PATH];
-        strncpy_s(buffer_2, lookupPath.c_str(), _TRUNCATE);
-        char *lpStr2;
-        lpStr2 = buffer_2;
-        if (::PathCanonicalizeA(lpStr1, lpStr2))
-          lookupPath = lpStr1;
+        fs::path lookupPath = canonize_path(absolute_path(inPath));
 
         const usvfs::RedirectionTreeContainer &table
             = inverse ? context->inverseTable() : context->redirectionTable();
-        result.m_FileNode = table->findNode(lookupPath.c_str());
+        result.m_FileNode = table->findNode(lookupPath);
 
         if (result.m_FileNode.get()
           && (!result.m_FileNode->data().linkTarget.empty() || result.m_FileNode->isDirectory())) {
@@ -179,48 +181,9 @@ public:
     if ((inPath != nullptr) && (inPath[0] != L'\0')
         && !ush::startswith(inPath, L"hid#")) {
       result.m_Buffer   = inPath;
-
-      bool absolute = false;
-      if (ush::startswith(inPath, LR"(\\?\)") || ush::startswith(inPath, LR"(\??\)")) {
-        absolute = true;
-        inPath += 4;
-      }
-      else if ((ush::startswith(inPath, LR"(\\localhost\)") || ush::startswith(inPath, LR"(\\127.0.0.1\)")) && inPath[13] == L'$') {
-        absolute = true;
-        std::wstring newPath = L"";
-        newPath += towupper(inPath[12]);
-        inPath += 14;
-        newPath += L':';
-        newPath += ush::string_cast<std::wstring>(inPath);
-        inPath = newPath.c_str();
-      }
-      else if (inPath[1] == L':') {
-        absolute = true;
-      }
-
-      std::string lookupPath;
-      if (!absolute) {
-        usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FULL_PATHNAME);
-        auto fullPath = winapi::wide::getFullPathName(inPath);
-        result.m_RealPath.assign(fullPath.first);
-        lookupPath    = string_cast<std::string>(fullPath.first, CodePage::UTF8);
-      } else {
-        result.m_RealPath.assign(inPath);
-        lookupPath = string_cast<std::string>(inPath, CodePage::UTF8);
-      }
-
-      // Path_1 destination buffer.
-      char buffer_1[MAX_PATH] = "";
-      char *lpStr1;
-      lpStr1 = buffer_1;
-
-      // Path_2 to be Canonicalized.
-      char buffer_2[MAX_PATH];
-      strncpy_s(buffer_2, lookupPath.c_str(), _TRUNCATE);
-      char *lpStr2;
-      lpStr2 = buffer_2;
-      if (::PathCanonicalizeA(lpStr1, lpStr2))
-        lookupPath = lpStr1;
+      fs::path lookupPath = absolute_path(inPath);
+      result.m_RealPath = lookupPath.c_str();
+      lookupPath = canonize_path(lookupPath);
 
       FindCreateTarget visitor;
       usvfs::RedirectionTree::VisitorFunction visitorWrapper = [&](
@@ -230,7 +193,7 @@ public:
         // the visitor has found the last (deepest in the directory hierarchy)
         // create-target
         fs::path relativePath
-            = ush::make_relative(visitor.target->path(), fs::path(lookupPath));
+            = ush::make_relative(visitor.target->path(), lookupPath);
         result.m_Buffer = (fs::path(visitor.target->data().linkTarget.c_str())
                            / relativePath)
                               .wstring();
