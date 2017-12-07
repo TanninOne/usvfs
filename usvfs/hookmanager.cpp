@@ -285,6 +285,7 @@ void HookManager::initHooks()
   installHook(ntdllMod, nullptr, "NtCreateFile", uhooks::NtCreateFile);
   installHook(ntdllMod, nullptr, "NtClose", uhooks::NtClose);
   installStub(ntdllMod, nullptr, "NtDeleteFile");
+  installHook(ntdllMod, nullptr, "NtTerminateProcess", uhooks::NtTerminateProcess);
 
   HMODULE shellMod = GetModuleHandleA("shell32.dll");
   if (shellMod != nullptr) {
