@@ -175,8 +175,6 @@ void createMiniDump(PEXCEPTION_POINTERS exceptionPtrs)
   char errorBuffer[errorLen + 1];
   memset(errorBuffer, '\0', errorLen + 1);
 
-  auto logger = spdlog::get("hooks");
-
   if (dbgDLL) {
     FuncMiniDumpWriteDump funcDump = reinterpret_cast<FuncMiniDumpWriteDump>(GetProcAddress(dbgDLL, "MiniDumpWriteDump"));
     if (funcDump) {
@@ -198,38 +196,18 @@ void createMiniDump(PEXCEPTION_POINTERS exceptionPtrs)
         BOOL success = funcDump(GetCurrentProcess(), GetCurrentProcessId(), dumpFile, MiniDumpNormal,
                                 &exceptionInfo, nullptr, nullptr);
         CloseHandle(dumpFile);
-        if (success) {
-          if (logger != nullptr) {
-            logger->error("Crash dump created as \"{}\". Please send this file to the developer",
-                                        ush::string_cast<std::string>(dmpPath));
-          }
-        } else {
-          if (logger != nullptr) {
-            logger->error("No crash dump created, errorcode: {}", GetLastError());
-          }
-        }
-      } else {
-        if (logger != nullptr) {
-          logger->error("No crash dump created, failed to open \"{}\" for writing",
-                        ush::string_cast<std::string>(dmpPath));
-        }
-      }
-    } else {
-      if (logger != nullptr) {
-        logger->error("No crash dump created, dbghelp.dll invalid");
       }
     }
     FreeLibrary(dbgDLL);
-  } else {
-    if (logger != nullptr) {
-      logger->error("No crash dump created, dbghelp.dll not found");
-    }
   }
 }
 
 
 LONG WINAPI VEHandler(PEXCEPTION_POINTERS exceptionPtrs)
 {
+  // NOTICE: don't use logger in VEHandler as it can cause another fault causing VEHandler
+  // to be called again and so on.
+
   if (   (exceptionPtrs->ExceptionRecord->ExceptionCode  < 0x80000000)      // non-critical
       || (exceptionPtrs->ExceptionRecord->ExceptionCode == 0xe06d7363)) {   // cpp exception
     // don't report non-critical exceptions
@@ -243,51 +221,9 @@ LONG WINAPI VEHandler(PEXCEPTION_POINTERS exceptionPtrs)
   }
   */
 
-  if (RemoveVectoredExceptionHandler(exceptionHandler) == 0) {
-    ::MessageBoxA(nullptr, "Failed to properly report windows exception, not daring to continue", "Critical Error ^ 2", MB_OK);
-    return EXCEPTION_CONTINUE_SEARCH;
-  }
-
-  auto logger = spdlog::get("hooks");
-  // ensure that the barrier won't keep future hook functions from running in case the process lives
-  ON_BLOCK_EXIT([] () {
-    HookLib::TrampolinePool::instance().forceUnlockBarrier();
-  });
-
-  try {
-    std::pair<uintptr_t, uintptr_t> range = winapi::ex::getSectionRange(dllModule);
-
-    uintptr_t exceptionAddress =
-        reinterpret_cast<uintptr_t>(exceptionPtrs->ExceptionRecord->ExceptionAddress);
-
-    if ((exceptionAddress < range.first) || (exceptionAddress > range.second)) {
-      // exception address outside this dll
-      std::wstring modName = winapi::ex::wide::getSectionName(exceptionPtrs->ExceptionRecord->ExceptionAddress);
-      if (logger.get() != nullptr) {
-        logger->warn("windows exception {0:x} from {1}",
-                     exceptionPtrs->ExceptionRecord->ExceptionCode,
-                     ush::string_cast<std::string>(modName));
-      }
-      // re-install exception handler
-//      exceptionHandler = ::AddVectoredExceptionHandler(0, VEHandler);
-      createMiniDump(exceptionPtrs);
-      return EXCEPTION_CONTINUE_SEARCH;
-    } else {
-      // exception in usvfs. damn
-      if (logger.get() != nullptr) {
-        logger->critical("windows exception {0:x}",
-                         exceptionPtrs->ExceptionRecord->ExceptionCode);
-      }
-    }
-  } catch (const std::exception &e) {
-    if (logger.get() != nullptr) {
-      logger->error("windows exception from unkown module ({})", e.what());
-    }
-  }
-
-  // remove hooks
-  delete manager;
-  manager = nullptr;
+  // disable our hooking mechanism to increase chances the dump writing won't crash
+  HookLib::TrampolinePool::instance().forceUnlockBarrier();
+  HookLib::TrampolinePool::instance().setBlock(true);
 
   createMiniDump(exceptionPtrs);
 
@@ -741,6 +677,8 @@ BOOL APIENTRY DllMain(HMODULE module,
       dllModule = module;
     } break;
     case DLL_PROCESS_DETACH: {
+      if (exceptionHandler)
+        ::RemoveVectoredExceptionHandler(exceptionHandler);
     } break;
     case DLL_THREAD_ATTACH: {
     } break;
