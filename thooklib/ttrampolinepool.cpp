@@ -21,7 +21,6 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include "ttrampolinepool.h"
 #include <addrtools.h>
 #include <shmlogger.h>
-#include <initguard.h>
 //#include <boost/thread/lock_guard.hpp>
 #include "udis86wrapper.h"
 
@@ -545,20 +544,12 @@ TrampolinePool::BufferMap::iterator TrampolinePool::allocateBuffer(LPVOID addres
 
 LPVOID TrampolinePool::barrier(LPVOID function)
 {
-	InitGuard iguard;
-	if (iguard)
-		return instance().barrierInt(function);
-	else
-		return nullptr;
+  return instance().barrierInt(function);
 }
 
 LPVOID TrampolinePool::release(LPVOID function)
 {
-	InitGuard iguard;
-	if (iguard)
-		return instance().releaseInt(function);
-	else
-		return nullptr;
+  return instance().releaseInt(function);
 }
 
 LPVOID TrampolinePool::barrierInt(LPVOID func)

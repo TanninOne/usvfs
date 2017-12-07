@@ -40,7 +40,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #pragma warning (pop)
 #include <fmt/format.h>
 #include <codecvt>
-#include <initguard.h>
+
 
 namespace bfs = boost::filesystem;
 namespace ush = usvfs::shared;
@@ -739,10 +739,8 @@ BOOL APIENTRY DllMain(HMODULE module,
   switch (reasonForCall) {
     case DLL_PROCESS_ATTACH: {
       dllModule = module;
-      ush::InitGuard::initialize();
     } break;
     case DLL_PROCESS_DETACH: {
-      ush::InitGuard::deinitialize();
     } break;
     case DLL_THREAD_ATTACH: {
     } break;
