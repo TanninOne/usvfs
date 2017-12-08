@@ -298,6 +298,8 @@ void __cdecl InitHooks(LPVOID parameters, size_t)
   usvfs_dump_type = params->crashDumpsType;
   usvfs_dump_path = ush::string_cast<std::wstring>(params->crashDumpsPath, ush::CodePage::UTF8);
 
+  SetLogLevel(params->logLevel);
+
   if (exceptionHandler == nullptr) {
     if (usvfs_dump_type != CrashDumpsType::None)
       exceptionHandler = ::AddVectoredExceptionHandler(0, VEHandler);
@@ -306,17 +308,21 @@ void __cdecl InitHooks(LPVOID parameters, size_t)
     // how did this happen??
   }
 
-  SetLogLevel(params->logLevel);
-
   spdlog::get("usvfs")
-      ->debug("inithooks called {0} in process {1} (log level {2})",
-              params->instanceName, ::GetCurrentProcessId(),
-              static_cast<int>(params->logLevel));
-  spdlog::get("usvfs")
-      ->info("process name: {}", winapi::ansi::getModuleFileName(nullptr));
+      ->info("inithooks called {0} in process {1}:{2} (log level {3}, dump type {4}, dump path {5})",
+              params->instanceName,
+              winapi::ansi::getModuleFileName(nullptr),
+              ::GetCurrentProcessId(),
+              static_cast<int>(params->logLevel),
+              static_cast<int>(params->crashDumpsType),
+              params->crashDumpsPath);
 
   try {
     manager = new usvfs::HookManager(*params, dllModule);
+
+    spdlog::get("usvfs")
+      ->info("inithooks in process {0} successfull", ::GetCurrentProcessId());
+
 /*
     std::ostringstream str;
     dumpTree(str, *manager->context()->redirectionTable().get());

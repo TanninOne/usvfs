@@ -99,6 +99,8 @@ void usvfs::injectProcess(const std::wstring &applicationPath
 
     InjectLib::InjectDLL(processHandle, threadHandle, dllPath.c_str(),
                          "InitHooks", &parameters, sizeof(USVFSParameters));
+
+    spdlog::get("usvfs")->info("injection to same bitness process {} successfull", ::GetProcessId(processHandle));
   } else {
     std::wstring exePath = (binPath / "usvfs_proxy.exe").wstring();
     if (!boost::filesystem::exists(exePath)) {
