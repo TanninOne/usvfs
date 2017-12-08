@@ -292,6 +292,8 @@ typedef NTSYSAPI BOOLEAN(NTAPI *RtlDoesFileExists_U_type)(PCWSTR);
 
 typedef NTSTATUS (NTAPI *RtlGetVersion_type)(PRTL_OSVERSIONINFOW);
 
+typedef NTSTATUS(WINAPI *NtTerminateProcess_type)(HANDLE ProcessHandle, NTSTATUS ExitStatus);
+
 extern NtQueryDirectoryFile_type NtQueryDirectoryFile;
 extern NtQueryFullAttributesFile_type NtQueryFullAttributesFile;
 extern NtQueryAttributesFile_type NtQueryAttributesFile;
@@ -300,6 +302,7 @@ extern NtCreateFile_type NtCreateFile;
 extern NtClose_type NtClose;
 extern RtlDoesFileExists_U_type RtlDoesFileExists_U;
 extern RtlGetVersion_type RtlGetVersion;
+extern NtTerminateProcess_type NtTerminateProcess;
 
 /*
 extern ObReferenceObjectByHandle_type ObReferenceObjectByHandle;

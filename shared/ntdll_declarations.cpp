@@ -31,6 +31,8 @@ NtCreateFile_type NtCreateFile;
 NtClose_type NtClose;
 RtlDoesFileExists_U_type RtlDoesFileExists_U;
 RtlGetVersion_type RtlGetVersion;
+NtTerminateProcess_type NtTerminateProcess;
+
 
 static struct __Initializer {
   HMODULE m_NtDLLMod;
@@ -49,6 +51,7 @@ static struct __Initializer {
     LOAD_EXT(m_NtDLLMod, NtClose);
     LOAD_EXT(m_NtDLLMod, RtlDoesFileExists_U);
     LOAD_EXT(m_NtDLLMod, RtlGetVersion);
+    LOAD_EXT(m_NtDLLMod, NtTerminateProcess);
   }
 
   ~__Initializer() {

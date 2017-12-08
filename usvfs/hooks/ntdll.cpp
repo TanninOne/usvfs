@@ -4,6 +4,7 @@
 #include "../hookcontext.h"
 #include "../hookcallcontext.h"
 #include "../stringcast_boost.h"
+#include "../usvfs.h"
 #pragma warning(push, 3)
 #include <boost/scoped_array.hpp>
 #include <boost/algorithm/string.hpp>
@@ -1075,6 +1076,23 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryFullAttributesFile(
         .addParam("rerouted", adjustedAttributes.get())
         .PARAMWRAP(res);
   }
+
+  HOOK_END
+
+  return res;
+}
+
+NTSTATUS WINAPI usvfs::hooks::NtTerminateProcess(
+  HANDLE ProcessHandle,
+  NTSTATUS ExitStatus)
+{
+  NTSTATUS res = STATUS_SUCCESS;
+
+  HOOK_START
+
+  DisconnectVFS();
+
+  res = ::NtTerminateProcess(ProcessHandle, ExitStatus);
 
   HOOK_END
 
