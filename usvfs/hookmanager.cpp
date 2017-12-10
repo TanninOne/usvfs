@@ -213,6 +213,8 @@ void HookManager::installStub(HMODULE module1, HMODULE module2, const std::strin
 
 void HookManager::initHooks()
 {
+  TrampolinePool::initialize();
+
   HookLib::TrampolinePool::instance().setBlock(true);
 
   HMODULE k32Mod = GetModuleHandleA("kernel32.dll");

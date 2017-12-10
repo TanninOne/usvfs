@@ -48,7 +48,14 @@ class TrampolinePool
 {
 public:
 
-  static TrampolinePool &instance();
+  /// Call initialize before you use the TrampolinePool
+  static void initialize();
+
+  static TrampolinePool &instance() {
+    // This is a very very sensitive place so we want to keep this function as simple as possible
+    // and having it inlined probably cann't hurt
+    return *s_Instance;
+  }
 
   void setBlock(bool block);
 
