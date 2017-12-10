@@ -23,9 +23,14 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include "../shared/logging.h"
 #include "../usvfs/dllimport.h"
 
+enum class CrashDumpsType : uint8_t {
+  None,
+  Mini,
+  Data,
+  Full
+};
 
 extern "C" {
-
 
 struct USVFSParameters {
   char instanceName[65];
@@ -33,6 +38,8 @@ struct USVFSParameters {
   char currentInverseSHMName[65];
   bool debugMode{false};
   LogLevel logLevel{LogLevel::Debug};
+  CrashDumpsType crashDumpsType{CrashDumpsType::None};
+  char crashDumpsPath[260];
 };
 
 }

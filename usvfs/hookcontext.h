@@ -46,7 +46,9 @@ void USVFSInitParametersInt(USVFSParameters *parameters,
                             const char *currentSHMName,
                             const char *currentInverseSHMName,
                             bool debugMode,
-                            LogLevel logLevel);
+                            LogLevel logLevel,
+                            CrashDumpsType crashDumpsType,
+                            const char *crashDumpsPath);
 
 
 typedef shared::VoidAllocatorT::rebind<DWORD>::other DWORDAllocatorT;
@@ -67,6 +69,8 @@ struct SharedParameters {
     , currentInverseSHMName(reference.currentInverseSHMName, allocator)
     , debugMode(reference.debugMode)
     , logLevel(reference.logLevel)
+    , crashDumpsType(reference.crashDumpsType)
+    , crashDumpsPath(reference.crashDumpsPath, allocator)
     , userCount(1)
     , processBlacklist(allocator)
     , processList(allocator)
@@ -80,6 +84,8 @@ struct SharedParameters {
   shared::StringT currentInverseSHMName;
   bool debugMode;
   LogLevel logLevel;
+  CrashDumpsType crashDumpsType;
+  shared::StringT crashDumpsPath;
   uint32_t userCount;
   boost::container::flat_set<shared::StringT, std::less<shared::StringT>,
                              StringAllocatorT> processBlacklist;
@@ -193,6 +199,9 @@ public:
   std::vector<DWORD> registeredProcesses() const;
 
   void blacklistExecutable(const std::wstring &executableName);
+
+  void setLogLevel(LogLevel level);
+  void setCrashDumpsType(CrashDumpsType type);
 
   void updateParameters() const;
 

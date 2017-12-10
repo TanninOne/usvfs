@@ -60,7 +60,9 @@ USVFSParameters SharedParameters::makeLocal() const
   USVFSParameters result;
   USVFSInitParametersInt(&result, instanceName.c_str(),
                          currentSHMName.c_str(),
-                         currentInverseSHMName.c_str(), debugMode, logLevel);
+                         currentInverseSHMName.c_str(),
+                         debugMode, logLevel, crashDumpsType,
+                         crashDumpsPath.c_str());
   return result;
 }
 
@@ -70,13 +72,17 @@ void usvfs::USVFSInitParametersInt(USVFSParameters *parameters,
                                    const char *currentSHMName,
                                    const char *currentInverseSHMName,
                                    bool debugMode,
-                                   LogLevel logLevel)
+                                   LogLevel logLevel,
+                                   CrashDumpsType crashDumpsType,
+                                   const char *crashDumpsPath)
 {
   parameters->debugMode = debugMode;
   parameters->logLevel = logLevel;
-  strncpy_s(parameters->instanceName, 64, instanceName, _TRUNCATE);
-  strncpy_s(parameters->currentSHMName, 64, currentSHMName, _TRUNCATE);
-  strncpy_s(parameters->currentInverseSHMName, 64, currentInverseSHMName, _TRUNCATE);
+  parameters->crashDumpsType = crashDumpsType;
+  strncpy_s(parameters->instanceName, instanceName, _TRUNCATE);
+  strncpy_s(parameters->currentSHMName, currentSHMName, _TRUNCATE);
+  strncpy_s(parameters->currentInverseSHMName, currentInverseSHMName, _TRUNCATE);
+  strncpy_s(parameters->crashDumpsPath, crashDumpsPath, _TRUNCATE);
 }
 
 
@@ -162,12 +168,20 @@ HookContext::Ptr HookContext::writeAccess(const char*)
   return Ptr(s_Instance, unlock);
 }
 
+void HookContext::setLogLevel(LogLevel level)
+{
+  m_Parameters->logLevel = level;
+}
+
+void HookContext::setCrashDumpsType(CrashDumpsType type)
+{
+  m_Parameters->crashDumpsType = type;
+}
+
 void HookContext::updateParameters() const
 {
   m_Parameters->currentSHMName = m_Tree.shmName().c_str();
   m_Parameters->currentInverseSHMName = m_InverseTree.shmName().c_str();
-
-  m_Parameters->logLevel = usvfs::log::ConvertLogLevel(spdlog::get("usvfs")->level());
 }
 
 USVFSParameters HookContext::callParameters() const

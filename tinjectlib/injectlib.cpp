@@ -478,7 +478,7 @@ void InjectLib::InjectDLL(HANDLE processHandle
       moreThreads = Thread32Next(snapshot, &threadInfo);
     }
     if (injectThread != INVALID_HANDLE_VALUE) {
-      spdlog::get("usvfs")->info("going to inject dll");
+      spdlog::get("usvfs")->debug("going to inject dll");
       InjectDLLEIP(processHandle, injectThread, dllName,
                    initFunction, userData, userDataSize, skipInit);
     } else {
