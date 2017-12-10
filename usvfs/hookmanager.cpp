@@ -58,6 +58,7 @@ HookManager::HookManager(const USVFSParameters &params, HMODULE module)
   s_Instance = this;
 
   m_Context.registerProcess(::GetCurrentProcessId());
+  spdlog::get("usvfs")->debug("Process registered in shared process list : {}",::GetCurrentProcessId());
 
   winapi::ex::OSVersion version = winapi::ex::getOSVersion();
   spdlog::get("usvfs")->info("Windows version {}.{} sp {}",
