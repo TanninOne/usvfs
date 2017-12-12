@@ -278,8 +278,11 @@ LONG WINAPI VEHandler(PEXCEPTION_POINTERS exceptionPtrs)
   */
 
   // disable our hooking mechanism to increase chances the dump writing won't crash
-  HookLib::TrampolinePool::instance().forceUnlockBarrier();
-  HookLib::TrampolinePool::instance().setBlock(true);
+  HookLib::TrampolinePool& trampPool = HookLib::TrampolinePool::instance();
+  if (&trampPool) { // need to test this in case of crash before TrampolinePool initialized
+    trampPool.forceUnlockBarrier();
+    trampPool.setBlock(true);
+  }
 
   CreateMiniDump(exceptionPtrs, usvfs_dump_type, usvfs_dump_path.c_str());
 

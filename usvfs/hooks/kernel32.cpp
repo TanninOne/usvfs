@@ -1150,7 +1150,7 @@ DWORD WINAPI usvfs::hooks::GetCurrentDirectoryA(DWORD nBufferLength,
   DWORD res = usvfs::hooks::GetCurrentDirectoryW(nBufferLength, &buffer[0]);
 
   if (res > 0) {
-      res = WideCharToMultiByte(CP_ACP, 0, buffer.c_str(), res,
+      res = WideCharToMultiByte(CP_ACP, 0, buffer.c_str(), res+1,
                                 lpBuffer, nBufferLength, nullptr, nullptr);
   }
 

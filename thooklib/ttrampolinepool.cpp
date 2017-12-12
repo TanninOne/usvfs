@@ -63,11 +63,11 @@ TrampolinePool::TrampolinePool()
   m_AddressMask = std::numeric_limits<uint64_t>::max() - m_SearchRange;
 }
 
-
-TrampolinePool &TrampolinePool::instance()
+//static
+void TrampolinePool::initialize()
 {
-  static TrampolinePool sInstance;
-  return sInstance;
+  if (!s_Instance)
+    s_Instance = new TrampolinePool();
 }
 
 void TrampolinePool::setBlock(bool block) {
