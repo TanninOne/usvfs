@@ -259,6 +259,18 @@ int WINAPI CreateMiniDump(PEXCEPTION_POINTERS exceptionPtrs, CrashDumpsType type
   return res;
 }
 
+static bool exceptionInUSVFS(PEXCEPTION_POINTERS exceptionPtrs) {
+  if (!dllModule) // shouldn't happend, check just in case
+    return true;  // create dump to better understand how this could happend
+
+  std::pair<uintptr_t, uintptr_t> range = winapi::ex::getSectionRange(dllModule);
+
+  uintptr_t exceptionAddress =
+    reinterpret_cast<uintptr_t>(exceptionPtrs->ExceptionRecord->ExceptionAddress);
+
+  return range.first <= exceptionAddress && exceptionAddress < range.second;
+}
+
 LONG WINAPI VEHandler(PEXCEPTION_POINTERS exceptionPtrs)
 {
   // NOTICE: don't use logger in VEHandler as it can cause another fault causing VEHandler
@@ -276,6 +288,15 @@ LONG WINAPI VEHandler(PEXCEPTION_POINTERS exceptionPtrs)
     return EXCEPTION_CONTINUE_SEARCH;
   }
   */
+
+  // VEHandler is called on "first-chance" exceptions which might be caught and handled.
+  // Ideally we would like to use an UnhandledExceptionFilter but that fails to catch crashes
+  // inside our hooks at least on x64, which is the main reason why want a crash collection
+  // from usvfs.
+  // As a workaround/compromise we catch vectored exception but only ones that originate
+  // direactly within the usvfs code:
+  if (!exceptionInUSVFS(exceptionPtrs))
+    return EXCEPTION_CONTINUE_SEARCH;
 
   // disable our hooking mechanism to increase chances the dump writing won't crash
   HookLib::TrampolinePool& trampPool = HookLib::TrampolinePool::instance();
