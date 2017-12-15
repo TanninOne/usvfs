@@ -28,6 +28,13 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <stringutils.h>
 #include <ntdll_declarations.h>
 
+// TODO according to the standard (17.4.3.1) I shouldn't add these to std but if they are in global namespace
+// the lookup seems to fail?
+namespace std {
+  ostream &operator<<(ostream &os, LPCWSTR str);
+  ostream &operator<<(ostream &os, LPWSTR str);
+  ostream &operator<<(ostream &os, const wstring &str);
+}
 
 namespace usvfs {
 

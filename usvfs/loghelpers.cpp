@@ -138,3 +138,60 @@ LogLevel usvfs::log::ConvertLogLevel(spdlog::level::level_enum level)
     default: return LogLevel::Debug;
   }
 }
+
+std::ostream &std::operator<<(ostream &os, LPCWSTR str)
+{
+
+  try {
+    // TODO this does not correctly support surrogate pairs since the size used here
+    // is the number of 16-bit characters in the buffer whereas toNarrow expects the
+    // actual number of characters.
+    if (str == nullptr) {
+      os << "<null>";
+    }
+    else {
+      //os << ush::string_cast_impl<std::string, const wchar_t*>::cast(str, ush::CodePage::UTF8, 32);
+
+      os << ush::string_cast<string>(str, ush::CodePage::UTF8);
+    }
+  }
+  catch (const exception &e) {
+    os << "ERR: " << e.what();
+  }
+
+  return os;
+}
+
+std::ostream &std::operator<<(ostream &os, const wstring &str)
+{
+  try {
+    os << ush::string_cast<string>(str, ush::CodePage::UTF8);
+  }
+  catch (const exception &e) {
+    os << "ERR: " << e.what();
+  }
+
+  return os;
+}
+
+std::ostream &std::operator<<(ostream &os, LPWSTR str)
+{
+  try {
+    // TODO this does not correctly support surrogate pairs since the size used here
+    // is the number of 16-bit characters in the buffer whereas toNarrow expects the
+    // actual number of characters. It will always underestimate though, so worst
+    // case scenario we truncate the string
+    if (str == nullptr) {
+      os << "<null>";
+    }
+    else {
+      os << ush::string_cast<string>(str, ush::CodePage::UTF8);
+    }
+  }
+  catch (const exception &e) {
+    os << "ERR: " << e.what();
+  }
+
+  return os;
+}
+
