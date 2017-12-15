@@ -5,6 +5,7 @@ SET(thooklib_test_SRCS
     )
 
 INCLUDE_DIRECTORIES("${Boost_INCLUDE_DIRS}"
+                    "${ASMJIT_SOURCE_DIR}/asmjit"
                     "${GTEST_INCLUDE_DIR}"
                     "${CMAKE_SOURCE_DIR}/shared"
                     "${CMAKE_SOURCE_DIR}/thooklib"

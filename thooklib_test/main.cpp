@@ -1,6 +1,7 @@
 #include <iostream>
 #include <gtest/gtest.h>
 #include <hooklib.h>
+#include <ttrampolinepool.h>
 #include <utility.h>
 #include <windows_sane.h>
 //#include <boost/thread.hpp>
@@ -209,6 +210,7 @@ TEST_F(HookingTest, Threading)
 int main(int argc, char **argv) {
   auto logger = spdlog::stdout_logger_mt("usvfs");
   logger->set_level(spdlog::level::warn);
+  TrampolinePool::initialize();
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
