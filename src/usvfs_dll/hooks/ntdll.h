@@ -4,8 +4,8 @@
 #include <windows_sane.h>
 #include <sstream>
 #include <vector>
-#include "../dllimport.h"
-#include "../loghelpers.h"
+#include <dllimport.h>
+#include <loghelpers.h>
 
 namespace usvfs
 {

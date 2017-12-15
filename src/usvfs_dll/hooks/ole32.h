@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../dllimport.h"
+#include <dllimport.h>
 #include <windows_sane.h>
 #include <Unknwn.h>
 

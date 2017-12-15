@@ -1,10 +1,10 @@
 #include "ntdll.h"
 #include "sharedids.h"
-#include "../loghelpers.h"
+#include <loghelpers.h>
 #include "../hookcontext.h"
 #include "../hookcallcontext.h"
 #include "../stringcast_boost.h"
-#include "../usvfs.h"
+#include <usvfs.h>
 #pragma warning(push, 3)
 #include <boost/scoped_array.hpp>
 #include <boost/algorithm/string.hpp>

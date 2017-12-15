@@ -1,6 +1,6 @@
 #include "ole32.h"
 #include "cogetserverpid.h"
-#include "../loghelpers.h"
+#include <loghelpers.h>
 #include "../hookcallcontext.h"
 #include "../hookcontext.h"
 #include <inject.h>

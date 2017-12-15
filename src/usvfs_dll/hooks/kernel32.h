@@ -2,7 +2,7 @@
 
 #include "ntdll_declarations.h"
 #include <windows_sane.h>
-#include "../dllimport.h"
+#include <dllimport.h>
 
 namespace usvfs {
 

@@ -22,7 +22,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <inject.h>
 #include <shared_memory.h>
 #include <usvfsparameters.h>
-#include <hookcontext.h>
+#include <../usvfs_dll/hookcontext.h>
 #include <shmlogger.h>
 #include <spdlog.h>
 #include <winapi.h>

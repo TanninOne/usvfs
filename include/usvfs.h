@@ -26,7 +26,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #endif
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include "../usvfs_helper/usvfsparameters.h"
+#include "usvfsparameters.h"
 
 
 /*

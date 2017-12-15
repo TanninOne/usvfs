@@ -20,8 +20,8 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
 
-#include "../shared/logging.h"
-#include "../usvfs/dllimport.h"
+#include "logging.h"
+#include "dllimport.h"
 
 enum class CrashDumpsType : uint8_t {
   None,

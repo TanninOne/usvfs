@@ -19,8 +19,8 @@ You should have received a copy of the GNU General Public License
 along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 */
 #include "loghelpers.h"
-#include <stringcast.h>
-#include <stringutils.h>
+#include "stringcast.h"
+#include "stringutils.h"
 
 
 namespace ush = usvfs::shared;

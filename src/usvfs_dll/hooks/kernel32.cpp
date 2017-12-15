@@ -1,10 +1,10 @@
 #include "kernel32.h"
 #include "sharedids.h"
-#include "../loghelpers.h"
+#include <loghelpers.h>
 #include "../hookmanager.h"
 #include "../hookcontext.h"
 #include "../hookcallcontext.h"
-#include "../usvfs.h"
+#include <usvfs.h>
 #include <inject.h>
 #include <winapi.h>
 #include <winbase.h>
