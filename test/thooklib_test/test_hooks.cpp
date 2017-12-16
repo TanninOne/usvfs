@@ -10,7 +10,7 @@ HANDLE WINAPI THCreateFileA_1(LPCSTR lpFileName,
                               DWORD dwFlagsAndAttributes,
                               HANDLE hTemplateFile)
 {
-  if (strcmp(lpFileName, INVALID_FILENAME) == 0) {
+  if (strcmp(lpFileName, INVALID_FILENAME.c_str()) == 0) {
     return MARKERHANDLE;
   } else {
     HANDLE res = ::CreateFileA(lpFileName, dwDesiredAccess, dwShareMode,
@@ -29,7 +29,7 @@ HANDLE WINAPI THCreateFileW_1(LPCWSTR lpFileName,
                               DWORD dwFlagsAndAttributes,
                               HANDLE hTemplateFile)
 {
-  if (wcscmp(lpFileName, INVALID_FILENAMEW) == 0) {
+  if (wcscmp(lpFileName, INVALID_FILENAME.w_str()) == 0) {
     EXPECT_EQ(0x42, dwDesiredAccess);
     EXPECT_EQ(0x43, dwShareMode);
     EXPECT_EQ(0x44, (int)lpSecurityAttributes);

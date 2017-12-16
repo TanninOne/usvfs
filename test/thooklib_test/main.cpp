@@ -7,16 +7,36 @@
 //#include <boost/thread.hpp>
 #include <spdlog.h>
 #include <exceptionex.h>
+#include <winapi.h>
+#include <stringutils.h>
 
 
 using namespace std;
 using namespace HookLib;
 
+class TempFile {
+public:
+  TempFile(const wchar_t* relative)
+    : wpath(winapi::wide::getModuleFileName(nullptr))
+  {
+    size_t path_end = wpath.rfind(L'\\');
+    if (path_end != std::wstring::npos) {
+      wpath.erase(path_end + 1); wpath += L"..\\temp\\"; wpath += relative;
+    } else wpath = relative;
+    path = usvfs::shared::string_cast<std::string>(wpath, usvfs::shared::CodePage::UTF8);
+  }
+
+  const char* c_str() const { return path.c_str(); }
+  const wchar_t* w_str() const { return wpath.c_str(); }
+
+private:
+  std::string path;
+  std::wstring wpath;
+};
 
 static const HANDLE MARKERHANDLE = reinterpret_cast<HANDLE>(0x1CC0FFEE);
-static const CHAR INVALID_FILENAME[] = "\\<>/";
-static const WCHAR INVALID_FILENAMEW[] = L"\\<>/";
-
+static const TempFile VALID_FILENAME{ L"VALID_FILENAME" };
+static const TempFile INVALID_FILENAME{ L"\\<>/" };
 
 #include "test_hooks.cpp"
 
@@ -102,7 +122,7 @@ TEST_F(HookingTest, RemoveHook)
 
   EXPECT_NE(INVALID_HOOK, hook);
   RemoveHook(hook);
-  HANDLE test = CreateFileA(INVALID_FILENAME, GENERIC_READ, 0,
+  HANDLE test = CreateFileA(INVALID_FILENAME.c_str(), GENERIC_READ, 0,
                               nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
   EXPECT_EQ(INVALID_HANDLE_VALUE, test);
 }
@@ -118,7 +138,7 @@ TEST_F(HookingTest, CreateFileStubTest)
     hook = InstallStub(k32Mod, "CreateFileA", CreateFileStub);
   }
   EXPECT_NE(INVALID_HOOK, hook);
-  HANDLE test = CreateFileA(INVALID_FILENAME, GENERIC_READ, 0,
+  HANDLE test = CreateFileA(INVALID_FILENAME.c_str(), GENERIC_READ, 0,
                               nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
   RemoveHook(hook);
   EXPECT_EQ(true, stubCalled);
@@ -134,7 +154,7 @@ TEST_F(HookingTest, CreateFileHook)
     k32Mod = GetModuleHandleA("kernelbase.dll");
     hook = InstallHook(k32Mod, "CreateFileA", THCreateFileA_1);
   }
-  HANDLE test = CreateFileA(INVALID_FILENAME, GENERIC_READ, 0,
+  HANDLE test = CreateFileA(INVALID_FILENAME.c_str(), GENERIC_READ, 0,
                               nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
   RemoveHook(hook);
   EXPECT_EQ(MARKERHANDLE, test);
@@ -149,7 +169,7 @@ TEST_F(HookingTest, CreateFileWHook)
     k32Mod = GetModuleHandleA("kernelbase.dll");
     hook = InstallHook(k32Mod, "CreateFileW", THCreateFileW_1);
   }
-  HANDLE test = CreateFileW(INVALID_FILENAMEW, 0x42, 0x43,
+  HANDLE test = CreateFileW(INVALID_FILENAME.w_str(), 0x42, 0x43,
                               (LPSECURITY_ATTRIBUTES)0x44, 0x45, 0x46, (HANDLE)0x47);
   RemoveHook(hook);
   EXPECT_EQ(MARKERHANDLE, test);
@@ -165,7 +185,7 @@ TEST_F(HookingTest, CreateFileHookRecursion)
     k32Mod = GetModuleHandleA("kernelbase.dll");
     hook = InstallHook(k32Mod, "CreateFileA", THCreateFileA_1);
   }
-  HANDLE test = CreateFileA("VALID_FILENAME", GENERIC_READ, 0,
+  HANDLE test = CreateFileA(VALID_FILENAME.c_str(), GENERIC_READ, 0,
                               nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
   RemoveHook(hook);
   EXPECT_NE(MARKERHANDLE, test);
@@ -193,7 +213,7 @@ TEST_F(HookingTest, Threading)
   for (int i = 0; i < NUM_THREADS; ++i) {
     threads[i] = std::thread([i] {
       for (int count = 0; count < NUM_TRIES; ++count) {
-        HANDLE test = CreateFileA(INVALID_FILENAME, GENERIC_READ, 0,
+        HANDLE test = CreateFileA(INVALID_FILENAME.c_str(), GENERIC_READ, 0,
                                     nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
         EXPECT_EQ(MARKERHANDLE, test);
       }

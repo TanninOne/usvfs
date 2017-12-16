@@ -337,10 +337,26 @@ TEST_F(USVFSTestAuto, CanCreateMultipleLinks)
 }
 
 int main(int argc, char **argv) {
+  boost::filesystem::path dllPath(winapi::wide::getModuleFileName(nullptr));
+  dllPath = dllPath.parent_path().parent_path().parent_path() / "lib" /
+#if BOOST_ARCH_X86_64
+    "usvfs_x64.dll";
+#else
+    "usvfs_x86.dll";
+#endif
+  HMODULE loadDll = LoadLibrary(dllPath.c_str());
+  if (!loadDll) {
+    std::wcerr << L"failed to load usvfs dll: " << dllPath.c_str() << L", " << GetLastError() << std::endl;
+    return 1;
+  }
+
   // note: this makes the logger available only to functions statically linked to the test binary, not those
   // called in the dll
   auto logger = spdlog::stdout_logger_mt("usvfs");
   logger->set_level(spdlog::level::warn);
   testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+  int res = RUN_ALL_TESTS();
+
+  FreeLibrary(loadDll);
+  return res;
 }

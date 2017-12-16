@@ -8,10 +8,16 @@
 using namespace usvfs::shared;
 using namespace InjectLib;
 
-#ifdef DEBUG
-static const wchar_t INJECT_LIB[] = L"testinject_dll-d.dll";
+#if BOOST_ARCH_X86_64
+static const wchar_t INJECT_BIN[] = L"testinject_bin_x64.exe";
 #else
-static const wchar_t INJECT_LIB[] = L"testinject_dll.dll";
+static const wchar_t INJECT_BIN[] = L"testinject_bin_x86.exe";
+#endif
+
+#if BOOST_ARCH_X86_64
+static const wchar_t INJECT_LIB[] = L"testinject_dll_x64.dll";
+#else
+static const wchar_t INJECT_LIB[] = L"testinject_dll_x86.dll";
 #endif
 
 static std::shared_ptr<spdlog::logger> logger()
@@ -30,7 +36,7 @@ bool spawn(HANDLE &processHandle, HANDLE &threadHandle)
   si.cb = sizeof(si);
 
   PROCESS_INFORMATION pi;
-  BOOL success = ::CreateProcess(TEXT("testinject_bin.exe"),
+  BOOL success = ::CreateProcess(INJECT_BIN,
                                  nullptr,
                                  nullptr, nullptr,
                                  FALSE,
