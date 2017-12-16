@@ -134,7 +134,7 @@ Wrap<T> wrap(const T &data) { return Wrap<T>(data); }
 
 std::ostream &operator<<(std::ostream &os, const Wrap<LPWSTR> &str);
 std::ostream &operator<<(std::ostream &os, const Wrap<LPCWSTR> &str);
-extern "C" DLLEXPORT std::ostream &operator<<(std::ostream &os, const Wrap<std::wstring> &str);
+std::ostream &operator<<(std::ostream &os, const Wrap<std::wstring> &str);
 
 std::ostream &operator<<(std::ostream &os, const Wrap<PUNICODE_STRING> &str);
 std::ostream &operator<<(std::ostream &os, const Wrap<NTSTATUS> &status);

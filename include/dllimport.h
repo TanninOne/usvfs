@@ -22,7 +22,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef DLLEXPORT
 
-#ifdef _WINDLL
+#ifdef BUILDING_USVFS_DLL
 #define DLLEXPORT __declspec(dllexport)
 #else
 #define DLLEXPORT __declspec(dllimport)

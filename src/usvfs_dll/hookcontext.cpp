@@ -244,7 +244,7 @@ void HookContext::unlockShared(const HookContext *instance)
   instance->m_Mutex.signal();
 }
 
-HookContext *__cdecl CreateHookContext(const USVFSParameters &params, HMODULE module)
+extern "C" DLLEXPORT HookContext *__cdecl CreateHookContext(const USVFSParameters &params, HMODULE module)
 {
   return new HookContext(params, module);
 }

@@ -237,11 +237,9 @@ private:
 };
 }
 
-#if defined(UNITTEST) || defined(_WINDLL)
 // exposed only to unit tests for easier testability
 extern "C" DLLEXPORT usvfs::HookContext *__cdecl CreateHookContext(
     const USVFSParameters &params, HMODULE module);
-#endif
 
 // declare an identifier that is guaranteed to be unique across the application
 #define DATA_ID(name)                                                          \
