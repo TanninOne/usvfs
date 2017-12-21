@@ -18,6 +18,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 */
+
+#include <test_helpers.h>
+
 #pragma warning (push, 3)
 #include <iostream>
 #include <gtest/gtest.h>
@@ -29,7 +32,6 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <inject.h>
 #include <windows_sane.h>
 #include <stringutils.h>
-#include <winapi.h>
 
 #include <spdlog.h>
 
@@ -42,9 +44,6 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <logging.h>
 
 
-/*namespace logging = boost::log;
-namespace sinks = boost::log::sinks;
-namespace expr  = boost::log::expressions;*/
 
 namespace spd = spdlog;
 
@@ -337,14 +336,10 @@ TEST_F(USVFSTestAuto, CanCreateMultipleLinks)
 }
 
 int main(int argc, char **argv) {
-  boost::filesystem::path dllPath(winapi::wide::getModuleFileName(nullptr));
-  dllPath = dllPath.parent_path().parent_path().parent_path() / "lib" /
-#if BOOST_ARCH_X86_64
-    "usvfs_x64.dll";
-#else
-    "usvfs_x86.dll";
-#endif
-  HMODULE loadDll = LoadLibrary(dllPath.c_str());
+  using namespace test;
+
+  auto dllPath = path_of_usvfs_lib(platform_dependant_executable("usvfs", "dll"));
+  ScopedLoadLibrary loadDll(dllPath.c_str());
   if (!loadDll) {
     std::wcerr << L"failed to load usvfs dll: " << dllPath.c_str() << L", " << GetLastError() << std::endl;
     return 1;
@@ -357,6 +352,5 @@ int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   int res = RUN_ALL_TESTS();
 
-  FreeLibrary(loadDll);
   return res;
 }

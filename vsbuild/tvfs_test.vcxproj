@@ -127,7 +127,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\test\usvfs_test\main.cpp" />
+    <ClCompile Include="..\test\tvfs_test\main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="shared.vcxproj">

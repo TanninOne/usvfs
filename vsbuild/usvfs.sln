@@ -63,7 +63,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "usvfs_helper", "usvfs_helpe
 		{D18D0B1C-37B4-48A8-88C0-399DE2815C05} = {D18D0B1C-37B4-48A8-88C0-399DE2815C05}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "usvfs_test", "usvfs_test.vcxproj", "{1DDD14EC-2274-4793-803E-B64D278AFD7A}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tvfs_test", "tvfs_test.vcxproj", "{1DDD14EC-2274-4793-803E-B64D278AFD7A}"
 	ProjectSection(ProjectDependencies) = postProject
 		{562B0058-4701-4284-8B40-D87648A3F64C} = {562B0058-4701-4284-8B40-D87648A3F64C}
 	EndProjectSection
