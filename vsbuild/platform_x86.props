@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+    <PLATFORM_32>_32</PLATFORM_32>
+    <STAGING_PATH>$(STAGING_PATH_32)</STAGING_PATH>
+    <STAGING_DLL>$(STAGING_DLL_32)</STAGING_DLL>
+    <STAGING_LIB>$(STAGING_LIB_32)</STAGING_LIB>
+    <STAGING_EXE>$(STAGING_EXE_32)</STAGING_EXE>
+    <STAGING_PDB>$(STAGING_PDB_32)</STAGING_PDB>
+  </PropertyGroup>
+  <PropertyGroup />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>BOOST_LIB_BUILDID=x86;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <BuildMacro Include="PLATFORM_32">
+      <Value>$(PLATFORM_32)</Value>
+    </BuildMacro>
+    <BuildMacro Include="STAGING_PATH">
+      <Value>$(STAGING_PATH)</Value>
+    </BuildMacro>
+    <BuildMacro Include="STAGING_DLL">
+      <Value>$(STAGING_DLL)</Value>
+    </BuildMacro>
+    <BuildMacro Include="STAGING_LIB">
+      <Value>$(STAGING_LIB)</Value>
+    </BuildMacro>
+    <BuildMacro Include="STAGING_EXE">
+      <Value>$(STAGING_EXE)</Value>
+    </BuildMacro>
+    <BuildMacro Include="STAGING_PDB">
+      <Value>$(STAGING_PDB)</Value>
+    </BuildMacro>
+  </ItemGroup>
+</Project>
