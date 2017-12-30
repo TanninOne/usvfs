@@ -1577,9 +1577,11 @@ HANDLE WINAPI usvfs::hooks::FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEV
   WCHAR appDataLocal[MAX_PATH];
   ::SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, appDataLocal);
   fs::path temp = fs::path(appDataLocal) / "Temp";
-  std::wstring finalPath = L"";
-  if (reroute.wasRerouted())
-    finalPath = reroute.fileName() + p.filename().wstring();
+  fs::path finalPath;
+  if (reroute.wasRerouted()) {
+    finalPath = reroute.fileName();
+    finalPath /= p.filename().wstring();
+  }
 
   PRE_REALCALL
   if (reroute.wasRerouted() || p.wstring().find(temp.wstring()) == std::string::npos) {
