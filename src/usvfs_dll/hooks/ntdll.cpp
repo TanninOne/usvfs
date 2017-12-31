@@ -621,6 +621,8 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
     ULONG Length, FILE_INFORMATION_CLASS FileInformationClass,
     BOOLEAN ReturnSingleEntry, PUNICODE_STRING FileName, BOOLEAN RestartScan)
 {
+  PreserveGetLastError ntFunctionsDoNotChangeGetLastError;
+
   // this is quite messy...
   // first, this will gather the virtual locations mapping to the iterated one
   // then we return results from the real location, skipping those that exist
@@ -798,6 +800,8 @@ NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
                                          PIO_STATUS_BLOCK IoStatusBlock,
                                          ULONG ShareAccess, ULONG OpenOptions)
 {
+  PreserveGetLastError ntFunctionsDoNotChangeGetLastError;
+
   NTSTATUS res = STATUS_NO_SUCH_FILE;
 
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
@@ -887,6 +891,8 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
     ULONG CreateDisposition, ULONG CreateOptions, PVOID EaBuffer,
     ULONG EaLength)
 {
+  PreserveGetLastError ntFunctionsDoNotChangeGetLastError;
+
   NTSTATUS res = STATUS_NO_SUCH_FILE;
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
   if (!callContext.active()) {
@@ -969,6 +975,8 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
 
 NTSTATUS WINAPI usvfs::hooks::NtClose(HANDLE Handle)
 {
+  PreserveGetLastError ntFunctionsDoNotChangeGetLastError;
+
   NTSTATUS res = STATUS_NO_SUCH_FILE;
 
   HOOK_START_GROUP(MutExHookGroup::ALL_GROUPS)
@@ -1015,6 +1023,8 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryAttributesFile(
     POBJECT_ATTRIBUTES ObjectAttributes,
     PFILE_BASIC_INFORMATION FileInformation)
 {
+  PreserveGetLastError ntFunctionsDoNotChangeGetLastError;
+
   NTSTATUS res = STATUS_SUCCESS;
 
   HOOK_START_GROUP(MutExHookGroup::FILE_ATTRIBUTES)
@@ -1046,6 +1056,8 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryFullAttributesFile(
     POBJECT_ATTRIBUTES ObjectAttributes,
     PFILE_NETWORK_OPEN_INFORMATION FileInformation)
 {
+  PreserveGetLastError ntFunctionsDoNotChangeGetLastError;
+
   NTSTATUS res = STATUS_SUCCESS;
 
   HOOK_START_GROUP(MutExHookGroup::FILE_ATTRIBUTES)
