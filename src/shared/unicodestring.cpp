@@ -119,7 +119,8 @@ void UnicodeString::setFromHandle(HANDLE fileHandle)
     m_Buffer.resize(128);
   }
 
-  SetLastError(0UL);
+  DWORD preserveLastError = GetLastError();
+
   DWORD res = GetFinalPathNameByHandleW(fileHandle, &m_Buffer[0],
                                         static_cast<DWORD>(m_Buffer.size()),
                                         FILE_NAME_NORMALIZED);
@@ -131,6 +132,8 @@ void UnicodeString::setFromHandle(HANDLE fileHandle)
   }
 
   update();
+
+  SetLastError(preserveLastError);
 
   /* This code would also work on Windows XP but requires access to non-public API
      * and tends to crash if the handle isn't ok
