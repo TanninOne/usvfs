@@ -8,7 +8,7 @@
 #include <future>
 
 
-HRESULT WINAPI usvfs::hooks::CoCreateInstance(const IID &rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext,
+HRESULT WINAPI usvfs::hook_CoCreateInstance(const IID &rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext,
                                               const IID &riid, LPVOID *ppv)
 {
   HRESULT res = REGDB_E_CLASSNOTREG;
@@ -105,7 +105,7 @@ HRESULT WINAPI usvfs::hooks::CoCreateInstance(const IID &rclsid, LPUNKNOWN pUnkO
   return res;
 }
 
-HRESULT WINAPI usvfs::hooks::CoCreateInstanceEx(const IID &rclsid, IUnknown *punkOuter, DWORD dwClsCtx,
+HRESULT WINAPI usvfs::hook_CoCreateInstanceEx(const IID &rclsid, IUnknown *punkOuter, DWORD dwClsCtx,
                                                 COSERVERINFO *pServerInfo, DWORD dwCount, MULTI_QI *pResults)
 {
   HRESULT res = REGDB_E_CLASSNOTREG;

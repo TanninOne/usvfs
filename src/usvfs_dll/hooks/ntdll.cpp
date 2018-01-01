@@ -615,7 +615,7 @@ bool addVirtualSearchResult(PVOID &FileInformation,
   }
 }
 
-NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
+NTSTATUS WINAPI usvfs::hook_NtQueryDirectoryFile(
     HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine,
     PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, PVOID FileInformation,
     ULONG Length, FILE_INFORMATION_CLASS FileInformationClass,
@@ -794,7 +794,7 @@ makeObjectAttributes(std::pair<UnicodeString, bool> &redirInfo,
   }
 }
 
-NTSTATUS WINAPI usvfs::hooks::NtOpenFile(PHANDLE FileHandle,
+NTSTATUS WINAPI usvfs::hook_NtOpenFile(PHANDLE FileHandle,
                                          ACCESS_MASK DesiredAccess,
                                          POBJECT_ATTRIBUTES ObjectAttributes,
                                          PIO_STATUS_BLOCK IoStatusBlock,
@@ -884,7 +884,7 @@ bool fileExists(const UnicodeString &filename)
   return RtlDoesFileExists_U(static_cast<PCWSTR>(filename)) == TRUE;
 }
 
-NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
+NTSTATUS WINAPI usvfs::hook_NtCreateFile(
     PHANDLE FileHandle, ACCESS_MASK DesiredAccess,
     POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock,
     PLARGE_INTEGER AllocationSize, ULONG FileAttributes, ULONG ShareAccess,
@@ -973,7 +973,7 @@ NTSTATUS WINAPI usvfs::hooks::NtCreateFile(
   return res;
 }
 
-NTSTATUS WINAPI usvfs::hooks::NtClose(HANDLE Handle)
+NTSTATUS WINAPI usvfs::hook_NtClose(HANDLE Handle)
 {
   PreserveGetLastError ntFunctionsDoNotChangeGetLastError;
 
@@ -1019,7 +1019,7 @@ NTSTATUS WINAPI usvfs::hooks::NtClose(HANDLE Handle)
   return res;
 }
 
-NTSTATUS WINAPI usvfs::hooks::NtQueryAttributesFile(
+NTSTATUS WINAPI usvfs::hook_NtQueryAttributesFile(
     POBJECT_ATTRIBUTES ObjectAttributes,
     PFILE_BASIC_INFORMATION FileInformation)
 {
@@ -1052,7 +1052,7 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryAttributesFile(
   return res;
 }
 
-NTSTATUS WINAPI usvfs::hooks::NtQueryFullAttributesFile(
+NTSTATUS WINAPI usvfs::hook_NtQueryFullAttributesFile(
     POBJECT_ATTRIBUTES ObjectAttributes,
     PFILE_NETWORK_OPEN_INFORMATION FileInformation)
 {
@@ -1094,7 +1094,7 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryFullAttributesFile(
   return res;
 }
 
-NTSTATUS WINAPI usvfs::hooks::NtTerminateProcess(
+NTSTATUS WINAPI usvfs::hook_NtTerminateProcess(
   HANDLE ProcessHandle,
   NTSTATUS ExitStatus)
 {

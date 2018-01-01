@@ -6,14 +6,10 @@
 
 namespace usvfs {
 
-namespace hooks {
-
-DLLEXPORT HRESULT WINAPI CoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext,
+DLLEXPORT HRESULT WINAPI hook_CoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext,
                                           REFIID riid, LPVOID *ppv);
 
-DLLEXPORT HRESULT WINAPI CoCreateInstanceEx(REFCLSID rclsid, IUnknown *punkOuter, DWORD dwClsCtx,
+DLLEXPORT HRESULT WINAPI hook_CoCreateInstanceEx(REFCLSID rclsid, IUnknown *punkOuter, DWORD dwClsCtx,
                                             COSERVERINFO *pServerInfo, DWORD dwCount, MULTI_QI *pResults);
-
-}
 
 }

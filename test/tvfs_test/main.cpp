@@ -47,7 +47,6 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 
 namespace spd = spdlog;
 
-namespace uhooks = usvfs::hooks;
 namespace ush = usvfs::shared;
 
 
@@ -167,7 +166,7 @@ TEST_F(USVFSTest, CreateFileHookReportsCorrectErrorOnMissingFile)
     USVFSParameters params;
     USVFSInitParameters(&params, "usvfs_test", true, LogLevel::Debug, CrashDumpsType::None, "");
     std::unique_ptr<usvfs::HookContext> ctx(CreateHookContext(params, ::GetModuleHandle(nullptr)));
-    HANDLE res = uhooks::CreateFileW(VIRTUAL_FILEW
+    HANDLE res = usvfs::hook_CreateFileW(VIRTUAL_FILEW
                                      , GENERIC_READ
                                      , FILE_SHARE_READ | FILE_SHARE_WRITE
                                      , nullptr
@@ -183,7 +182,7 @@ TEST_F(USVFSTest, CreateFileHookReportsCorrectErrorOnMissingFile)
 TEST_F(USVFSTestWithReroute, CreateFileHookRedirectsFile)
 {
   EXPECT_NE(INVALID_HANDLE_VALUE
-            , uhooks::CreateFileW(VIRTUAL_FILEW
+            , usvfs::hook_CreateFileW(VIRTUAL_FILEW
                                   , GENERIC_READ
                                   , FILE_SHARE_READ | FILE_SHARE_WRITE
                                   , nullptr
@@ -200,7 +199,7 @@ TEST_F(USVFSTest, GetFileAttributesHookReportsCorrectErrorOnMissingFile)
         USVFSParameters params;
         USVFSInitParameters(&params, "usvfs_test", true, LogLevel::Debug, CrashDumpsType::None, "");
         std::unique_ptr<usvfs::HookContext> ctx(CreateHookContext(params, ::GetModuleHandle(nullptr)));
-        DWORD res = uhooks::GetFileAttributesW(VIRTUAL_FILEW);
+        DWORD res = usvfs::hook_GetFileAttributesW(VIRTUAL_FILEW);
 
         EXPECT_EQ(INVALID_FILE_ATTRIBUTES, res);
         EXPECT_EQ(ERROR_FILE_NOT_FOUND, ::GetLastError());
@@ -222,7 +221,7 @@ TEST_F(USVFSTest, GetFileAttributesHookRedirectsFile)
                , usvfs::RedirectionDataLocal(REAL_FILEA));
 
   EXPECT_EQ(::GetFileAttributesW(REAL_FILEW)
-            , uhooks::GetFileAttributesW(VIRTUAL_FILEW));
+            , usvfs::hook_GetFileAttributesW(VIRTUAL_FILEW));
 }
 /*
 TEST_F(USVFSTest, GetFullPathNameOnRegularCurrentDirectory)
@@ -237,7 +236,7 @@ TEST_F(USVFSTest, GetFullPathNameOnRegularCurrentDirectory)
   std::unique_ptr<wchar_t[]> buffer(new wchar_t[bufferLength]);
   LPWSTR filePart = nullptr;
 
-  DWORD res = uhooks::GetFullPathNameW(L"filename.txt", bufferLength, buffer.get(), &filePart);
+  DWORD res = usvfs::hook_GetFullPathNameW(L"filename.txt", bufferLength, buffer.get(), &filePart);
 
   EXPECT_NE(0UL, res);
   EXPECT_EQ(expected, std::wstring(buffer.get()));
@@ -260,7 +259,7 @@ TEST_F(USVFSTest, NtQueryDirectoryFileRegularFile)
   IO_STATUS_BLOCK status;
   char buffer[1024];
 
-  uhooks::NtQueryDirectoryFile(hdl
+  usvfs::hook_NtQueryDirectoryFile(hdl
                                , nullptr
                                , nullptr
                                , nullptr
@@ -297,7 +296,7 @@ TEST_F(USVFSTest, NtQueryDirectoryFileFindsVirtualFile)
 
   usvfs::UnicodeString fileName(L"np.exe");
 
-  uhooks::NtQueryDirectoryFile(hdl
+  usvfs::hook_NtQueryDirectoryFile(hdl
                                , nullptr
                                , nullptr
                                , nullptr
@@ -328,11 +327,11 @@ TEST_F(USVFSTestAuto, CanCreateMultipleLinks)
   EXPECT_EQ(TRUE, VirtualLinkDirectoryStatic(REAL_DIRW, outDir, 0));
 
   // both file and dir exist and have the correct type
-  EXPECT_NE(INVALID_FILE_ATTRIBUTES, uhooks::GetFileAttributesW(outFile));
-  EXPECT_NE(INVALID_FILE_ATTRIBUTES, uhooks::GetFileAttributesW(outDir));
-  EXPECT_EQ(0UL, uhooks::GetFileAttributesW(outFile) & FILE_ATTRIBUTE_DIRECTORY);
-  EXPECT_NE(0UL, uhooks::GetFileAttributesW(outDir)  & FILE_ATTRIBUTE_DIRECTORY);
-  EXPECT_NE(0UL, uhooks::GetFileAttributesW(outDirCanonizeTest) & FILE_ATTRIBUTE_DIRECTORY);
+  EXPECT_NE(INVALID_FILE_ATTRIBUTES, usvfs::hook_GetFileAttributesW(outFile));
+  EXPECT_NE(INVALID_FILE_ATTRIBUTES, usvfs::hook_GetFileAttributesW(outDir));
+  EXPECT_EQ(0UL, usvfs::hook_GetFileAttributesW(outFile) & FILE_ATTRIBUTE_DIRECTORY);
+  EXPECT_NE(0UL, usvfs::hook_GetFileAttributesW(outDir)  & FILE_ATTRIBUTE_DIRECTORY);
+  EXPECT_NE(0UL, usvfs::hook_GetFileAttributesW(outDirCanonizeTest) & FILE_ATTRIBUTE_DIRECTORY);
 }
 
 int main(int argc, char **argv) {

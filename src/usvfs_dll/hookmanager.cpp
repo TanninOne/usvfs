@@ -38,7 +38,6 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 
 
 using namespace HookLib;
-namespace uhooks = usvfs::hooks;
 namespace bf = boost::filesystem;
 
 
@@ -226,70 +225,70 @@ void HookManager::initHooks()
   HMODULE kbaseMod = GetModuleHandleA("kernelbase.dll");
   spdlog::get("usvfs")->debug("kernelbase.dll at {0:x}", reinterpret_cast<uintptr_t>(kbaseMod));
 
-  installHook(kbaseMod, k32Mod, "GetFileAttributesExW", uhooks::GetFileAttributesExW);
-  installHook(kbaseMod, k32Mod, "GetFileAttributesW", uhooks::GetFileAttributesW);
-  installHook(kbaseMod, k32Mod, "GetFileAttributesExA", uhooks::GetFileAttributesExA);
-  installHook(kbaseMod, k32Mod, "GetFileAttributesA", uhooks::GetFileAttributesA);
-  installHook(kbaseMod, k32Mod, "SetFileAttributesW", uhooks::SetFileAttributesW);
-  installHook(kbaseMod, k32Mod, "CreateFileW", uhooks::CreateFileW); // not all calls seem to translate to a call to NtCreateFile
-  installHook(kbaseMod, k32Mod, "CreateFileA", uhooks::CreateFileA);
-  installHook(kbaseMod, k32Mod, "CreateDirectoryW", uhooks::CreateDirectoryW);
-  installHook(kbaseMod, k32Mod, "RemoveDirectoryW", uhooks::RemoveDirectoryW);
-  installHook(kbaseMod, k32Mod, "DeleteFileW", uhooks::DeleteFileW);
-  installHook(kbaseMod, k32Mod, "DeleteFileA", uhooks::DeleteFileA);
-  installHook(kbaseMod, k32Mod, "GetCurrentDirectoryA", uhooks::GetCurrentDirectoryA);
-  installHook(kbaseMod, k32Mod, "GetCurrentDirectoryW", uhooks::GetCurrentDirectoryW);
-  installHook(kbaseMod, k32Mod, "SetCurrentDirectoryA", uhooks::SetCurrentDirectoryA);
-  installHook(kbaseMod, k32Mod, "SetCurrentDirectoryW", uhooks::SetCurrentDirectoryW);
+  installHook(kbaseMod, k32Mod, "GetFileAttributesExW", hook_GetFileAttributesExW);
+  installHook(kbaseMod, k32Mod, "GetFileAttributesW", hook_GetFileAttributesW);
+  installHook(kbaseMod, k32Mod, "GetFileAttributesExA", hook_GetFileAttributesExA);
+  installHook(kbaseMod, k32Mod, "GetFileAttributesA", hook_GetFileAttributesA);
+  installHook(kbaseMod, k32Mod, "SetFileAttributesW", hook_SetFileAttributesW);
+  installHook(kbaseMod, k32Mod, "CreateFileW", hook_CreateFileW); // not all calls seem to translate to a call to NtCreateFile
+  installHook(kbaseMod, k32Mod, "CreateFileA", hook_CreateFileA);
+  installHook(kbaseMod, k32Mod, "CreateDirectoryW", hook_CreateDirectoryW);
+  installHook(kbaseMod, k32Mod, "RemoveDirectoryW", hook_RemoveDirectoryW);
+  installHook(kbaseMod, k32Mod, "DeleteFileW", hook_DeleteFileW);
+  installHook(kbaseMod, k32Mod, "DeleteFileA", hook_DeleteFileA);
+  installHook(kbaseMod, k32Mod, "GetCurrentDirectoryA", hook_GetCurrentDirectoryA);
+  installHook(kbaseMod, k32Mod, "GetCurrentDirectoryW", hook_GetCurrentDirectoryW);
+  installHook(kbaseMod, k32Mod, "SetCurrentDirectoryA", hook_SetCurrentDirectoryA);
+  installHook(kbaseMod, k32Mod, "SetCurrentDirectoryW", hook_SetCurrentDirectoryW);
 
-  installHook(kbaseMod, k32Mod, "ExitProcess", uhooks::ExitProcess);
+  installHook(kbaseMod, k32Mod, "ExitProcess", hook_ExitProcess);
 
-  installHook(kbaseMod, k32Mod, "CreateProcessA", uhooks::CreateProcessA);
-  installHook(kbaseMod, k32Mod, "CreateProcessW", uhooks::CreateProcessW);
+  installHook(kbaseMod, k32Mod, "CreateProcessA", hook_CreateProcessA);
+  installHook(kbaseMod, k32Mod, "CreateProcessW", hook_CreateProcessW);
 
-  installHook(kbaseMod, k32Mod, "MoveFileA", uhooks::MoveFileA);
-  installHook(kbaseMod, k32Mod, "MoveFileW", uhooks::MoveFileW);
-  installHook(kbaseMod, k32Mod, "MoveFileExA", uhooks::MoveFileExA);
-  installHook(kbaseMod, k32Mod, "MoveFileExW", uhooks::MoveFileExW);
+  installHook(kbaseMod, k32Mod, "MoveFileA", hook_MoveFileA);
+  installHook(kbaseMod, k32Mod, "MoveFileW", hook_MoveFileW);
+  installHook(kbaseMod, k32Mod, "MoveFileExA", hook_MoveFileExA);
+  installHook(kbaseMod, k32Mod, "MoveFileExW", hook_MoveFileExW);
 
-  installHook(kbaseMod, k32Mod, "CopyFileA", uhooks::CopyFileA);
-  installHook(kbaseMod, k32Mod, "CopyFileW", uhooks::CopyFileW);
-  installHook(kbaseMod, k32Mod, "CopyFileExA", uhooks::CopyFileExA);
-  installHook(kbaseMod, k32Mod, "CopyFileExW", uhooks::CopyFileExW);
+  installHook(kbaseMod, k32Mod, "CopyFileA", hook_CopyFileA);
+  installHook(kbaseMod, k32Mod, "CopyFileW", hook_CopyFileW);
+  installHook(kbaseMod, k32Mod, "CopyFileExA", hook_CopyFileExA);
+  installHook(kbaseMod, k32Mod, "CopyFileExW", hook_CopyFileExW);
 
   if (IsWindows8OrGreater()) {
-    installHook(kbaseMod, k32Mod, "CreateFile2", uhooks::CreateFile2);
-    installHook(kbaseMod, k32Mod, "CopyFile2", uhooks::CopyFile2);
+    installHook(kbaseMod, k32Mod, "CreateFile2", hook_CreateFile2);
+    installHook(kbaseMod, k32Mod, "CopyFile2", hook_CopyFile2);
   }
 
-  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionNamesA", uhooks::GetPrivateProfileSectionNamesA);
-  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionNamesW", uhooks::GetPrivateProfileSectionNamesW);
-  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionA", uhooks::GetPrivateProfileSectionA);
-  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionW", uhooks::GetPrivateProfileSectionW);
-  installHook(kbaseMod, k32Mod, "WritePrivateProfileStringA", uhooks::WritePrivateProfileStringA);
-  installHook(kbaseMod, k32Mod, "WritePrivateProfileStringW", uhooks::WritePrivateProfileStringW);
+  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionNamesA", hook_GetPrivateProfileSectionNamesA);
+  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionNamesW", hook_GetPrivateProfileSectionNamesW);
+  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionA", hook_GetPrivateProfileSectionA);
+  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionW", hook_GetPrivateProfileSectionW);
+  installHook(kbaseMod, k32Mod, "WritePrivateProfileStringA", hook_WritePrivateProfileStringA);
+  installHook(kbaseMod, k32Mod, "WritePrivateProfileStringW", hook_WritePrivateProfileStringW);
 
   installStub(kbaseMod, k32Mod, "CreateHardLinkA");
   installStub(kbaseMod, k32Mod, "CreateHardLinkW");
-  installHook(kbaseMod, k32Mod, "GetFullPathNameW", uhooks::GetFullPathNameW);
+  installHook(kbaseMod, k32Mod, "GetFullPathNameW", hook_GetFullPathNameW);
 
-  installHook(kbaseMod, k32Mod, "GetFileVersionInfoW", uhooks::GetFileVersionInfoW);
-  installHook(kbaseMod, k32Mod, "GetFileVersionInfoExW", uhooks::GetFileVersionInfoExW);
-  installHook(kbaseMod, k32Mod, "GetFileVersionInfoSizeW", uhooks::GetFileVersionInfoSizeW);
-  installHook(kbaseMod, k32Mod, "GetFileVersionInfoSizeExW", uhooks::GetFileVersionInfoSizeExW);
-  installHook(kbaseMod, k32Mod, "FindFirstFileExA", uhooks::FindFirstFileExA);
-  installHook(kbaseMod, k32Mod, "FindFirstFileExW", uhooks::FindFirstFileExW);
+  installHook(kbaseMod, k32Mod, "GetFileVersionInfoW", hook_GetFileVersionInfoW);
+  installHook(kbaseMod, k32Mod, "GetFileVersionInfoExW", hook_GetFileVersionInfoExW);
+  installHook(kbaseMod, k32Mod, "GetFileVersionInfoSizeW", hook_GetFileVersionInfoSizeW);
+  installHook(kbaseMod, k32Mod, "GetFileVersionInfoSizeExW", hook_GetFileVersionInfoSizeExW);
+  installHook(kbaseMod, k32Mod, "FindFirstFileExA", hook_FindFirstFileExA);
+  installHook(kbaseMod, k32Mod, "FindFirstFileExW", hook_FindFirstFileExW);
 
   HMODULE ntdllMod = GetModuleHandleA("ntdll.dll");
   spdlog::get("usvfs")->debug("ntdll.dll at {0:x}", reinterpret_cast<uintptr_t>(ntdllMod));
-  installHook(ntdllMod, nullptr, "NtQueryFullAttributesFile", uhooks::NtQueryFullAttributesFile);
-  installHook(ntdllMod, nullptr, "NtQueryAttributesFile", uhooks::NtQueryAttributesFile);
-  installHook(ntdllMod, nullptr, "NtQueryDirectoryFile", uhooks::NtQueryDirectoryFile);
-  installHook(ntdllMod, nullptr, "NtOpenFile", uhooks::NtOpenFile);
-  installHook(ntdllMod, nullptr, "NtCreateFile", uhooks::NtCreateFile);
-  installHook(ntdllMod, nullptr, "NtClose", uhooks::NtClose);
+  installHook(ntdllMod, nullptr, "NtQueryFullAttributesFile", hook_NtQueryFullAttributesFile);
+  installHook(ntdllMod, nullptr, "NtQueryAttributesFile", hook_NtQueryAttributesFile);
+  installHook(ntdllMod, nullptr, "NtQueryDirectoryFile", hook_NtQueryDirectoryFile);
+  installHook(ntdllMod, nullptr, "NtOpenFile", hook_NtOpenFile);
+  installHook(ntdllMod, nullptr, "NtCreateFile", hook_NtCreateFile);
+  installHook(ntdllMod, nullptr, "NtClose", hook_NtClose);
   installStub(ntdllMod, nullptr, "NtDeleteFile");
-  installHook(ntdllMod, nullptr, "NtTerminateProcess", uhooks::NtTerminateProcess);
+  installHook(ntdllMod, nullptr, "NtTerminateProcess", hook_NtTerminateProcess);
 
   HMODULE shellMod = GetModuleHandleA("shell32.dll");
   if (shellMod != nullptr) {
@@ -306,24 +305,24 @@ void HookManager::initHooks()
 /*  HMODULE oleMod = GetModuleHandleA("ole32.dll");
   if (oleMod != nullptr) {
     spdlog::get("usvfs")->debug("ole32.dll at {0:x}", reinterpret_cast<unsigned long>(oleMod));
-    installHook(oleMod, nullptr, "CoCreateInstance", uhooks::CoCreateInstance);
-    installHook(oleMod, nullptr, "CoCreateInstanceEx", uhooks::CoCreateInstanceEx);
+    installHook(oleMod, nullptr, "CoCreateInstance", hook_CoCreateInstance);
+    installHook(oleMod, nullptr, "CoCreateInstanceEx", hook_CoCreateInstanceEx);
   }
 */
 
-  installHook(kbaseMod, k32Mod, "LoadLibraryExW", uhooks::LoadLibraryExW);
-  installHook(kbaseMod, k32Mod, "LoadLibraryExA", uhooks::LoadLibraryExA);
-  installHook(kbaseMod, k32Mod, "LoadLibraryW", uhooks::LoadLibraryW);
-  installHook(kbaseMod, k32Mod, "LoadLibraryA", uhooks::LoadLibraryA);
+  installHook(kbaseMod, k32Mod, "LoadLibraryExW", hook_LoadLibraryExW);
+  installHook(kbaseMod, k32Mod, "LoadLibraryExA", hook_LoadLibraryExA);
+  installHook(kbaseMod, k32Mod, "LoadLibraryW", hook_LoadLibraryW);
+  installHook(kbaseMod, k32Mod, "LoadLibraryA", hook_LoadLibraryA);
 
   // install this hook late as usvfs is calling it itself for debugging purposes
-  installHook(kbaseMod, k32Mod, "GetModuleFileNameW", uhooks::GetModuleFileNameW);
-  installHook(kbaseMod, k32Mod, "GetModuleFileNameA", uhooks::GetModuleFileNameA);
+  installHook(kbaseMod, k32Mod, "GetModuleFileNameW", hook_GetModuleFileNameW);
+  installHook(kbaseMod, k32Mod, "GetModuleFileNameA", hook_GetModuleFileNameA);
 /*
-  installHook(kbaseMod, k32Mod, "GetModuleHandleW", uhooks::GetModuleHandleW);
-  installHook(kbaseMod, k32Mod, "GetModuleHandleA", uhooks::GetModuleHandleA);
-  installHook(kbaseMod, k32Mod, "GetModuleHandleExW", uhooks::GetModuleHandleExW);
-  installHook(kbaseMod, k32Mod, "GetModuleHandleExA", uhooks::GetModuleHandleExA);
+  installHook(kbaseMod, k32Mod, "GetModuleHandleW", hook_GetModuleHandleW);
+  installHook(kbaseMod, k32Mod, "GetModuleHandleA", hook_GetModuleHandleA);
+  installHook(kbaseMod, k32Mod, "GetModuleHandleExW", hook_GetModuleHandleExW);
+  installHook(kbaseMod, k32Mod, "GetModuleHandleExA", hook_GetModuleHandleExA);
 */
   spdlog::get("usvfs")->debug("hooks installed");
   HookLib::TrampolinePool::instance().setBlock(false);
