@@ -161,7 +161,7 @@ findCreateTarget(const usvfs::HookContext::ConstPtr &context,
     target /= relativePath;
 
     result.second = UnicodeString(target.wstring().c_str());
-    winapi::ex::wide::createPath(target.parent_path().wstring().c_str());
+    winapi::ex::wide::createPath(target.parent_path());
   }
   return result;
 }

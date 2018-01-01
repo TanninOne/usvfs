@@ -442,39 +442,30 @@ std::vector<FileResult> quickFindFiles(LPCWSTR directoryName, LPCWSTR pattern)
   return result;
 }
 
-void createPath(LPCWSTR path, LPSECURITY_ATTRIBUTES securityAttributes)
+void createPath(boost::filesystem::path path, LPSECURITY_ATTRIBUTES securityAttributes)
 {
-  std::unique_ptr<wchar_t, decltype(std::free) *> pathCopy{_wcsdup(path),
-                                                           std::free};
+  // sanity and guaranteed recursion end:
+  if (!path.has_relative_path())
+    throw usvfs::shared::windows_error("createPath() refusing to create non-existing top level path: " + path.string());
 
-  // writable copy of the path
-  wchar_t *current = pathCopy.get();
-
-  if ((wcsncmp(current, LR"(\\?\)", 4) == 0)
-      || (wcsncmp(current, LR"(\??\)", 4) == 0)) {
-    current += 4;
+  DWORD attr = GetFileAttributesW(path.c_str());
+  DWORD err = GetLastError();
+  if (attr != INVALID_FILE_ATTRIBUTES) {
+    if (attr & FILE_ATTRIBUTE_DIRECTORY)
+      return; // if directory already exists all is good
+    else
+      throw usvfs::shared::windows_error("createPath() called on a file: " + path.string());
   }
+  if (err != ERROR_FILE_NOT_FOUND && err != ERROR_PATH_NOT_FOUND)
+    throw usvfs::shared::windows_error("createPath() GetFileAttributesW failed on: " + path.string(), err);
 
-  while (*current != L'\0') {
-    size_t len = wcscspn(current, L"\\/");
-    // may also be \0
-    wchar_t separator = current[len];
-    // don't try to create the drive letter, obviously
-    if ((len != 0) && ((len != 2) || (current[1] != ':'))) {
-      // temporarily cut the string at the current (back-)slash
-      current[len] = L'\0';
-      if (!::CreateDirectoryW(pathCopy.get(), securityAttributes)) {
-        DWORD err = ::GetLastError();
-        if ((err != ERROR_ALREADY_EXISTS) && (err != NOERROR)) {
-          throw usvfs::shared::windows_error(ush::string_cast<std::string>(
-              fmt::format(L"failed to create intermediate directory {}",
-                          pathCopy.get())));
-        }
-        // restore the path
-      }
-      current[len] = separator;
-    }
-    current += len + 1;
+  if (err != ERROR_FILE_NOT_FOUND) // ERROR_FILE_NOT_FOUND means parent directory already exists
+    createPath(path.parent_path(), securityAttributes); // otherwise create parent directory (recursively)
+
+  BOOL res = CreateDirectoryW(path.c_str(), securityAttributes);
+  if (!res) {
+    err = GetLastError();
+    throw usvfs::shared::windows_error("createPath() CreateDirectoryW failed on: " + path.string(), err);
   }
 }
 
@@ -494,7 +485,6 @@ std::wstring getWindowsBuildLab(bool ex)
     --size;
   return std::wstring(buf, size);
 }
-
 
 }
 

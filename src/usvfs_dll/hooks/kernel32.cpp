@@ -187,8 +187,7 @@ public:
                               .wstring();
         try {
           usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::ALL_GROUPS);
-          winapi::ex::wide::createPath(
-              fs::path(result.m_Buffer).parent_path().wstring().c_str());
+          winapi::ex::wide::createPath(fs::path(result.m_Buffer).parent_path());
         } catch (const std::exception &e) {
           spdlog::get("hooks")
               ->error("failed to create {}: {}",
@@ -628,8 +627,7 @@ HANDLE WINAPI usvfs::hooks::CreateFileW(
 
       if (create) {
         fs::path target(reroute.fileName());
-        winapi::ex::wide::createPath(target.parent_path().wstring().c_str(),
-                                     lpSecurityAttributes);
+        winapi::ex::wide::createPath(target.parent_path(), lpSecurityAttributes);
       }
     }
   }
@@ -756,10 +754,9 @@ HANDLE WINAPI usvfs::hooks::CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAcces
       if (create) {
         fs::path target(reroute.fileName());
         if (pCreateExParams != nullptr)
-          winapi::ex::wide::createPath(target.parent_path().wstring().c_str(),
-            pCreateExParams->lpSecurityAttributes);
+          winapi::ex::wide::createPath(target.parent_path(), pCreateExParams->lpSecurityAttributes);
         else
-          winapi::ex::wide::createPath(target.parent_path().wstring().c_str());
+          winapi::ex::wide::createPath(target.parent_path());
       }
     }
   }
@@ -1808,7 +1805,7 @@ BOOL WINAPI usvfs::hooks::WritePrivateProfileStringW(LPCWSTR lpAppName, LPCWSTR 
 
       if (create) {
         fs::path target(reroute.fileName());
-        winapi::ex::wide::createPath(target.parent_path().wstring().c_str());
+        winapi::ex::wide::createPath(target.parent_path());
       }
     }
   }

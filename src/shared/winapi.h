@@ -35,6 +35,8 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <utility>
 #include <shlobj.h>
 
+#include <boost/filesystem.hpp>
+
 
 #define ALIAS(alias, original) template <typename... Args>\
     auto alias(Args&&... args) -> decltype(original(std::forward<Args>(args)...)) {\
@@ -476,8 +478,13 @@ namespace ex {
      *        are used
      * @note it is not considered an error if the path already exists
      */
-    void createPath(LPCWSTR path,
+    void createPath(boost::filesystem::path path,
                     LPSECURITY_ATTRIBUTES securityAttributes = nullptr);
+    inline void createPath(LPCWSTR path,
+                    LPSECURITY_ATTRIBUTES securityAttributes = nullptr)
+    {
+      return createPath(boost::filesystem::path(path), securityAttributes);
+    }
 
     std::wstring getWindowsBuildLab(bool ex = false);
   }
