@@ -61,8 +61,9 @@ HookManager::HookManager(const USVFSParameters &params, HMODULE module)
   spdlog::get("usvfs")->info("Process registered in shared process list : {}",::GetCurrentProcessId());
 
   winapi::ex::OSVersion version = winapi::ex::getOSVersion();
-  spdlog::get("usvfs")->info("Windows version {}.{} sp {}",
-                             version.major, version.minor, version.servicpack);
+  spdlog::get("usvfs")->info("Windows version {}.{}.{} sp {} platform {} ({})",
+                             version.major, version.minor, version.build, version.servicpack, version.platformid,
+                             shared::string_cast<std::string>(winapi::ex::wide::getWindowsBuildLab(true)).c_str());
 
   initHooks();
 

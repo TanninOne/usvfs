@@ -365,6 +365,8 @@ namespace ex {
   struct OSVersion {
     DWORD major;
     DWORD minor;
+    DWORD build;
+    DWORD platformid;
     DWORD servicpack;
   };
 
@@ -476,6 +478,8 @@ namespace ex {
      */
     void createPath(LPCWSTR path,
                     LPSECURITY_ATTRIBUTES securityAttributes = nullptr);
+
+    std::wstring getWindowsBuildLab(bool ex = false);
   }
 }
 

@@ -203,6 +203,8 @@ OSVersion getOSVersion()
   OSVersion result;
   result.major = versionInfo.dwMajorVersion;
   result.minor = versionInfo.dwMinorVersion;
+  result.build = versionInfo.dwBuildNumber;
+  result.platformid = versionInfo.dwPlatformId;
   result.servicpack = versionInfo.wServicePackMajor << 16
                     | versionInfo.wServicePackMinor;
   return result;
@@ -474,6 +476,23 @@ void createPath(LPCWSTR path, LPSECURITY_ATTRIBUTES securityAttributes)
     }
     current += len + 1;
   }
+}
+
+std::wstring getWindowsBuildLab(bool ex)
+{
+  HKEY hKey = nullptr;
+  auto res = RegOpenKeyExW(HKEY_LOCAL_MACHINE, LR"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", 0, KEY_READ, &hKey);
+  if (res != ERROR_SUCCESS || !hKey)
+    return L"Opening HKLM Windows NT\\CurrentVersion failed?!";
+  WCHAR buf[200];
+  DWORD size = static_cast<DWORD>(sizeof(buf));
+  res = RegQueryValueExW(hKey, ex ? L"BuildLabEx" : L"BuildLab", NULL, NULL, reinterpret_cast<LPBYTE>(buf), &size);
+  if (res != ERROR_SUCCESS || size > sizeof(buf))
+    return ex ? L"BuildLabEx reg value not found?!" : L"BuildLab reg value not found?!";
+  size /= sizeof(buf[0]);
+  if (size && !buf[size - 1])
+    --size;
+  return std::wstring(buf, size);
 }
 
 
