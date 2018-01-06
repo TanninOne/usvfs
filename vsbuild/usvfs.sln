@@ -84,6 +84,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test_file_operations", "tes
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "usvfs_test", "usvfs_test.vcxproj", "{CEAF96EC-0BAA-4C02-B91B-5C4C49B5455B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "usvfs_test_runner", "usvfs_test_runner.vcxproj", "{0452CB4D-A906-4717-94AC-7A450E479BE1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -236,6 +238,14 @@ Global
 		{CEAF96EC-0BAA-4C02-B91B-5C4C49B5455B}.Release|x64.Build.0 = Release|x64
 		{CEAF96EC-0BAA-4C02-B91B-5C4C49B5455B}.Release|x86.ActiveCfg = Release|Win32
 		{CEAF96EC-0BAA-4C02-B91B-5C4C49B5455B}.Release|x86.Build.0 = Release|Win32
+		{0452CB4D-A906-4717-94AC-7A450E479BE1}.Debug|x64.ActiveCfg = Debug|x64
+		{0452CB4D-A906-4717-94AC-7A450E479BE1}.Debug|x64.Build.0 = Debug|x64
+		{0452CB4D-A906-4717-94AC-7A450E479BE1}.Debug|x86.ActiveCfg = Debug|Win32
+		{0452CB4D-A906-4717-94AC-7A450E479BE1}.Debug|x86.Build.0 = Debug|Win32
+		{0452CB4D-A906-4717-94AC-7A450E479BE1}.Release|x64.ActiveCfg = Release|x64
+		{0452CB4D-A906-4717-94AC-7A450E479BE1}.Release|x64.Build.0 = Release|x64
+		{0452CB4D-A906-4717-94AC-7A450E479BE1}.Release|x86.ActiveCfg = Release|Win32
+		{0452CB4D-A906-4717-94AC-7A450E479BE1}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -253,6 +263,7 @@ Global
 		{CDADDEC0-B72B-43B4-831F-72BA85B72805} = {9A2047E2-0EC2-409E-842B-B7B360B2A45F}
 		{0B2FF5AF-8580-458C-8EF4-10E6B6398D3A} = {EDA9B67D-1E64-4CAB-8391-10712538C821}
 		{CEAF96EC-0BAA-4C02-B91B-5C4C49B5455B} = {EDA9B67D-1E64-4CAB-8391-10712538C821}
+		{0452CB4D-A906-4717-94AC-7A450E479BE1} = {EDA9B67D-1E64-4CAB-8391-10712538C821}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C416F0AE-21DB-4936-84B9-065D8AEC1597}
