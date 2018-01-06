@@ -106,5 +106,8 @@
     <ClInclude Include="..\src\usvfs_dll\semaphore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\usvfs_version.h">
+      <Filter>Header Files\include</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

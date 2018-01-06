@@ -219,6 +219,7 @@
     <ClInclude Include="..\include\logging.h" />
     <ClInclude Include="..\include\usvfs.h" />
     <ClInclude Include="..\include\usvfsparameters.h" />
+    <ClInclude Include="..\include\usvfs_version.h" />
     <ClInclude Include="..\src\usvfs_dll\hookcallcontext.h" />
     <ClInclude Include="..\src\usvfs_dll\hookcontext.h" />
     <ClInclude Include="..\src\usvfs_dll\hookmanager.h" />
