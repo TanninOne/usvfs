@@ -524,25 +524,18 @@ HANDLE WINAPI usvfs::hook_CreateFileW(
   return res;
 }
 
+HANDLE (WINAPI *usvfs::CreateFile2)(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, DWORD dwCreationDisposition, LPCREATEFILE2_EXTENDED_PARAMETERS pCreateExParams);
+
 HANDLE WINAPI usvfs::hook_CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, DWORD dwCreationDisposition, LPCREATEFILE2_EXTENDED_PARAMETERS pCreateExParams)
 {
   HANDLE res = INVALID_HANDLE_VALUE;
 
   typedef HANDLE(WINAPI * CreateFile2_t)(LPCWSTR, DWORD, DWORD, DWORD, LPCREATEFILE2_EXTENDED_PARAMETERS);
 
-  HMODULE kernelbase = ::GetModuleHandle(L"kernelbase.dll");
-  HMODULE kernel = ::GetModuleHandle(L"kernel32.dll");
-  CreateFile2_t dCreateFile2 = NULL;
-  if (kernelbase != NULL)
-    dCreateFile2 = (CreateFile2_t)::GetProcAddress(kernelbase, "CreateFile2");
-  if (dCreateFile2 == NULL && kernel != NULL)
-    dCreateFile2 = (CreateFile2_t)::GetProcAddress(kernel, "CreateFile2");
-  if (dCreateFile2 == NULL) return res;
-
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
 
   if (!callContext.active()) {
-    return dCreateFile2(lpFileName, dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
+    return CreateFile2(lpFileName, dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
   }
 
   bool storePath = false;
@@ -569,7 +562,7 @@ HANDLE WINAPI usvfs::hook_CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAccess,
       if (isDir) {
         if (exists) {
           // if its a directory and it exists in the original location, open that
-          return dCreateFile2(lpFileName, dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
+          return CreateFile2(lpFileName, dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
         }
         else {
           // if its a directory and it only exists "virtually" then we need to
@@ -604,7 +597,7 @@ HANDLE WINAPI usvfs::hook_CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAccess,
   }
 
   PRE_REALCALL
-  res = dCreateFile2(reroute.fileName(), dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
+  res = CreateFile2(reroute.fileName(), dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
   POST_REALCALL
 
   if (create && (res != INVALID_HANDLE_VALUE)) {
@@ -1261,20 +1254,13 @@ HANDLE WINAPI usvfs::hook_FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVEL
   return res;
 }
 
+HRESULT(WINAPI *usvfs::CopyFile2)(PCWSTR pwszExistingFileName, PCWSTR pwszNewFileName, COPYFILE2_EXTENDED_PARAMETERS *pExtendedParameters);
+
 HRESULT WINAPI usvfs::hook_CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszNewFileName, COPYFILE2_EXTENDED_PARAMETERS *pExtendedParameters)
 {
   HRESULT res = E_FAIL;
 
   typedef HRESULT(WINAPI * CopyFile2_t)(PCWSTR, PCWSTR, COPYFILE2_EXTENDED_PARAMETERS *);
-
-  HMODULE kernelbase = ::GetModuleHandle(L"kernelbase.dll");
-  HMODULE kernel = ::GetModuleHandle(L"kernel32.dll");
-  CopyFile2_t dCopyFile2 = NULL;
-  if (kernelbase != NULL)
-    dCopyFile2 = (CopyFile2_t)::GetProcAddress(kernelbase, "CopyFile2");
-  if (dCopyFile2 == NULL && kernel != NULL)
-    dCopyFile2 = (CopyFile2_t)::GetProcAddress(kernel, "CopyFile2");
-  if (dCopyFile2 == NULL) return res;
 
   HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
   RerouteW readReroute;
@@ -1288,10 +1274,10 @@ HRESULT WINAPI usvfs::hook_CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszNew
 
 	PRE_REALCALL
     if (!readReroute.wasRerouted() && !writeReroute.wasRerouted()) {
-        res = dCopyFile2(pwszExistingFileName, pwszNewFileName, pExtendedParameters);
+        res = CopyFile2(pwszExistingFileName, pwszNewFileName, pExtendedParameters);
     }
     else {
-        res = dCopyFile2(readReroute.fileName(), writeReroute.fileName(), pExtendedParameters);
+        res = CopyFile2(readReroute.fileName(), writeReroute.fileName(), pExtendedParameters);
     }
     POST_REALCALL
 

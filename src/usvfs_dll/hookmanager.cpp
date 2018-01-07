@@ -236,7 +236,7 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "CreateFileW", hook_CreateFileW);
   installHook(kbaseMod, k32Mod, "CreateFileA", hook_CreateFileA);
   if (IsWindows8OrGreater())
-    installHook(kbaseMod, k32Mod, "CreateFile2", hook_CreateFile2);
+    installHook(kbaseMod, k32Mod, "CreateFile2", hook_CreateFile2, reinterpret_cast<LPVOID*>(&CreateFile2));
 
   installHook(kbaseMod, k32Mod, "CreateDirectoryW", hook_CreateDirectoryW);
   installHook(kbaseMod, k32Mod, "RemoveDirectoryW", hook_RemoveDirectoryW);
@@ -259,7 +259,7 @@ void HookManager::initHooks()
 
   installHook(kbaseMod, k32Mod, "CopyFileExW", hook_CopyFileExW);
   if (IsWindows8OrGreater())
-    installHook(kbaseMod, k32Mod, "CopyFile2", hook_CopyFile2);
+    installHook(kbaseMod, k32Mod, "CopyFile2", hook_CopyFile2, reinterpret_cast<LPVOID*>(&CopyFile2));
 
   installHook(kbaseMod, k32Mod, "GetPrivateProfileStringA", hook_GetPrivateProfileStringA);
   installHook(kbaseMod, k32Mod, "GetPrivateProfileStringW", hook_GetPrivateProfileStringW);
