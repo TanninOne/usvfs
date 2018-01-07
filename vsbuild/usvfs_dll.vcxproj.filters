@@ -38,9 +38,6 @@
     <ClCompile Include="..\src\usvfs_dll\hooks\ntdll.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\usvfs_dll\hooks\ole32.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\usvfs_dll\stringcast_boost.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -71,9 +68,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\usvfs_dll\hooks\ntdll.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\usvfs_dll\hooks\ole32.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\usvfs_dll\hooks\sharedids.h">

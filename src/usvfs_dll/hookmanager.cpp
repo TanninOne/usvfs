@@ -21,7 +21,6 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include "hookmanager.h"
 #include "hooks/ntdll.h"
 #include "hooks/kernel32.h"
-#include "hooks/ole32.h"
 #include "exceptionex.h"
 #include "usvfs.h"
 #include <utility.h>
@@ -301,15 +300,6 @@ void HookManager::initHooks()
     installStub(shellMod, nullptr, "ShellExecuteExW");
   }
 
-
-/*  HMODULE oleMod = GetModuleHandleA("ole32.dll");
-  if (oleMod != nullptr) {
-    spdlog::get("usvfs")->debug("ole32.dll at {0:x}", reinterpret_cast<unsigned long>(oleMod));
-    installHook(oleMod, nullptr, "CoCreateInstance", hook_CoCreateInstance);
-    installHook(oleMod, nullptr, "CoCreateInstanceEx", hook_CoCreateInstanceEx);
-  }
-*/
-
   installHook(kbaseMod, k32Mod, "LoadLibraryExW", hook_LoadLibraryExW);
   installHook(kbaseMod, k32Mod, "LoadLibraryExA", hook_LoadLibraryExA);
   installHook(kbaseMod, k32Mod, "LoadLibraryW", hook_LoadLibraryW);
@@ -318,12 +308,7 @@ void HookManager::initHooks()
   // install this hook late as usvfs is calling it itself for debugging purposes
   installHook(kbaseMod, k32Mod, "GetModuleFileNameW", hook_GetModuleFileNameW);
   installHook(kbaseMod, k32Mod, "GetModuleFileNameA", hook_GetModuleFileNameA);
-/*
-  installHook(kbaseMod, k32Mod, "GetModuleHandleW", hook_GetModuleHandleW);
-  installHook(kbaseMod, k32Mod, "GetModuleHandleA", hook_GetModuleHandleA);
-  installHook(kbaseMod, k32Mod, "GetModuleHandleExW", hook_GetModuleHandleExW);
-  installHook(kbaseMod, k32Mod, "GetModuleHandleExA", hook_GetModuleHandleExA);
-*/
+
   spdlog::get("usvfs")->debug("hooks installed");
   HookLib::TrampolinePool::instance().setBlock(false);
 }

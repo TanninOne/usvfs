@@ -50,19 +50,12 @@ DLLEXPORT BOOL WINAPI hook_CreateProcessW(LPCWSTR lpApplicationName, LPWSTR lpCo
 DLLEXPORT DWORD WINAPI hook_GetModuleFileNameW(HMODULE hModule, LPWSTR lpFilename, DWORD nSize);
 DLLEXPORT DWORD WINAPI hook_GetModuleFileNameA(HMODULE hModule, LPSTR lpFilename, DWORD nSize);
 
-DLLEXPORT HMODULE WINAPI hook_GetModuleHandleW(LPCWSTR lpModuleName);
-DLLEXPORT HMODULE WINAPI hook_GetModuleHandleA(LPCSTR lpModuleName);
-DLLEXPORT BOOL WINAPI hook_GetModuleHandleExW(DWORD dwFlags, LPCWSTR lpModuleName, HMODULE *phModule);
-DLLEXPORT BOOL WINAPI hook_GetModuleHandleExA(DWORD dwFlags, LPCSTR lpModuleName, HMODULE *phModule);
-
 DLLEXPORT BOOL WINAPI hook_GetFileVersionInfoW(LPCWSTR lptstrFilename, DWORD dwHandle, DWORD dwLen, LPVOID lpData);
 DLLEXPORT BOOL WINAPI hook_GetFileVersionInfoExW(DWORD dwFlags, LPCWSTR lptstrFilename, DWORD dwHandle, DWORD dwLen, LPVOID lpData);
 
 DLLEXPORT DWORD WINAPI hook_GetFileVersionInfoSizeW(LPCWSTR lptstrFilename, LPDWORD lpdwHandle);
 DLLEXPORT DWORD WINAPI hook_GetFileVersionInfoSizeExW(DWORD dwFlags, LPCWSTR lptstrFilename, LPDWORD lpdwHandle);
 
-DLLEXPORT HANDLE WINAPI hook_FindFirstFileA(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData);
-DLLEXPORT HANDLE WINAPI hook_FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATAW lpFindFileData);
 DLLEXPORT HANDLE WINAPI hook_FindFirstFileExA(LPCSTR lpFileName, FINDEX_INFO_LEVELS fInfoLevelId, LPVOID lpFindFileData, FINDEX_SEARCH_OPS  fSearchOp, LPVOID lpSearchFilter, DWORD dwAdditionalFlags);
 DLLEXPORT HANDLE WINAPI hook_FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVELS fInfoLevelId, LPVOID lpFindFileData, FINDEX_SEARCH_OPS  fSearchOp, LPVOID lpSearchFilter, DWORD dwAdditionalFlags);
 
