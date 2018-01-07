@@ -140,6 +140,7 @@ std::ostream &operator<<(std::ostream &os, const Wrap<std::wstring> &str);
 
 std::ostream &operator<<(std::ostream &os, const Wrap<PUNICODE_STRING> &str);
 std::ostream &operator<<(std::ostream &os, const Wrap<NTSTATUS> &status);
+std::ostream &operator<<(std::ostream &os, const Wrap<DWORD> &value);
 
 
 spdlog::level::level_enum ConvertLogLevel(LogLevel level);
