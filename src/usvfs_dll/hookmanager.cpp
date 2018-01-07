@@ -131,7 +131,7 @@ void HookManager::logStub(LPVOID address)
   }
 }
 
-void HookManager::installHook(HMODULE module1, HMODULE module2, const std::string &functionName, LPVOID hook)
+void HookManager::installHook(HMODULE module1, HMODULE module2, const std::string &functionName, LPVOID hook, LPVOID* fillFuncAddr = nullptr)
 {
   BOOST_ASSERT(hook != nullptr);
   HOOKHANDLE handle = INVALID_HOOK;
@@ -154,6 +154,9 @@ void HookManager::installHook(HMODULE module1, HMODULE module2, const std::strin
     }
     if (handle != INVALID_HOOK) usedModule = module2;
   }
+
+  if (fillFuncAddr)
+    *fillFuncAddr = funcAddr;
 
   if (handle == INVALID_HOOK) {
     spdlog::get("usvfs")->error("failed to hook {0}: {1}",
@@ -245,8 +248,7 @@ void HookManager::initHooks()
 
   installHook(kbaseMod, k32Mod, "ExitProcess", hook_ExitProcess);
 
-  installHook(kbaseMod, k32Mod, "CreateProcessA", hook_CreateProcessA);
-  installHook(kbaseMod, k32Mod, "CreateProcessW", hook_CreateProcessW);
+  installHook(kbaseMod, k32Mod, "CreateProcessInternalW", hook_CreateProcessInternalW, reinterpret_cast<LPVOID*>(&CreateProcessInternalW));
 
   installHook(kbaseMod, k32Mod, "MoveFileA", hook_MoveFileA);
   installHook(kbaseMod, k32Mod, "MoveFileW", hook_MoveFileW);

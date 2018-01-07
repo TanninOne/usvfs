@@ -272,138 +272,27 @@ std::wstring getBinaryName(LPCWSTR applicationName, LPCWSTR lpCommandLine)
   }
 }
 
-BOOL WINAPI usvfs::hook_CreateProcessA(
-    LPCSTR lpApplicationName, LPSTR lpCommandLine,
-    LPSECURITY_ATTRIBUTES lpProcessAttributes,
-    LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles,
-    DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory,
-    LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation)
-{
-  BOOL res = FALSE;
+BOOL(WINAPI *usvfs::CreateProcessInternalW)(LPVOID token, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation, LPVOID newToken);
 
-  HOOK_START_GROUP(MutExHookGroup::CREATE_PROCESS)
-  if (!callContext.active()) {
-    return ::CreateProcessA(
-        lpApplicationName, lpCommandLine, lpProcessAttributes,
-        lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment,
-        lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
-  }
-
-  // remember if the caller wanted the process to be suspended. If so, we don't
-  // resume when
-  // we're done
-  BOOL susp = dwCreationFlags & CREATE_SUSPENDED;
-  dwCreationFlags |= CREATE_SUSPENDED;
-
-  std::string cmdline;
-  RerouteW applicationReroute;
-
-  std::wstring dllPath;
-  USVFSParameters callParameters;
-
-  { // scope for context lock
-    auto context = READ_CONTEXT();
-
-    if (lpCommandLine != nullptr) {
-      // decompose command line
-      int argc             = 0;
-      std::wstring arglist = ush::string_cast<std::wstring>(lpCommandLine);
-      LPWSTR *argv = ::CommandLineToArgvW(arglist.c_str(), &argc);
-      ON_BLOCK_EXIT([argv]() { LocalFree(argv); });
-
-      RerouteW cmdReroute = RerouteW::create(context, callContext, argv[0]);
-
-      // find start of "real" arguments in lpCommandLine instead of using argv[1], ...
-      // because CommandLineToArgvW can change quoted/escaped sequences and we
-      // want to preserve them
-      LPCSTR args = lpCommandLine;
-      for (; *args && *args != ' '; ++args)
-        if (*args == '"') {
-          int escaped = 0;
-          for (++args; *args && (*args != '"' || escaped % 2 != 0); ++args)
-            escaped = *args == '\\' ? escaped + 1 : 0;
-        }
-
-      // recompose command line
-      std::stringstream stream;
-      stream << "\"" << ush::string_cast<std::string>(cmdReroute.fileName(), CodePage::UTF8) << "\"" << args;
-      cmdline = stream.str();
-    }
-
-    applicationReroute = RerouteW::create(
-        context, callContext,
-        lpApplicationName != nullptr
-            ? ush::string_cast<std::wstring>(lpApplicationName).c_str()
-            : nullptr);
-
-    dllPath        = context->dllPath();
-    callParameters = context->callParameters();
-  }
-
-  PRE_REALCALL
-  LPCSTR appName = nullptr;
-  std::string appNameBuffer;
-  if (applicationReroute.fileName() != nullptr) {
-    appNameBuffer = ush::string_cast<std::string>(applicationReroute.fileName(), CodePage::UTF8);
-    appName = appNameBuffer.c_str();
-  }
-  res = ::CreateProcessA(
-      appName,
-      lpCommandLine != nullptr ? &cmdline[0] : nullptr, lpProcessAttributes,
-      lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment,
-      lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
-  POST_REALCALL
-
-  // hook unless blacklisted
-  // TODO implement process blacklisting. Currently disabled because storing in
-  // redirection-tree doesn't work and makes no sense
-  //  std::wstring binaryName = getBinaryName(applicationReroute.fileName(),
-  //  lpCommandLine);
-  //  bool blacklisted =
-  //  context->redirectionTable()->testProcessBlacklisted(usvfs::shared::toNarrow(binaryName.c_str()).c_str());
-  bool blacklisted = false;
-  if (!blacklisted) {
-    try {
-      injectProcess(dllPath, callParameters, *lpProcessInformation);
-    } catch (const std::exception &e) {
-      spdlog::get("hooks")->error("failed to inject into {0}: {1}",
-                                  log::wrap(applicationReroute.fileName()),
-                                  e.what());
-    }
-  }
-
-  // resume unless process is suposed to start suspended
-  if (!susp && (ResumeThread(lpProcessInformation->hThread) == (DWORD)-1)) {
-    spdlog::get("hooks")->error("failed to inject into spawned process");
-    res = FALSE;
-  }
-
-  LOG_CALL()
-      .PARAM(applicationReroute.fileName())
-      .PARAM(cmdline)
-      .PARAM(blacklisted)
-      .PARAM(res);
-
-  HOOK_END
-
-  return res;
-}
-
-BOOL WINAPI usvfs::hook_CreateProcessW(
+BOOL WINAPI usvfs::hook_CreateProcessInternalW(
+    LPVOID token,
     LPCWSTR lpApplicationName, LPWSTR lpCommandLine,
     LPSECURITY_ATTRIBUTES lpProcessAttributes,
     LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles,
     DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory,
-    LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation)
+    LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation,
+    LPVOID newToken)
 {
   BOOL res = FALSE;
 
   HOOK_START_GROUP(MutExHookGroup::CREATE_PROCESS)
   if (!callContext.active()) {
-    return ::CreateProcessW(
+    return CreateProcessInternalW(
+        token,
         lpApplicationName, lpCommandLine, lpProcessAttributes,
         lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment,
-        lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
+        lpCurrentDirectory, lpStartupInfo, lpProcessInformation,
+        newToken);
   }
 
   // remember if the caller wanted the process to be suspended. If so, we
@@ -453,11 +342,13 @@ BOOL WINAPI usvfs::hook_CreateProcessW(
   }
 
   PRE_REALCALL
-  res = ::CreateProcessW(
+  res = CreateProcessInternalW(
+      token,
       applicationReroute.fileName(),
       lpCommandLine != nullptr ? &cmdline[0] : nullptr, lpProcessAttributes,
       lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment,
-      lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
+      lpCurrentDirectory, lpStartupInfo, lpProcessInformation,
+      newToken);
   POST_REALCALL
 
   // hook unless blacklisted
