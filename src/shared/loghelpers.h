@@ -132,7 +132,9 @@ template <typename T>
 Wrap<T> wrap(const T &data) { return Wrap<T>(data); }
 
 
+std::ostream &operator<<(std::ostream &os, const Wrap<LPSTR> &str);
 std::ostream &operator<<(std::ostream &os, const Wrap<LPWSTR> &str);
+std::ostream &operator<<(std::ostream &os, const Wrap<LPCSTR> &str);
 std::ostream &operator<<(std::ostream &os, const Wrap<LPCWSTR> &str);
 std::ostream &operator<<(std::ostream &os, const Wrap<std::wstring> &str);
 

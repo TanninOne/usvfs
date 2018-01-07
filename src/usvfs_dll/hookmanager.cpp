@@ -226,15 +226,18 @@ void HookManager::initHooks()
 
   installHook(kbaseMod, k32Mod, "GetFileAttributesExW", hook_GetFileAttributesExW);
   installHook(kbaseMod, k32Mod, "GetFileAttributesW", hook_GetFileAttributesW);
-  installHook(kbaseMod, k32Mod, "GetFileAttributesExA", hook_GetFileAttributesExA);
-  installHook(kbaseMod, k32Mod, "GetFileAttributesA", hook_GetFileAttributesA);
   installHook(kbaseMod, k32Mod, "SetFileAttributesW", hook_SetFileAttributesW);
-  installHook(kbaseMod, k32Mod, "CreateFileW", hook_CreateFileW); // not all calls seem to translate to a call to NtCreateFile
+
+  // Unfortunately, at least on windows 10 1709 x64 the CreateFileA and CreateFile2 translate
+  // to CreateFileInternal directly (so hooking CreateFileW alone is not enough)
+  installHook(kbaseMod, k32Mod, "CreateFileW", hook_CreateFileW);
   installHook(kbaseMod, k32Mod, "CreateFileA", hook_CreateFileA);
+  if (IsWindows8OrGreater())
+    installHook(kbaseMod, k32Mod, "CreateFile2", hook_CreateFile2);
+
   installHook(kbaseMod, k32Mod, "CreateDirectoryW", hook_CreateDirectoryW);
   installHook(kbaseMod, k32Mod, "RemoveDirectoryW", hook_RemoveDirectoryW);
   installHook(kbaseMod, k32Mod, "DeleteFileW", hook_DeleteFileW);
-  installHook(kbaseMod, k32Mod, "DeleteFileA", hook_DeleteFileA);
   installHook(kbaseMod, k32Mod, "GetCurrentDirectoryA", hook_GetCurrentDirectoryA);
   installHook(kbaseMod, k32Mod, "GetCurrentDirectoryW", hook_GetCurrentDirectoryW);
   installHook(kbaseMod, k32Mod, "SetCurrentDirectoryA", hook_SetCurrentDirectoryA);
@@ -249,16 +252,12 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "MoveFileW", hook_MoveFileW);
   installHook(kbaseMod, k32Mod, "MoveFileExA", hook_MoveFileExA);
   installHook(kbaseMod, k32Mod, "MoveFileExW", hook_MoveFileExW);
+  installHook(kbaseMod, k32Mod, "MoveFileWithProgressA", hook_MoveFileWithProgressA);
+  installHook(kbaseMod, k32Mod, "MoveFileWithProgressW", hook_MoveFileWithProgressW);
 
-  installHook(kbaseMod, k32Mod, "CopyFileA", hook_CopyFileA);
-  installHook(kbaseMod, k32Mod, "CopyFileW", hook_CopyFileW);
-  installHook(kbaseMod, k32Mod, "CopyFileExA", hook_CopyFileExA);
   installHook(kbaseMod, k32Mod, "CopyFileExW", hook_CopyFileExW);
-
-  if (IsWindows8OrGreater()) {
-    installHook(kbaseMod, k32Mod, "CreateFile2", hook_CreateFile2);
+  if (IsWindows8OrGreater())
     installHook(kbaseMod, k32Mod, "CopyFile2", hook_CopyFile2);
-  }
 
   installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionNamesA", hook_GetPrivateProfileSectionNamesA);
   installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionNamesW", hook_GetPrivateProfileSectionNamesW);
@@ -267,13 +266,9 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "WritePrivateProfileStringA", hook_WritePrivateProfileStringA);
   installHook(kbaseMod, k32Mod, "WritePrivateProfileStringW", hook_WritePrivateProfileStringW);
 
+  installHook(kbaseMod, k32Mod, "GetFullPathNameA", hook_GetFullPathNameA);
   installHook(kbaseMod, k32Mod, "GetFullPathNameW", hook_GetFullPathNameW);
 
-  installHook(kbaseMod, k32Mod, "GetFileVersionInfoW", hook_GetFileVersionInfoW);
-  installHook(kbaseMod, k32Mod, "GetFileVersionInfoExW", hook_GetFileVersionInfoExW);
-  installHook(kbaseMod, k32Mod, "GetFileVersionInfoSizeW", hook_GetFileVersionInfoSizeW);
-  installHook(kbaseMod, k32Mod, "GetFileVersionInfoSizeExW", hook_GetFileVersionInfoSizeExW);
-  installHook(kbaseMod, k32Mod, "FindFirstFileExA", hook_FindFirstFileExA);
   installHook(kbaseMod, k32Mod, "FindFirstFileExW", hook_FindFirstFileExW);
 
   HMODULE ntdllMod = GetModuleHandleA("ntdll.dll");
@@ -287,13 +282,9 @@ void HookManager::initHooks()
   installHook(ntdllMod, nullptr, "NtTerminateProcess", hook_NtTerminateProcess);
 
   installHook(kbaseMod, k32Mod, "LoadLibraryExW", hook_LoadLibraryExW);
-  installHook(kbaseMod, k32Mod, "LoadLibraryExA", hook_LoadLibraryExA);
-  installHook(kbaseMod, k32Mod, "LoadLibraryW", hook_LoadLibraryW);
-  installHook(kbaseMod, k32Mod, "LoadLibraryA", hook_LoadLibraryA);
 
   // install this hook late as usvfs is calling it itself for debugging purposes
   installHook(kbaseMod, k32Mod, "GetModuleFileNameW", hook_GetModuleFileNameW);
-  installHook(kbaseMod, k32Mod, "GetModuleFileNameA", hook_GetModuleFileNameA);
 
   spdlog::get("usvfs")->debug("hooks installed");
   HookLib::TrampolinePool::instance().setBlock(false);
