@@ -267,8 +267,6 @@ void HookManager::initHooks()
   installHook(kbaseMod, k32Mod, "WritePrivateProfileStringA", hook_WritePrivateProfileStringA);
   installHook(kbaseMod, k32Mod, "WritePrivateProfileStringW", hook_WritePrivateProfileStringW);
 
-  installStub(kbaseMod, k32Mod, "CreateHardLinkA");
-  installStub(kbaseMod, k32Mod, "CreateHardLinkW");
   installHook(kbaseMod, k32Mod, "GetFullPathNameW", hook_GetFullPathNameW);
 
   installHook(kbaseMod, k32Mod, "GetFileVersionInfoW", hook_GetFileVersionInfoW);
@@ -286,19 +284,7 @@ void HookManager::initHooks()
   installHook(ntdllMod, nullptr, "NtOpenFile", hook_NtOpenFile);
   installHook(ntdllMod, nullptr, "NtCreateFile", hook_NtCreateFile);
   installHook(ntdllMod, nullptr, "NtClose", hook_NtClose);
-  installStub(ntdllMod, nullptr, "NtDeleteFile");
   installHook(ntdllMod, nullptr, "NtTerminateProcess", hook_NtTerminateProcess);
-
-  HMODULE shellMod = GetModuleHandleA("shell32.dll");
-  if (shellMod != nullptr) {
-    spdlog::get("usvfs")->debug("shell32.dll at {0:x}", reinterpret_cast<uintptr_t>(shellMod));
-    installStub(shellMod, nullptr, "SHFileOperationA");
-    installStub(shellMod, nullptr, "SHFileOperationW");
-    installStub(shellMod, nullptr, "ShellExecuteA");
-    installStub(shellMod, nullptr, "ShellExecuteW");
-    installStub(shellMod, nullptr, "ShellExecuteExA");
-    installStub(shellMod, nullptr, "ShellExecuteExW");
-  }
 
   installHook(kbaseMod, k32Mod, "LoadLibraryExW", hook_LoadLibraryExW);
   installHook(kbaseMod, k32Mod, "LoadLibraryExA", hook_LoadLibraryExA);
