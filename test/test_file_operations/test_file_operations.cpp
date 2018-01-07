@@ -85,8 +85,8 @@ public:
         fprintf(m_output, "#> Output log openned for: %s\n", clean_cmdline_heuristic(cmdline).c_str());
       else
         fprintf(m_output, "#> Output log openned for (pid %d): %s\n", GetCurrentProcessId(), cmdline);
-      w32api.set_output(m_output);
-      ntapi.set_output(m_output);
+      w32api.set_output(m_output, m_cleanoutput);
+      ntapi.set_output(m_output, m_cleanoutput);
     }
   }
 

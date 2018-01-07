@@ -102,7 +102,7 @@ TestFileSystem::FileInfoList TestW32Api::list_directory(const path& directory_pa
   FileInfoList files;
   while (true)
   {
-    files.push_back(FileInformation(fd.cFileName, fd.dwFileAttributes, fd.nFileSizeHigh*(MAXDWORD + 1) + fd.nFileSizeLow));
+    files.push_back(FileInformation(fd.cFileName, clean_attributes(fd.dwFileAttributes), fd.nFileSizeHigh*(MAXDWORD + 1) + fd.nFileSizeLow));
     BOOL res = FindNextFileW(find, &fd);
     print_result("FindNextFileW", res, true);
     if (!res)
@@ -122,7 +122,7 @@ void TestW32Api::create_path(const path& directory_path)
 
   DWORD attr = GetFileAttributesW(directory_path.c_str());
   DWORD err = GetLastError();
-  print_result("GetFileAttributesW", attr, true);
+  print_result("GetFileAttributesW", clean_attributes(attr), true);
   if (attr != INVALID_FILE_ATTRIBUTES) {
     if (attr & FILE_ATTRIBUTE_DIRECTORY)
       return; // if directory already exists all is good

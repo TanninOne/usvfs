@@ -162,7 +162,7 @@ TestFileSystem::FileInfoList TestNtApi::list_directory(const path& directory_pat
     {
       files.push_back(FileInformation(
         std::wstring(info->FileName, info->FileNameLength / sizeof(info->FileName[0])),
-        info->FileAttributes, info->EndOfFile.QuadPart));
+        clean_attributes(info->FileAttributes), info->EndOfFile.QuadPart));
       if (info->NextEntryOffset)
         info = reinterpret_cast<PFILE_BOTH_DIR_INFORMATION>(reinterpret_cast<char*>(info) + info->NextEntryOffset);
       else

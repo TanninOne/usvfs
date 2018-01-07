@@ -127,3 +127,11 @@ void TestFileSystem::print_write_success(const void* data, std::size_t size, std
     fprintf(output(), "\n");
   }
 }
+
+uint32_t TestFileSystem::clean_attributes(uint32_t attr)
+{
+  if (m_cleanoutput)
+    return attr & ~(FILE_ATTRIBUTE_NOT_CONTENT_INDEXED);
+  else
+    return attr;
+}

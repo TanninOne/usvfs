@@ -17,7 +17,7 @@ public:
 
   TestFileSystem(FILE* output);
 
-  void set_output(FILE* output) { m_output = output; }
+  void set_output(FILE* output, bool clean) { m_output = output; m_cleanoutput = clean;  }
 
   // base path used to trim outputs (which is important so we can compare tests ran at different base paths)
   void set_basepath(const char* path) { m_basepath = real_path(path); }
@@ -58,6 +58,7 @@ public:
 
 protected:
   FILE* output() { return m_output; }
+  bool cleanoutput() const { return m_cleanoutput;  }
   static const char* write_operation_name(write_mode mode);
   static const char* rename_operation_name(bool replace_existing, bool allow_copy);
 
@@ -68,7 +69,10 @@ public: // mainly for derived class (but also used by helper classes like SafeHa
   void print_error(const char* operation, uint32_t result, bool with_last_error = false, const char* opt_arg = nullptr);
   void print_write_success(const void* data, std::size_t size, std::size_t written);
 
+  uint32_t clean_attributes(uint32_t attr);
+
 private:
   FILE* m_output;
+  bool m_cleanoutput = false;
   path m_basepath;
 };
