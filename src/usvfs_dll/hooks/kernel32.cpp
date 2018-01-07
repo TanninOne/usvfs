@@ -705,17 +705,54 @@ BOOL WINAPI usvfs::hook_GetFileAttributesExW(
   }
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
+
   PRE_REALCALL
   res = ::GetFileAttributesExW(reroute.fileName(), fInfoLevelId,
                                lpFileInformation);
   POST_REALCALL
 
-  if (reroute.wasRerouted()) {
+  DWORD originalError = callContext.lastError();
+  DWORD fixedError = originalError;
+  // In case the target does not exist the error value varies to differentiate if the
+  // parent folder exists (ERROR_FILE_NOT_FOUND) or not (ERROR_PATH_NOT_FOUND).
+  // If the original target's parent folder doesn't actually exist it may exist in the
+  // the virtualized sense, or if we rerouted the query the parent of the original path
+  // might exist while the parent of the rerouted path might not:
+  if (!res && fixedError == ERROR_PATH_NOT_FOUND)
+  {
+    // first query original file parent (if we rerouted it):
+    fs::path originalParent = fs::path(lpFileName).parent_path();
+    WIN32_FILE_ATTRIBUTE_DATA parentAttr;
+    if (reroute.wasRerouted()
+      && ::GetFileAttributesExW(originalParent.c_str(), GetFileExInfoStandard, &parentAttr)
+      && (parentAttr.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+      fixedError = ERROR_FILE_NOT_FOUND;
+    else {
+      // now query the rerouted path for parent (which can be different from the parent of the rerouted path)
+      RerouteW rerouteParent = RerouteW::create(READ_CONTEXT(), callContext, originalParent.c_str());
+      if (rerouteParent.wasRerouted()
+        && ::GetFileAttributesExW(rerouteParent.fileName(), GetFileExInfoStandard, &parentAttr)
+        && (parentAttr.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+        fixedError = ERROR_FILE_NOT_FOUND;
+    }
+  }
+  if (fixedError != originalError)
+    callContext.updateLastError(fixedError);
+
+  if (reroute.wasRerouted() || fixedError != originalError) {
+    DWORD resAttrib;
+    if (res && fInfoLevelId == GetFileExInfoStandard && lpFileInformation)
+      resAttrib = reinterpret_cast<WIN32_FILE_ATTRIBUTE_DATA*>(lpFileInformation)->dwFileAttributes;
+    else
+      resAttrib = (DWORD)-1;
     LOG_CALL()
         .PARAMWRAP(lpFileName)
         .PARAMWRAP(reroute.fileName())
+        .PARAMHEX(fInfoLevelId)
         .PARAMHEX(res)
-        .PARAMHEX(::GetLastError());
+        .PARAMHEX(resAttrib)
+        .PARAMHEX(originalError)
+        .PARAMHEX(fixedError);
   }
 
   HOOK_END
@@ -735,17 +772,46 @@ DWORD WINAPI usvfs::hook_GetFileAttributesW(LPCWSTR lpFileName)
   }
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
+
   PRE_REALCALL
   res = ::GetFileAttributesW(reroute.fileName());
   POST_REALCALL
 
-  if (reroute.wasRerouted()) {
+  DWORD originalError = callContext.lastError();
+  DWORD fixedError = originalError;
+  // In case the target does not exist the error value varies to differentiate if the
+  // parent folder exists (ERROR_FILE_NOT_FOUND) or not (ERROR_PATH_NOT_FOUND).
+  // If the original target's parent folder doesn't actually exist it may exist in the
+  // the virtualized sense, or if we rerouted the query the parent of the original path
+  // might exist while the parent of the rerouted path might not:
+  if (res == INVALID_FILE_ATTRIBUTES && fixedError == ERROR_PATH_NOT_FOUND)
+  {
+    // first query original file parent (if we rerouted it):
+    fs::path originalParent = fs::path(lpFileName).parent_path();
+    DWORD attr;
+    if (reroute.wasRerouted()
+      && (attr = ::GetFileAttributesW(originalParent.c_str())) != INVALID_FILE_ATTRIBUTES
+      && (attr & FILE_ATTRIBUTE_DIRECTORY))
+      fixedError = ERROR_FILE_NOT_FOUND;
+    else {
+      // now query the rerouted path for parent (which can be different from the parent of the rerouted path)
+      RerouteW rerouteParent = RerouteW::create(READ_CONTEXT(), callContext, originalParent.c_str());
+      if (rerouteParent.wasRerouted()
+        && (attr = ::GetFileAttributesW(rerouteParent.fileName())) != INVALID_FILE_ATTRIBUTES
+        && (attr & FILE_ATTRIBUTE_DIRECTORY))
+        fixedError = ERROR_FILE_NOT_FOUND;
+    }
+  }
+  if (fixedError != originalError)
+    callContext.updateLastError(fixedError);
+
+  if (reroute.wasRerouted() || fixedError != originalError) {
     LOG_CALL()
         .PARAMWRAP(lpFileName)
         .PARAMWRAP(reroute.fileName())
         .PARAMHEX(res)
-        .PARAMHEX(callContext.lastError());
-    ;
+        .PARAMHEX(originalError)
+        .PARAMHEX(fixedError);
   }
 
   HOOK_ENDP(usvfs::log::wrap(lpFileName));
