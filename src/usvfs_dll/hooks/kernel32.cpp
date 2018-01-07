@@ -287,12 +287,14 @@ BOOL WINAPI usvfs::hook_CreateProcessInternalW(
 
   HOOK_START_GROUP(MutExHookGroup::CREATE_PROCESS)
   if (!callContext.active()) {
-    return CreateProcessInternalW(
+    res = CreateProcessInternalW(
         token,
         lpApplicationName, lpCommandLine, lpProcessAttributes,
         lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment,
         lpCurrentDirectory, lpStartupInfo, lpProcessInformation,
         newToken);
+    callContext.updateLastError();
+    return res;
   }
 
   // remember if the caller wanted the process to be suspended. If so, we
@@ -413,10 +415,19 @@ HANDLE WINAPI usvfs::hook_CreateFileA(
     LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
     DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
 {
-  return CreateFileW(
-      ush::string_cast<std::wstring>(lpFileName).c_str(), dwDesiredAccess,
-      dwShareMode, lpSecurityAttributes, dwCreationDisposition,
-      dwFlagsAndAttributes, hTemplateFile);
+  HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
+    if (callContext.active()) {
+      HANDLE res = CreateFileW(
+        ush::string_cast<std::wstring>(lpFileName).c_str(), dwDesiredAccess,
+        dwShareMode, lpSecurityAttributes, dwCreationDisposition,
+        dwFlagsAndAttributes, hTemplateFile);
+      callContext.updateLastError();
+      return res;
+    }
+  HOOK_END
+
+  return CreateFileA(lpFileName, dwDesiredAccess, dwShareMode,
+      lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 }
 
 HANDLE WINAPI usvfs::hook_CreateFileW(
@@ -429,9 +440,11 @@ HANDLE WINAPI usvfs::hook_CreateFileW(
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
 
   if (!callContext.active()) {
-    return ::CreateFileW(lpFileName, dwDesiredAccess, dwShareMode,
+    res = ::CreateFileW(lpFileName, dwDesiredAccess, dwShareMode,
                          lpSecurityAttributes, dwCreationDisposition,
                          dwFlagsAndAttributes, hTemplateFile);
+    callContext.updateLastError();
+    return res;
   }
 
   bool storePath = false;
@@ -535,7 +548,9 @@ HANDLE WINAPI usvfs::hook_CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAccess,
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
 
   if (!callContext.active()) {
-    return CreateFile2(lpFileName, dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
+    HANDLE res = CreateFile2(lpFileName, dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
+    callContext.updateLastError();
+    return res;
   }
 
   bool storePath = false;
@@ -646,6 +661,11 @@ BOOL WINAPI usvfs::hook_GetFileAttributesExW(
   BOOL res = FALSE;
 
   HOOK_START_GROUP(MutExHookGroup::FILE_ATTRIBUTES)
+  if (!callContext.active()) {
+    res = GetFileAttributesExW(lpFileName, fInfoLevelId, lpFileInformation);
+    callContext.updateLastError();
+    return res;
+  }
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
   PRE_REALCALL
@@ -671,6 +691,11 @@ DWORD WINAPI usvfs::hook_GetFileAttributesW(LPCWSTR lpFileName)
   DWORD res = 0UL;
 
   HOOK_START_GROUP(MutExHookGroup::FILE_ATTRIBUTES)
+  if (!callContext.active()) {
+    res = GetFileAttributesW(lpFileName);
+    callContext.updateLastError();
+    return res;
+  }
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
   PRE_REALCALL
@@ -697,6 +722,11 @@ DWORD WINAPI usvfs::hook_SetFileAttributesW(
   DWORD res = 0UL;
 
   HOOK_START_GROUP(MutExHookGroup::FILE_ATTRIBUTES)
+  if (!callContext.active()) {
+    res = SetFileAttributesW(lpFileName, dwFileAttributes);
+    callContext.updateLastError();
+    return res;
+  }
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
   PRE_REALCALL
@@ -717,6 +747,11 @@ BOOL WINAPI usvfs::hook_DeleteFileW(LPCWSTR lpFileName)
   BOOL res = FALSE;
 
   HOOK_START_GROUP(MutExHookGroup::DELETE_FILE)
+  if (!callContext.active()) {
+    res = DeleteFileW(lpFileName);
+    callContext.updateLastError();
+    return res;
+  }
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
 
@@ -741,9 +776,17 @@ BOOL WINAPI usvfs::hook_DeleteFileW(LPCWSTR lpFileName)
 BOOL WINAPI usvfs::hook_MoveFileA(LPCSTR lpExistingFileName,
                                     LPCSTR lpNewFileName)
 {
-  return MoveFileW(
-      ush::string_cast<std::wstring>(lpExistingFileName).c_str(),
-      ush::string_cast<std::wstring>(lpNewFileName).c_str());
+  HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
+    if (callContext.active()) {
+      BOOL res = MoveFileW(
+        ush::string_cast<std::wstring>(lpExistingFileName).c_str(),
+        ush::string_cast<std::wstring>(lpNewFileName).c_str());
+      callContext.updateLastError();
+      return res;
+    }
+  HOOK_END
+
+  return MoveFileA(lpExistingFileName, lpNewFileName);
 }
 
 BOOL WINAPI usvfs::hook_MoveFileW(LPCWSTR lpExistingFileName,
@@ -752,6 +795,11 @@ BOOL WINAPI usvfs::hook_MoveFileW(LPCWSTR lpExistingFileName,
   BOOL res = FALSE;
 
   HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
+  if (!callContext.active()) {
+    res = MoveFileW(lpExistingFileName, lpNewFileName);
+    callContext.updateLastError();
+    return res;
+  }
 
   RerouteW readReroute;
   RerouteW writeReroute;
@@ -792,9 +840,17 @@ BOOL WINAPI usvfs::hook_MoveFileW(LPCWSTR lpExistingFileName,
 BOOL WINAPI usvfs::hook_MoveFileExA(LPCSTR lpExistingFileName,
                                       LPCSTR lpNewFileName, DWORD dwFlags)
 {
-  return MoveFileExW(ush::string_cast<std::wstring>(lpExistingFileName).c_str(),
-                     ush::string_cast<std::wstring>(lpNewFileName).c_str(),
-                     dwFlags);
+  HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
+    if (callContext.active()) {
+      BOOL res = MoveFileExW(ush::string_cast<std::wstring>(lpExistingFileName).c_str(),
+        ush::string_cast<std::wstring>(lpNewFileName).c_str(),
+        dwFlags);
+      callContext.updateLastError();
+      return res;
+    }
+  HOOK_END
+
+  return MoveFileExA(lpExistingFileName, lpNewFileName, dwFlags);
 }
 
 BOOL WINAPI usvfs::hook_MoveFileExW(LPCWSTR lpExistingFileName,
@@ -803,6 +859,11 @@ BOOL WINAPI usvfs::hook_MoveFileExW(LPCWSTR lpExistingFileName,
   BOOL res = FALSE;
 
   HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
+  if (!callContext.active()) {
+    res = MoveFileExW(lpExistingFileName, lpNewFileName, dwFlags);
+    callContext.updateLastError();
+    return res;
+  }
 
   RerouteW readReroute;
   RerouteW writeReroute;
@@ -842,10 +903,18 @@ BOOL WINAPI usvfs::hook_MoveFileExW(LPCWSTR lpExistingFileName,
 
 BOOL WINAPI usvfs::hook_MoveFileWithProgressA(LPCSTR lpExistingFileName, LPCSTR lpNewFileName, LPPROGRESS_ROUTINE lpProgressRoutine, LPVOID lpData, DWORD dwFlags)
 {
-  return MoveFileWithProgressW(
-    ush::string_cast<std::wstring>(lpExistingFileName).c_str(),
-    ush::string_cast<std::wstring>(lpNewFileName).c_str(),
-    lpProgressRoutine, lpData, dwFlags);
+  HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
+    if (callContext.active()) {
+      BOOL res = MoveFileWithProgressW(
+        ush::string_cast<std::wstring>(lpExistingFileName).c_str(),
+        ush::string_cast<std::wstring>(lpNewFileName).c_str(),
+        lpProgressRoutine, lpData, dwFlags);
+      callContext.updateLastError();
+      return res;
+    }
+  HOOK_END
+
+  return MoveFileWithProgressA(lpExistingFileName, lpNewFileName, lpProgressRoutine, lpData, dwFlags);
 }
 
 BOOL WINAPI usvfs::hook_MoveFileWithProgressW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, LPPROGRESS_ROUTINE lpProgressRoutine, LPVOID lpData, DWORD dwFlags)
@@ -853,6 +922,11 @@ BOOL WINAPI usvfs::hook_MoveFileWithProgressW(LPCWSTR lpExistingFileName, LPCWST
   BOOL res = FALSE;
 
   HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
+  if (!callContext.active()) {
+    res = MoveFileWithProgressW(lpExistingFileName, lpNewFileName, lpProgressRoutine, lpData, dwFlags);
+    callContext.updateLastError();
+    return res;
+  }
 
   RerouteW readReroute;
   RerouteW writeReroute;
@@ -899,6 +973,11 @@ BOOL WINAPI usvfs::hook_CopyFileExW(LPCWSTR lpExistingFileName,
   BOOL res = FALSE;
 
   HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
+  if (!callContext.active()) {
+    res = CopyFileExW(lpExistingFileName, lpNewFileName, lpProgressRoutine, lpData, pbCancel, dwCopyFlags);
+    callContext.updateLastError();
+    return res;
+  }
 
   RerouteW readReroute;
   RerouteW writeReroute;
@@ -936,14 +1015,23 @@ BOOL WINAPI usvfs::hook_CopyFileExW(LPCWSTR lpExistingFileName,
 DWORD WINAPI usvfs::hook_GetCurrentDirectoryA(DWORD nBufferLength,
                                                 LPSTR lpBuffer)
 {
+  DWORD res = 0;
+
+  HOOK_START
+
   std::wstring buffer;
   buffer.resize(nBufferLength);
-  DWORD res = GetCurrentDirectoryW(nBufferLength, &buffer[0]);
+
+  PRE_REALCALL
+  res = GetCurrentDirectoryW(nBufferLength, &buffer[0]);
+  POST_REALCALL
 
   if (res > 0) {
       res = WideCharToMultiByte(CP_ACP, 0, buffer.c_str(), res+1,
                                 lpBuffer, nBufferLength, nullptr, nullptr);
   }
+
+  HOOK_END
 
   return res;
 }
@@ -1072,6 +1160,11 @@ DLLEXPORT BOOL WINAPI usvfs::hook_RemoveDirectoryW(
 	BOOL res = FALSE;
 
 	HOOK_START_GROUP(MutExHookGroup::DELETE_FILE)
+    if (!callContext.active()) {
+      res = RemoveDirectoryW(lpPathName);
+      callContext.updateLastError();
+      return res;
+    }
 
 	RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpPathName);
 
@@ -1099,6 +1192,11 @@ DWORD WINAPI usvfs::hook_GetFullPathNameA(LPCSTR lpFileName, DWORD nBufferLength
   DWORD res = 0UL;
 
   HOOK_START_GROUP(MutExHookGroup::FULL_PATHNAME)
+  if (!callContext.active()) {
+    res = GetFullPathNameA(lpFileName, nBufferLength, lpBuffer, lpFilePart);
+    callContext.updateLastError();
+    return res;
+  }
 
   auto context = READ_CONTEXT();
 
@@ -1135,6 +1233,11 @@ DWORD WINAPI usvfs::hook_GetFullPathNameW(LPCWSTR lpFileName,
   DWORD res = 0UL;
 
   HOOK_START_GROUP(MutExHookGroup::FULL_PATHNAME)
+  if (!callContext.active()) {
+    res = GetFullPathNameW(lpFileName, nBufferLength, lpBuffer, lpFilePart);
+    callContext.updateLastError();
+    return res;
+  }
 
   auto context = READ_CONTEXT();
 
@@ -1170,6 +1273,13 @@ DWORD WINAPI usvfs::hook_GetModuleFileNameW(HMODULE hModule,
   DWORD res = 0UL;
 
   HOOK_START_GROUP(MutExHookGroup::ALL_GROUPS)
+  if (!callContext.active()) {
+    res = GetModuleFileNameW(hModule, lpFilename, nSize);
+    callContext.updateLastError();
+    return res;
+  }
+
+
   PRE_REALCALL
   res = ::GetModuleFileNameW(hModule, lpFilename, nSize);
   POST_REALCALL
@@ -1214,6 +1324,11 @@ HANDLE WINAPI usvfs::hook_FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVEL
   HANDLE res = INVALID_HANDLE_VALUE;
 
   HOOK_START_GROUP(MutExHookGroup::SEARCH_FILES)
+  if (!callContext.active()) {
+    res = FindFirstFileExW(lpFileName, fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
+    callContext.updateLastError();
+    return res;
+  }
 
   // We need to do some trickery here, since we only want to use the hooked NtQueryDirectoryFile for rerouted locations we need to check if the Directory path has been routed instead of the full path.
   fs::path p(lpFileName);
@@ -1263,6 +1378,12 @@ HRESULT WINAPI usvfs::hook_CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszNew
   typedef HRESULT(WINAPI * CopyFile2_t)(PCWSTR, PCWSTR, COPYFILE2_EXTENDED_PARAMETERS *);
 
   HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
+  if (!callContext.active()) {
+    res = CopyFile2(pwszExistingFileName, pwszNewFileName, pExtendedParameters);
+    callContext.updateLastError();
+    return res;
+  }
+
   RerouteW readReroute;
   RerouteW writeReroute;
 
