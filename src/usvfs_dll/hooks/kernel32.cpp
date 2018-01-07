@@ -420,6 +420,14 @@ BOOL WINAPI usvfs::hook_CreateProcessInternalW(
   return res;
 }
 
+// returns true iff the path exists (checks only real paths)
+static inline bool pathExists(LPCWSTR fileName)
+{
+  usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FILE_ATTRIBUTES);
+  DWORD attrib = GetFileAttributesW(fileName);
+  return attrib != INVALID_FILE_ATTRIBUTES;
+}
+
 bool fileExists(LPCWSTR fileName)
 {
   DWORD attrib = GetFileAttributesW(fileName);
@@ -1186,18 +1194,14 @@ DLLEXPORT BOOL WINAPI usvfs::hook_CreateDirectoryW(
 {
   BOOL res = FALSE;
   HOOK_START
-  RerouteW reroute
-      = RerouteW::create(READ_CONTEXT(), callContext, lpPathName);
+
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpPathName);
+  bool create = reroute.fileName() && !pathExists(reroute.fileName());
+  if (create)
+    reroute = RerouteW::createNew(READ_CONTEXT(), callContext, lpPathName);
 
   PRE_REALCALL
-  if (reroute.wasRerouted()) {
-    // the intermediate directories may exist in the original directory but not
-    // in the rerouted location so do a recursive create
-    winapi::ex::wide::createPath(reroute.fileName(), lpSecurityAttributes);
-    res = TRUE;
-  } else {
-    res = ::CreateDirectoryW(lpPathName, lpSecurityAttributes);
-  }
+  res = ::CreateDirectoryW(reroute.fileName(), lpSecurityAttributes);
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
