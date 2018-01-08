@@ -868,7 +868,7 @@ void usvfs_test_base::verify_mount_contents(const path& rel_path, const char* co
 {
   verify_mount_existance(rel_path);
   if (verify_contents(m_o.mount / rel_path, contents))
-    throw test::FuncFailed("verify_mount_non_existance",
+    throw test::FuncFailed("verify_mount_contents",
       (MOUNT_LABEL + rel_path.u8string()).c_str(), contents);
 }
 
@@ -876,7 +876,7 @@ void usvfs_test_base::verify_source_contents(const path& rel_path, const char* c
 {
   verify_source_existance(rel_path);
   if (verify_contents(m_o.source / rel_path, contents))
-    throw test::FuncFailed("verify_source_file",
+    throw test::FuncFailed("verify_source_contents",
     (SOURCE_LABEL + rel_path.u8string()).c_str(), contents);
 }
 
