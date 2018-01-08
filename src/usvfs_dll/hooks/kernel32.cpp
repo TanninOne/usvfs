@@ -62,6 +62,7 @@ class RerouteW
   std::wstring m_RealPath{};
   bool m_Rerouted{false};
   LPCWSTR m_FileName{nullptr};
+  bool m_PathCreated{false};
 
   usvfs::RedirectionTree::NodePtrT m_FileNode;
 
@@ -105,11 +106,21 @@ public:
     return m_Rerouted;
   }
 
-  void insertMapping(const usvfs::HookContext::Ptr &context)
+  void insertMapping(const usvfs::HookContext::Ptr &context, bool directory = false)
   {
-    m_FileNode = context->redirectionTable().addFile(
-        m_RealPath, usvfs::RedirectionDataLocal(
-                        string_cast<std::string>(m_FileName, CodePage::UTF8)));
+    if (directory)
+      addDirectoryMapping(context, m_RealPath, m_FileName);
+    else
+    {
+      if (m_PathCreated)
+        addDirectoryMapping(context, fs::path(m_RealPath).parent_path(), fs::path(m_FileName).parent_path());
+
+      spdlog::get("hooks")->info("mapping file in vfs: {}, {}",
+        ush::string_cast<std::string>(m_RealPath, ush::CodePage::UTF8),
+        ush::string_cast<std::string>(m_FileName, ush::CodePage::UTF8));
+      m_FileNode =
+        context->redirectionTable().addFile(m_RealPath, usvfs::RedirectionDataLocal(string_cast<std::string>(m_FileName, CodePage::UTF8)));
+    }
   }
 
   void removeMapping()
@@ -120,6 +131,41 @@ public:
       spdlog::get("usvfs")
           ->warn("Node not removed: {}", string_cast<std::string>(m_FileName));
     }
+  }
+
+  static bool addDirectoryMapping(const usvfs::HookContext::Ptr &context, const fs::path& originalPath, const fs::path& reroutedPath)
+  {
+    if (originalPath.empty() || reroutedPath.empty()) {
+      spdlog::get("hooks")->error("RerouteW::addDirectoryMapping failed: {}, {}",
+        string_cast<std::string>(originalPath.wstring(), CodePage::UTF8).c_str(),
+        string_cast<std::string>(reroutedPath.wstring(), CodePage::UTF8).c_str());
+      return false;
+    }
+
+    auto lookupParent = context->redirectionTable()->findNode(originalPath.parent_path());
+    if (!lookupParent.get() || lookupParent->data().linkTarget.empty()) {
+      if (!addDirectoryMapping(context, originalPath.parent_path(), reroutedPath.parent_path()))
+      {
+        spdlog::get("hooks")->error("RerouteW::addDirectoryMapping failed: {}, {}",
+          string_cast<std::string>(originalPath.wstring(), CodePage::UTF8).c_str(),
+          string_cast<std::string>(reroutedPath.wstring(), CodePage::UTF8).c_str());
+        return false;
+      }
+    }
+
+    std::string reroutedU8
+      = ush::string_cast<std::string>(reroutedPath.wstring(), ush::CodePage::UTF8);
+    if (reroutedU8.empty() || reroutedU8[reroutedU8.size() - 1] != '\\')
+      reroutedU8 += "\\";
+
+    spdlog::get("hooks")->info("mapping directory in vfs: {}, {}",
+      reroutedU8.c_str(), ush::string_cast<std::string>(originalPath.wstring(), ush::CodePage::UTF8));
+
+    context->redirectionTable().addDirectory(
+      originalPath, usvfs::RedirectionDataLocal(reroutedU8),
+      usvfs::shared::FLAG_DIRECTORY|usvfs::shared::FLAG_CREATETARGET);
+
+    return true;
   }
 
   template <class char_t>
@@ -239,6 +285,7 @@ public:
           try {
             usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::ALL_GROUPS);
             winapi::ex::wide::createPath(fs::path(result.m_Buffer).parent_path(), securityAttributes);
+            result.m_PathCreated = true;
           } catch (const std::exception &e) {
             spdlog::get("hooks")
                 ->error("failed to create {}: {}",
@@ -1380,7 +1427,9 @@ DLLEXPORT BOOL WINAPI usvfs::hook_CreateDirectoryW(
   res = ::CreateDirectoryW(reroute.fileName(), lpSecurityAttributes);
   POST_REALCALL
 
-  if (reroute.wasRerouted()) {
+  if (create && reroute.wasRerouted()) {
+    reroute.insertMapping(WRITE_CONTEXT(), true);
+
     LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(reroute.fileName()).PARAM(res);
   }
   HOOK_END
