@@ -259,8 +259,8 @@ void HookManager::initHooks()
   if (IsWindows8OrGreater())
     installHook(kbaseMod, k32Mod, "CopyFile2", hook_CopyFile2);
 
-  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionNamesA", hook_GetPrivateProfileSectionNamesA);
-  installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionNamesW", hook_GetPrivateProfileSectionNamesW);
+  installHook(kbaseMod, k32Mod, "GetPrivateProfileStringA", hook_GetPrivateProfileStringA);
+  installHook(kbaseMod, k32Mod, "GetPrivateProfileStringW", hook_GetPrivateProfileStringW);
   installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionA", hook_GetPrivateProfileSectionA);
   installHook(kbaseMod, k32Mod, "GetPrivateProfileSectionW", hook_GetPrivateProfileSectionW);
   installHook(kbaseMod, k32Mod, "WritePrivateProfileStringA", hook_WritePrivateProfileStringA);

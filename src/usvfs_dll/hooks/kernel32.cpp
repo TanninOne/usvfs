@@ -1423,60 +1423,72 @@ HRESULT WINAPI usvfs::hook_CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszNew
   return res;
 }
 
-DWORD WINAPI usvfs::hook_GetPrivateProfileSectionNamesA(LPSTR lpszReturnBuffer, DWORD nSize, LPCSTR lpFileName)
+DWORD WINAPI usvfs::hook_GetPrivateProfileStringA(LPCSTR lpAppName, LPCSTR lpKeyName, LPCSTR lpDefault, LPSTR lpReturnedString, DWORD nSize, LPCSTR lpFileName)
 {
   DWORD res = 0;
 
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
 
-    if (!callContext.active()) {
-      return ::GetPrivateProfileSectionNamesA(lpszReturnBuffer, nSize, lpFileName);
-    }
+  if (!callContext.active() || !lpFileName) {
+    res = ::GetPrivateProfileStringA(lpAppName, lpKeyName, lpDefault, lpReturnedString, nSize, lpFileName);
+    callContext.updateLastError();
+    return res;
+  }
 
-  auto context = READ_CONTEXT();
-  RerouteW reroute = RerouteW::create(context, callContext, ush::string_cast<std::wstring>(lpFileName).c_str());
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, ush::string_cast<std::wstring>(lpFileName).c_str());
+
   PRE_REALCALL
-    res = ::GetPrivateProfileSectionNamesA(lpszReturnBuffer, nSize, ush::string_cast<std::string>(reroute.fileName()).c_str());
+  res =
+    ::GetPrivateProfileStringA(lpAppName, lpKeyName, lpDefault, lpReturnedString, nSize, ush::string_cast<std::string>(reroute.fileName()).c_str());
   POST_REALCALL
 
-    if (reroute.wasRerouted()) {
-      LOG_CALL()
-        .PARAMHEX(nSize)
-        .PARAMWRAP(reroute.fileName())
-        .PARAMHEX(res)
-        .PARAMHEX(callContext.lastError());
-    }
+  if (reroute.wasRerouted()) {
+    LOG_CALL()
+      .PARAM(lpAppName)
+      .PARAM(lpKeyName)
+      .PARAMWRAP(lpFileName)
+      .PARAMWRAP(reroute.fileName())
+      .PARAMHEX(res)
+      .PARAMHEX(callContext.lastError());
+  }
+
   HOOK_END
 
-    return res;
+  return res;
 }
 
-DWORD WINAPI usvfs::hook_GetPrivateProfileSectionNamesW(LPWSTR lpszReturnBuffer, DWORD nSize, LPCWSTR lpFileName)
+DWORD WINAPI usvfs::hook_GetPrivateProfileStringW(LPCWSTR lpAppName, LPCWSTR lpKeyName, LPCWSTR lpDefault, LPWSTR lpReturnedString, DWORD nSize, LPCWSTR lpFileName)
 {
   DWORD res = 0;
 
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
 
-    if (!callContext.active()) {
-      return ::GetPrivateProfileSectionNamesW(lpszReturnBuffer, nSize, lpFileName);
-    }
+  if (!callContext.active() || !lpFileName) {
+    res = ::GetPrivateProfileStringW(lpAppName, lpKeyName, lpDefault, lpReturnedString, nSize, lpFileName);
+    callContext.updateLastError();
+    return res;
+  }
 
-  auto context = READ_CONTEXT();
-  RerouteW reroute = RerouteW::create(context, callContext, lpFileName);
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
+
   PRE_REALCALL
-    res = ::GetPrivateProfileSectionNamesW(lpszReturnBuffer, nSize, reroute.fileName());
+  res =
+    ::GetPrivateProfileStringW(lpAppName, lpKeyName, lpDefault, lpReturnedString, nSize, reroute.fileName());
   POST_REALCALL
 
-    if (reroute.wasRerouted()) {
-      LOG_CALL()
-        .PARAMHEX(nSize)
-        .PARAMWRAP(reroute.fileName())
-        .PARAMHEX(res)
-        .PARAMHEX(callContext.lastError());
-    }
+  if (reroute.wasRerouted()) {
+    LOG_CALL()
+      .PARAM(lpAppName)
+      .PARAM(lpKeyName)
+      .PARAMWRAP(lpFileName)
+      .PARAMWRAP(reroute.fileName())
+      .PARAMHEX(res)
+      .PARAMHEX(callContext.lastError());
+  }
+
   HOOK_END
 
-    return res;
+  return res;
 }
 
 DWORD WINAPI usvfs::hook_GetPrivateProfileSectionA(LPCSTR lpAppName, LPSTR lpReturnedString, DWORD nSize, LPCSTR lpFileName)
@@ -1485,26 +1497,31 @@ DWORD WINAPI usvfs::hook_GetPrivateProfileSectionA(LPCSTR lpAppName, LPSTR lpRet
 
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
 
-    if (!callContext.active()) {
-      return ::GetPrivateProfileSectionA(lpAppName, lpReturnedString, nSize, lpFileName);
-    }
+  if (!callContext.active() || !lpFileName) {
+    res = ::GetPrivateProfileSectionA(lpAppName, lpReturnedString, nSize, lpFileName);
+    callContext.updateLastError();
+    return res;
+  }
 
-  auto context = READ_CONTEXT();
-  RerouteW reroute = RerouteW::create(context, callContext, ush::string_cast<std::wstring>(lpFileName).c_str());
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, ush::string_cast<std::wstring>(lpFileName).c_str());
+
   PRE_REALCALL
-    res = ::GetPrivateProfileSectionA(lpAppName, lpReturnedString, nSize, ush::string_cast<std::string>(reroute.fileName()).c_str());
+  res =
+    ::GetPrivateProfileSectionA(lpAppName, lpReturnedString, nSize, ush::string_cast<std::string>(reroute.fileName()).c_str());
   POST_REALCALL
 
-    if (reroute.wasRerouted()) {
-      LOG_CALL()
-        .PARAMHEX(nSize)
-        .PARAMWRAP(reroute.fileName())
-        .PARAMHEX(res)
-        .PARAMHEX(callContext.lastError());
-    }
+  if (reroute.wasRerouted()) {
+    LOG_CALL()
+      .PARAM(lpAppName)
+      .PARAMWRAP(lpFileName)
+      .PARAMWRAP(reroute.fileName())
+      .PARAMHEX(res)
+      .PARAMHEX(callContext.lastError());
+  }
+
   HOOK_END
 
-    return res;
+  return res;
 }
 
 DWORD WINAPI usvfs::hook_GetPrivateProfileSectionW(LPCWSTR lpAppName, LPWSTR lpReturnedString, DWORD nSize, LPCWSTR lpFileName)
@@ -1513,36 +1530,80 @@ DWORD WINAPI usvfs::hook_GetPrivateProfileSectionW(LPCWSTR lpAppName, LPWSTR lpR
 
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
 
-    if (!callContext.active()) {
-      return ::GetPrivateProfileSectionW(lpAppName, lpReturnedString, nSize, lpFileName);
-    }
+  if (!callContext.active() || !lpFileName) {
+    res = ::GetPrivateProfileSectionW(lpAppName, lpReturnedString, nSize, lpFileName);
+    callContext.updateLastError();
+    return res;
+  }
 
-  auto context = READ_CONTEXT();
-  RerouteW reroute = RerouteW::create(context, callContext, lpFileName);
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
+
   PRE_REALCALL
-    res = ::GetPrivateProfileSectionW(lpAppName, lpReturnedString, nSize, reroute.fileName());
+  res =
+    ::GetPrivateProfileSectionW(lpAppName, lpReturnedString, nSize, reroute.fileName());
   POST_REALCALL
 
-    if (reroute.wasRerouted()) {
-      LOG_CALL()
-        .PARAMHEX(nSize)
-        .PARAMWRAP(reroute.fileName())
-        .PARAMHEX(res)
-        .PARAMHEX(callContext.lastError());
-    }
+  if (reroute.wasRerouted()) {
+    LOG_CALL()
+      .PARAM(lpAppName)
+      .PARAMWRAP(lpFileName)
+      .PARAMWRAP(reroute.fileName())
+      .PARAMHEX(res)
+      .PARAMHEX(callContext.lastError());
+  }
+
   HOOK_END
 
-    return res;
+  return res;
 }
 
 BOOL WINAPI usvfs::hook_WritePrivateProfileStringA(LPCSTR lpAppName, LPCSTR lpKeyName, LPCSTR lpString, LPCSTR lpFileName)
 {
-  return WritePrivateProfileStringW(
-    ush::string_cast<std::wstring>(lpAppName).c_str(),
-    ush::string_cast<std::wstring>(lpKeyName).c_str(),
-    ush::string_cast<std::wstring>(lpString).c_str(),
-    ush::string_cast<std::wstring>(lpFileName).c_str()
-  );
+  BOOL res = false;
+
+  HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
+
+  if (!callContext.active() || !lpFileName) {
+    res = ::WritePrivateProfileStringA(lpAppName, lpKeyName, lpString, lpFileName);
+    callContext.updateLastError();
+    return res;
+  }
+
+  bool create = false;
+
+  RerouteW reroute;
+  {
+    std::wstring fileName = ush::string_cast<std::wstring>(lpFileName);
+    auto context = READ_CONTEXT();
+    reroute = RerouteW::create(context, callContext, fileName.c_str());
+    if (!reroute.wasRerouted() && !fileExists(fileName.c_str())) {
+      // the file will be created so now we need to know where
+      reroute = RerouteW::createNew(context, callContext, fileName.c_str());
+      create = reroute.wasRerouted();
+    }
+  }
+
+  PRE_REALCALL
+  res =
+    ::WritePrivateProfileStringA(lpAppName, lpKeyName, lpString, ush::string_cast<std::string>(reroute.fileName()).c_str());
+  POST_REALCALL
+
+  if (create && (res != FALSE))
+    reroute.insertMapping(WRITE_CONTEXT());
+
+  if (reroute.wasRerouted()) {
+    LOG_CALL()
+      .PARAM(lpAppName)
+      .PARAM(lpKeyName)
+      .PARAMWRAP(lpFileName)
+      .PARAMWRAP(reroute.fileName())
+      .PARAMHEX(res)
+      .PARAMHEX(callContext.lastError());
+  }
+
+  HOOK_END
+
+  return res;
 }
 
 BOOL WINAPI usvfs::hook_WritePrivateProfileStringW(LPCWSTR lpAppName, LPCWSTR lpKeyName, LPCWSTR lpString, LPCWSTR lpFileName)
@@ -1551,9 +1612,11 @@ BOOL WINAPI usvfs::hook_WritePrivateProfileStringW(LPCWSTR lpAppName, LPCWSTR lp
 
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
 
-    if (!callContext.active()) {
-      return ::WritePrivateProfileStringW(lpAppName, lpKeyName, lpString, lpFileName);
-    }
+  if (!callContext.active() || !lpFileName) {
+    res = ::WritePrivateProfileStringW(lpAppName, lpKeyName, lpString, lpFileName);
+    callContext.updateLastError();
+    return res;
+  }
 
   bool create = false;
 
@@ -1564,33 +1627,22 @@ BOOL WINAPI usvfs::hook_WritePrivateProfileStringW(LPCWSTR lpAppName, LPCWSTR lp
     if (!reroute.wasRerouted() && !fileExists(lpFileName)) {
       // the file will be created so now we need to know where
       reroute = RerouteW::createNew(context, callContext, lpFileName);
-      create = (reroute.wasRerouted());
-
-      if (create) {
-        fs::path target(reroute.fileName());
-        winapi::ex::wide::createPath(target.parent_path());
-      }
+      create = reroute.wasRerouted();
     }
   }
 
   PRE_REALCALL
-    res = ::WritePrivateProfileStringW(lpAppName, lpKeyName, lpString, reroute.fileName());
+  res =
+    ::WritePrivateProfileStringW(lpAppName, lpKeyName, lpString, reroute.fileName());
   POST_REALCALL
 
-
-    if (create && (res != FALSE)) {
-      spdlog::get("hooks")
-        ->info("add file to vfs: {}",
-          ush::string_cast<std::string>(lpFileName, ush::CodePage::UTF8));
-      // new file was created in a mapped directory, insert to vitual structure
-      reroute.insertMapping(WRITE_CONTEXT());
-    }
+  if (create && (res != FALSE))
+    reroute.insertMapping(WRITE_CONTEXT());
 
   if (reroute.wasRerouted()) {
     LOG_CALL()
       .PARAM(lpAppName)
       .PARAM(lpKeyName)
-      .PARAM(lpString)
       .PARAMWRAP(lpFileName)
       .PARAMWRAP(reroute.fileName())
       .PARAMHEX(res)
