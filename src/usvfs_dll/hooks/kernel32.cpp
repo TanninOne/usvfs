@@ -188,7 +188,7 @@ public:
   static bool interestingPath(const char* inPath) { return interestingPathImpl(inPath); }
   static bool interestingPath(const wchar_t* inPath) { return interestingPathImpl(inPath); }
 
-  static fs::path absolute_path(const wchar_t *inPath)
+  static fs::path absolutePath(const wchar_t *inPath)
   {
     if (ush::startswith(inPath, LR"(\\?\)") || ush::startswith(inPath, LR"(\??\)")) {
       inPath += 4;
@@ -208,7 +208,7 @@ public:
     return winapi::wide::getFullPathName(inPath).first;
   }
 
-  static fs::path canonize_path(const fs::path& inPath)
+  static fs::path canonizePath(const fs::path& inPath)
   {
     fs::path p = inPath.lexically_normal();
     if (p.filename_is_dot())
@@ -221,35 +221,39 @@ public:
                          const wchar_t *inPath, bool inverse = false)
   {
     RerouteW result;
-    if ((inPath != nullptr) && (inPath[0] != L'\0')
-        && !ush::startswith(inPath, L"hid#")) {
-      result.m_Buffer   = std::wstring(inPath);
-      result.m_Rerouted = false;
-      if (callContext.active()) {
-        fs::path lookupPath = canonize_path(absolute_path(inPath));
 
-        const usvfs::RedirectionTreeContainer &table
-            = inverse ? context->inverseTable() : context->redirectionTable();
-        result.m_FileNode = table->findNode(lookupPath);
+    if (interestingPath(inPath) && callContext.active())
+    {
+      fs::path lookupPath = canonizePath(absolutePath(inPath));
 
-        if (result.m_FileNode.get()
-          && (!result.m_FileNode->data().linkTarget.empty() || result.m_FileNode->isDirectory())) {
-          if (!result.m_FileNode->data().linkTarget.empty()) {
-            result.m_Buffer = string_cast<std::wstring>(
-              result.m_FileNode->data().linkTarget.c_str(), CodePage::UTF8);
-          }
-          else
-          {
-            result.m_Buffer = result.m_FileNode->path().wstring();
-          }
-          if (result.m_Buffer.length() >= MAX_PATH && !ush::startswith(result.m_Buffer.c_str(), LR"(\\?\)"))
-            result.m_Buffer = LR"(\\?\)" + result.m_Buffer;
-          result.m_Rerouted = true;
+      const usvfs::RedirectionTreeContainer &table
+        = inverse ? context->inverseTable() : context->redirectionTable();
+      result.m_FileNode = table->findNode(lookupPath);
+
+      if (result.m_FileNode.get()
+        && (!result.m_FileNode->data().linkTarget.empty() || result.m_FileNode->isDirectory()))
+      {
+        if (!result.m_FileNode->data().linkTarget.empty()) {
+          result.m_Buffer = string_cast<std::wstring>(
+            result.m_FileNode->data().linkTarget.c_str(), CodePage::UTF8);
         }
+        else
+        {
+          result.m_Buffer = result.m_FileNode->path().wstring();
+        }
+        if (result.m_Buffer.length() >= MAX_PATH && !ush::startswith(result.m_Buffer.c_str(), LR"(\\?\)"))
+          result.m_Buffer = LR"(\\?\)" + result.m_Buffer;
+        std::replace(result.m_Buffer.begin(), result.m_Buffer.end(), L'/', L'\\');
+        result.m_Rerouted = true;
       }
-      std::replace(result.m_Buffer.begin(), result.m_Buffer.end(), L'/', L'\\');
-      result.m_FileName = result.m_Buffer.c_str();
+      else
+        result.m_Buffer = inPath;
     }
+    else if (inPath)
+      result.m_Buffer = inPath;
+
+    if (inPath)
+      result.m_FileName = result.m_Buffer.c_str();
     return result;
   }
 
@@ -258,16 +262,13 @@ public:
                             LPCWSTR inPath, bool createPath = true,
                             LPSECURITY_ATTRIBUTES securityAttributes = nullptr)
   {
-    UNUSED_VAR(callContext);
     RerouteW result;
-    result.m_Rerouted = false;
 
-    if ((inPath != nullptr) && (inPath[0] != L'\0')
-        && !ush::startswith(inPath, L"hid#")) {
-      result.m_Buffer   = inPath;
-      fs::path lookupPath = absolute_path(inPath);
+    if (interestingPath(inPath) && callContext.active())
+    {
+      fs::path lookupPath = absolutePath(inPath);
       result.m_RealPath = lookupPath.c_str();
-      lookupPath = canonize_path(lookupPath);
+      lookupPath = canonizePath(lookupPath);
 
       FindCreateTarget visitor;
       usvfs::RedirectionTree::VisitorFunction visitorWrapper = [&](
@@ -292,25 +293,28 @@ public:
                         ush::string_cast<std::string>(result.m_Buffer), e.what());
           }
 
+        std::replace(result.m_Buffer.begin(), result.m_Buffer.end(), L'/', L'\\');
         result.m_Rerouted = true;
       }
+      else
+        result.m_Buffer = inPath;
     }
+    else if (inPath)
+      result.m_Buffer = inPath;
 
-    result.m_FileName = result.m_Buffer.c_str();
-
+    if (inPath)
+      result.m_FileName = result.m_Buffer.c_str();
     return result;
   }
 
   static RerouteW noReroute(LPCWSTR inPath)
   {
     RerouteW result;
-    if ((inPath != nullptr) && (inPath[0] != L'\0')
-      && !ush::startswith(inPath, L"hid#")) {
-      result.m_Buffer = std::wstring(inPath);
-      result.m_Rerouted = false;
+    if (inPath)
+      result.m_Buffer = inPath;
+    if (inPath && inPath[0] && !ush::startswith(inPath, L"hid#"))
       std::replace(result.m_Buffer.begin(), result.m_Buffer.end(), L'/', L'\\');
-      result.m_FileName = result.m_Buffer.c_str();
-    }
+    result.m_FileName = result.m_Buffer.c_str();
     return result;
   }
 
@@ -422,9 +426,9 @@ BOOL WINAPI usvfs::hook_CreateProcessInternalW(
   { // scope for context lock
     auto context = READ_CONTEXT();
 
-    if (lpCommandLine != nullptr) {
+    if (RerouteW::interestingPath(lpCommandLine)) {
       // decompose command line
-      int argc     = 0;
+      int argc = 0;
       LPWSTR *argv = ::CommandLineToArgvW(lpCommandLine, &argc);
       ON_BLOCK_EXIT([argv]() { LocalFree(argv); });
 
@@ -435,17 +439,19 @@ BOOL WINAPI usvfs::hook_CreateProcessInternalW(
       // want to preserve them
       LPCWSTR args = lpCommandLine;
       for (; *args && *args != ' '; ++args)
-      if (*args == '"') {
-        int escaped = 0;
-        for (++args; *args && (*args != '"' || escaped % 2 != 0); ++args)
-          escaped = *args == '\\' ? escaped + 1 : 0;
-      }
+        if (*args == '"') {
+          int escaped = 0;
+          for (++args; *args && (*args != '"' || escaped % 2 != 0); ++args)
+            escaped = *args == '\\' ? escaped + 1 : 0;
+        }
 
       // recompose command line
       std::wstringstream stream;
       stream << L"\"" << cmdReroute.fileName() << L"\"" << args;
       cmdline = stream.str();
     }
+    else if (lpCommandLine)
+      cmdline = lpCommandLine;
 
     applicationReroute
         = RerouteW::create(context, callContext, lpApplicationName);
@@ -464,15 +470,8 @@ BOOL WINAPI usvfs::hook_CreateProcessInternalW(
       newToken);
   POST_REALCALL
 
-  // hook unless blacklisted
-  // TODO implement process blacklisting. Currently disabled because storing in
-  // redirection-tree doesn't work and makes no sense
-  //  std::wstring binaryName = getBinaryName(applicationReroute.fileName(),
-  //  lpCommandLine);
-  //  bool blacklisted =
-  //  context->redirectionTable()->testProcessBlacklisted(usvfs::shared::toNarrow(binaryName.c_str()).c_str());
-  bool blacklisted = false;
-  if (!blacklisted) {
+  if (res)
+  {
     try {
       injectProcess(dllPath, callParameters, *lpProcessInformation);
     } catch (const std::exception &e) {
@@ -483,18 +482,18 @@ BOOL WINAPI usvfs::hook_CreateProcessInternalW(
                       : log::wrap(static_cast<LPCWSTR>(lpCommandLine)),
                   e.what());
     }
-  }
 
-  // resume unless process is suposed to start suspended
-  if (!susp && (ResumeThread(lpProcessInformation->hThread) == (DWORD)-1)) {
-    spdlog::get("hooks")->error("failed to inject into spawned process");
-    res = FALSE;
+    // resume unless process is suposed to start suspended
+    if (!susp && (ResumeThread(lpProcessInformation->hThread) == (DWORD)-1)) {
+      spdlog::get("hooks")->error("failed to inject into spawned process");
+      res = FALSE;
+    }
   }
 
   LOG_CALL()
+      .PARAM(lpApplicationName)
       .PARAM(applicationReroute.fileName())
       .PARAM(cmdline)
-      .PARAM(blacklisted)
       .PARAM(res);
 
   HOOK_END
@@ -855,7 +854,7 @@ BOOL WINAPI usvfs::hook_GetFileAttributesExW(
   BOOL res = FALSE;
 
   HOOK_START_GROUP(MutExHookGroup::FILE_ATTRIBUTES)
-  if (!callContext.active()) {
+  if (!callContext.active() || !RerouteW::interestingPath(lpFileName)) {
     res = GetFileAttributesExW(lpFileName, fInfoLevelId, lpFileInformation);
     callContext.updateLastError();
     return res;
@@ -922,7 +921,7 @@ DWORD WINAPI usvfs::hook_GetFileAttributesW(LPCWSTR lpFileName)
   DWORD res = 0UL;
 
   HOOK_START_GROUP(MutExHookGroup::FILE_ATTRIBUTES)
-  if (!callContext.active()) {
+  if (!callContext.active() || !RerouteW::interestingPath(lpFileName)) {
     res = GetFileAttributesW(lpFileName);
     callContext.updateLastError();
     return res;
@@ -982,11 +981,6 @@ DWORD WINAPI usvfs::hook_SetFileAttributesW(
   DWORD res = 0UL;
 
   HOOK_START_GROUP(MutExHookGroup::FILE_ATTRIBUTES)
-  if (!callContext.active()) {
-    res = SetFileAttributesW(lpFileName, dwFileAttributes);
-    callContext.updateLastError();
-    return res;
-  }
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
   PRE_REALCALL
@@ -1007,11 +1001,6 @@ BOOL WINAPI usvfs::hook_DeleteFileW(LPCWSTR lpFileName)
   BOOL res = FALSE;
 
   HOOK_START_GROUP(MutExHookGroup::DELETE_FILE)
-  if (!callContext.active()) {
-    res = DeleteFileW(lpFileName);
-    callContext.updateLastError();
-    return res;
-  }
 
   RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
 
@@ -1444,11 +1433,6 @@ DLLEXPORT BOOL WINAPI usvfs::hook_RemoveDirectoryW(
 	BOOL res = FALSE;
 
 	HOOK_START_GROUP(MutExHookGroup::DELETE_FILE)
-    if (!callContext.active()) {
-      res = RemoveDirectoryW(lpPathName);
-      callContext.updateLastError();
-      return res;
-    }
 
 	RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpPathName);
 
@@ -1557,12 +1541,6 @@ DWORD WINAPI usvfs::hook_GetModuleFileNameW(HMODULE hModule,
   DWORD res = 0UL;
 
   HOOK_START_GROUP(MutExHookGroup::ALL_GROUPS)
-  if (!callContext.active()) {
-    res = GetModuleFileNameW(hModule, lpFilename, nSize);
-    callContext.updateLastError();
-    return res;
-  }
-
 
   PRE_REALCALL
   res = ::GetModuleFileNameW(hModule, lpFilename, nSize);
@@ -1711,7 +1689,7 @@ DWORD WINAPI usvfs::hook_GetPrivateProfileStringA(LPCSTR lpAppName, LPCSTR lpKey
 
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
 
-  if (!callContext.active() || !lpFileName) {
+  if (!callContext.active() || !RerouteW::interestingPath(lpFileName)) {
     res = ::GetPrivateProfileStringA(lpAppName, lpKeyName, lpDefault, lpReturnedString, nSize, lpFileName);
     callContext.updateLastError();
     return res;
@@ -1745,7 +1723,7 @@ DWORD WINAPI usvfs::hook_GetPrivateProfileStringW(LPCWSTR lpAppName, LPCWSTR lpK
 
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
 
-  if (!callContext.active() || !lpFileName) {
+  if (!callContext.active() || !RerouteW::interestingPath(lpFileName)) {
     res = ::GetPrivateProfileStringW(lpAppName, lpKeyName, lpDefault, lpReturnedString, nSize, lpFileName);
     callContext.updateLastError();
     return res;
@@ -1779,7 +1757,7 @@ DWORD WINAPI usvfs::hook_GetPrivateProfileSectionA(LPCSTR lpAppName, LPSTR lpRet
 
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
 
-  if (!callContext.active() || !lpFileName) {
+  if (!callContext.active() || !RerouteW::interestingPath(lpFileName)) {
     res = ::GetPrivateProfileSectionA(lpAppName, lpReturnedString, nSize, lpFileName);
     callContext.updateLastError();
     return res;
@@ -1812,7 +1790,7 @@ DWORD WINAPI usvfs::hook_GetPrivateProfileSectionW(LPCWSTR lpAppName, LPWSTR lpR
 
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
 
-  if (!callContext.active() || !lpFileName) {
+  if (!callContext.active() || !RerouteW::interestingPath(lpFileName)) {
     res = ::GetPrivateProfileSectionW(lpAppName, lpReturnedString, nSize, lpFileName);
     callContext.updateLastError();
     return res;
@@ -1845,7 +1823,7 @@ BOOL WINAPI usvfs::hook_WritePrivateProfileStringA(LPCSTR lpAppName, LPCSTR lpKe
 
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
 
-  if (!callContext.active() || !lpFileName) {
+  if (!callContext.active() || !RerouteW::interestingPath(lpFileName)) {
     res = ::WritePrivateProfileStringA(lpAppName, lpKeyName, lpString, lpFileName);
     callContext.updateLastError();
     return res;
@@ -1894,7 +1872,7 @@ BOOL WINAPI usvfs::hook_WritePrivateProfileStringW(LPCWSTR lpAppName, LPCWSTR lp
 
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
 
-  if (!callContext.active() || !lpFileName) {
+  if (!callContext.active() || !RerouteW::interestingPath(lpFileName)) {
     res = ::WritePrivateProfileStringW(lpAppName, lpKeyName, lpString, lpFileName);
     callContext.updateLastError();
     return res;
