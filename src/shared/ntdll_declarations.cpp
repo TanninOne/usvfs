@@ -30,32 +30,35 @@ NtOpenFile_type NtOpenFile;
 NtCreateFile_type NtCreateFile;
 NtClose_type NtClose;
 RtlDoesFileExists_U_type RtlDoesFileExists_U;
+RtlDosPathNameToRelativeNtPathName_U_WithStatus_type RtlDosPathNameToRelativeNtPathName_U_WithStatus;
+RtlReleaseRelativeName_type RtlReleaseRelativeName;
 RtlGetVersion_type RtlGetVersion;
 NtTerminateProcess_type NtTerminateProcess;
 
+static bool ntdll_initialized;
+
+void ntdll_declarations_init() {
+  if (!ntdll_initialized) {
+    HMODULE ntDLLMod = GetModuleHandleW(L"ntdll.dll");
+
+    LOAD_EXT(ntDLLMod, NtQueryDirectoryFile);
+    LOAD_EXT(ntDLLMod, NtQueryFullAttributesFile);
+    LOAD_EXT(ntDLLMod, NtQueryAttributesFile);
+    LOAD_EXT(ntDLLMod, NtCreateFile);
+    LOAD_EXT(ntDLLMod, NtOpenFile);
+    LOAD_EXT(ntDLLMod, NtClose);
+    LOAD_EXT(ntDLLMod, RtlDoesFileExists_U);
+    LOAD_EXT(ntDLLMod, RtlDosPathNameToRelativeNtPathName_U_WithStatus);
+    LOAD_EXT(ntDLLMod, RtlReleaseRelativeName);
+    LOAD_EXT(ntDLLMod, RtlGetVersion);
+    LOAD_EXT(ntDLLMod, NtTerminateProcess);
+
+    ntdll_initialized = true;
+  }
+}
 
 static struct __Initializer {
-  HMODULE m_NtDLLMod;
   __Initializer() {
-    m_NtDLLMod = ::LoadLibrary(TEXT("ntdll.dll"));
-
-    if (m_NtDLLMod == nullptr) {
-      TerminateProcess(GetCurrentProcess(), 1);
-      return;
-    }
-    LOAD_EXT(m_NtDLLMod, NtQueryDirectoryFile);
-    LOAD_EXT(m_NtDLLMod, NtQueryFullAttributesFile);
-    LOAD_EXT(m_NtDLLMod, NtQueryAttributesFile);
-    LOAD_EXT(m_NtDLLMod, NtCreateFile);
-    LOAD_EXT(m_NtDLLMod, NtOpenFile);
-    LOAD_EXT(m_NtDLLMod, NtClose);
-    LOAD_EXT(m_NtDLLMod, RtlDoesFileExists_U);
-    LOAD_EXT(m_NtDLLMod, RtlGetVersion);
-    LOAD_EXT(m_NtDLLMod, NtTerminateProcess);
-  }
-
-  ~__Initializer() {
-    // all hooks should be disabled by now. If not, this won't end well...
-    FreeLibrary(m_NtDLLMod);
+    ntdll_declarations_init();
   }
 } __initializer;
