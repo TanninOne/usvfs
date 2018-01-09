@@ -80,24 +80,64 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 == mfolder1\mfile.txt by mod1
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -overwrite mount:mfolder1\fail\epic\fail\newfile1.txt "newfile1.txt nonrecursive overwrite should fail"
+ERROR: CreateFile() failed : lastError=3
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -overwrite mount:mfolder1\fail\newfile1.txt "newfile1.txt nonrecursive overwrite should fail"
+ERROR: CreateFile() failed : lastError=3
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -overwrite mount:mfolder1\newfile1.txt "newfile1.txt nonrecursive overwrite"
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder1\newfile1.txt
 == newfile1.txt nonrecursive overwrite
 
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -overwrite mount:mfolder1\fail\newfile1.txt "newfile1.txt nonrecursive overwrite should fail"
+ERROR: CreateFile() failed : lastError=3
+
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -overwrite mount:mfolder2\newfile2.txt "newfile2.txt recursive overwrite"
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder2\newfile2.txt
 == newfile2.txt recursive overwrite
 
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -overwrite mount:mfolder2\newfile2.txt\fail "newfile2.txt is a file so folder creation should fail"
+ERROR: Failed to create_path [mfolder2\newfile2.txt] : path exists but not a directory
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -overwrite mount:mfolder2\mfile.txt\fail "mfile.txt is a file so folder creation should fail"
+ERROR: Failed to create_path [mfolder2\mfile.txt] : path exists but not a directory
+
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -overwrite mount:mfolder3\newfolder3\newfile3.txt "newfile3.txt recursive overwrite"
-ERROR: Failed to create_path [mfolder3\newfolder3] : CreateDirectoryW() failed : lastError=3
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder3\newfolder3\newfile3.txt
+== newfile3.txt recursive overwrite
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -overwrite mount:mfolder3\newfolder3\newfile3e.txt "newfile3e.txt recursive overwrite"
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder3\newfolder3\newfile3e.txt
+== newfile3e.txt recursive overwrite
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -overwrite mount:mfolder4\newfolder4\d\e\e\p\newfile4.txt "newfile4.txt recursive overwrite"
-ERROR: Failed to create_path [mfolder4\newfolder4\d\e\e\p] : CreateDirectoryW() failed : lastError=3
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder4\newfolder4\d\e\e\p\newfile4.txt
+== newfile4.txt recursive overwrite
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -overwrite mount:mfolder4\newfolder4\d\e\e\p\newfile4e.txt "newfile4e.txt recursive overwrite"
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder4\newfolder4\d\e\e\p\newfile4e.txt
+== newfile4e.txt recursive overwrite
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -overwrite mount:mfolder4\newfolder4\d\e\e\p\newfile4enr.txt "newfile4enr.txt nonrecursive overwrite"
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder4\newfolder4\d\e\e\p\newfile4enr.txt
+== newfile4enr.txt nonrecursive overwrite
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -overwrite mount:mfolder4\newfolder4\d\e\epnewfile4r.txt "epnewfile4r.txt recursive overwrite"
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder4\newfolder4\d\e\epnewfile4r.txt
+== epnewfile4r.txt recursive overwrite
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -overwrite mount:mfolder4\newfolder4\d\e\epnewfile4.txt "epnewfile4.txt nonrecursive overwrite"
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder4\newfolder4\d\e\epnewfile4.txt
+== epnewfile4.txt nonrecursive overwrite
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -overwrite mount:mfolder4\mfileoverwrite.txt "mfolder4\mfileoverwrite.txt overwrite"
 
@@ -136,6 +176,12 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -rewrite mount:rf
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:rfolder\rfilerewrite.txt
 == rfolder\rfilerewrite.txt rewrite
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -overwrite mount:rfolder\rfilerewrite.txt\fail "rfilerewrite.txt is a file so folder creation should fail"
+ERROR: Failed to create_path [rfolder\rfilerewrite.txt] : path exists but not a directory
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -overwrite mount:rfolder\rfile0.txt\fail "rfile0.txt is a file so folder creation should fail"
+ERROR: Failed to create_path [rfolder\rfile0.txt] : path exists but not a directory
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -delete mount:rfolder\rfiledelete.txt
 
@@ -184,6 +230,7 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 >> Listing directory {mfolder4}:
 [.] DIR (attributes 0x10)
 [..] DIR (attributes 0x10)
+[newfolder4] DIR (attributes 0x10)
 [mfilerewrite.txt] FILE (attributes 0x20, 35 bytes)
 == mfolder4\mfilerewrite.txt rewrite
 [mfileoverwrite.txt] FILE (attributes 0x20, 39 bytes)
@@ -196,10 +243,47 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 == mfolder4\mfiledeletemove.txt overwrite
 [mfile.txt] FILE (attributes 0x20, 28 bytes)
 == mfolder4\mfile.txt by mod4
+>> Listing directory {mfolder4\newfolder4}:
+[.] DIR (attributes 0x10)
+[..] DIR (attributes 0x10)
+[d] DIR (attributes 0x10)
+>> Listing directory {mfolder4\newfolder4\d}:
+[.] DIR (attributes 0x10)
+[..] DIR (attributes 0x10)
+[e] DIR (attributes 0x10)
+>> Listing directory {mfolder4\newfolder4\d\e}:
+[.] DIR (attributes 0x10)
+[..] DIR (attributes 0x10)
+[epnewfile4r.txt] FILE (attributes 0x20, 37 bytes)
+== epnewfile4r.txt recursive overwrite
+[epnewfile4.txt] FILE (attributes 0x20, 39 bytes)
+== epnewfile4.txt nonrecursive overwrite
+[e] DIR (attributes 0x10)
+>> Listing directory {mfolder4\newfolder4\d\e\e}:
+[.] DIR (attributes 0x10)
+[..] DIR (attributes 0x10)
+[p] DIR (attributes 0x10)
+>> Listing directory {mfolder4\newfolder4\d\e\e\p}:
+[.] DIR (attributes 0x10)
+[..] DIR (attributes 0x10)
+[newfile4enr.txt] FILE (attributes 0x20, 40 bytes)
+== newfile4enr.txt nonrecursive overwrite
+[newfile4e.txt] FILE (attributes 0x20, 35 bytes)
+== newfile4e.txt recursive overwrite
+[newfile4.txt] FILE (attributes 0x20, 34 bytes)
+== newfile4.txt recursive overwrite
 >> Listing directory {mfolder3}:
 [.] DIR (attributes 0x10)
 [..] DIR (attributes 0x10)
+[newfolder3] DIR (attributes 0x10)
 [mdeep3] DIR (attributes 0x10)
+>> Listing directory {mfolder3\newfolder3}:
+[.] DIR (attributes 0x10)
+[..] DIR (attributes 0x10)
+[newfile3e.txt] FILE (attributes 0x20, 35 bytes)
+== newfile3e.txt recursive overwrite
+[newfile3.txt] FILE (attributes 0x20, 34 bytes)
+== newfile3.txt recursive overwrite
 >> Listing directory {mfolder3\mdeep3}:
 [.] DIR (attributes 0x10)
 [..] DIR (attributes 0x10)
