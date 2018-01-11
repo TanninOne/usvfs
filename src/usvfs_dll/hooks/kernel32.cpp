@@ -547,19 +547,31 @@ HANDLE WINAPI usvfs::hook_CreateFileA(
     LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
     DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
 {
+  HANDLE res = INVALID_HANDLE_VALUE;
+
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
-    if (callContext.active()) {
-      HANDLE res = CreateFileW(
-        ush::string_cast<std::wstring>(lpFileName).c_str(), dwDesiredAccess,
-        dwShareMode, lpSecurityAttributes, dwCreationDisposition,
-        dwFlagsAndAttributes, hTemplateFile);
-      callContext.updateLastError();
-      return res;
-    }
+
+  if (!callContext.active()) {
+    res = CreateFileA(lpFileName, dwDesiredAccess, dwShareMode,
+      lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+    callContext.updateLastError();
+    return res;
+  }
+
+  // release the MutExHookGroup::OPEN_FILE so that CreateFileW can process the request:
+  HOOK_END
+  HOOK_START
+
+  const auto& fileName = ush::string_cast<std::wstring>(lpFileName);
+
+  PRE_REALCALL
+    res = CreateFileW(fileName.c_str(), dwDesiredAccess, dwShareMode, lpSecurityAttributes,
+      dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+  POST_REALCALL
+
   HOOK_END
 
-  return CreateFileA(lpFileName, dwDesiredAccess, dwShareMode,
-      lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+  return res;
 }
 
 namespace usvfs {
@@ -1037,17 +1049,29 @@ void updateMoveFileFlags(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName,
 BOOL WINAPI usvfs::hook_MoveFileA(LPCSTR lpExistingFileName,
                                     LPCSTR lpNewFileName)
 {
+  BOOL res = FALSE;
+
   HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
-    if (callContext.active()) {
-      BOOL res = MoveFileW(
-        ush::string_cast<std::wstring>(lpExistingFileName).c_str(),
-        ush::string_cast<std::wstring>(lpNewFileName).c_str());
-      callContext.updateLastError();
-      return res;
-    }
+
+  if (!callContext.active()) {
+    res = MoveFileA(lpExistingFileName, lpNewFileName);
+    callContext.updateLastError();
+    return res;
+  }
+
+  HOOK_END
+  HOOK_START
+
+  const auto& existingFileName = ush::string_cast<std::wstring>(lpExistingFileName);
+  const auto& newFileName = ush::string_cast<std::wstring>(lpNewFileName);
+
+  PRE_REALCALL
+    res = MoveFileW(existingFileName.c_str(), newFileName.c_str());
+  POST_REALCALL
+
   HOOK_END
 
-  return MoveFileA(lpExistingFileName, lpNewFileName);
+  return res;
 }
 
 BOOL WINAPI usvfs::hook_MoveFileW(LPCWSTR lpExistingFileName,
@@ -1107,17 +1131,29 @@ BOOL WINAPI usvfs::hook_MoveFileW(LPCWSTR lpExistingFileName,
 BOOL WINAPI usvfs::hook_MoveFileExA(LPCSTR lpExistingFileName,
                                       LPCSTR lpNewFileName, DWORD dwFlags)
 {
+  BOOL res = FALSE;
+
   HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
-    if (callContext.active()) {
-      BOOL res = MoveFileExW(ush::string_cast<std::wstring>(lpExistingFileName).c_str(),
-        ush::string_cast<std::wstring>(lpNewFileName).c_str(),
-        dwFlags);
-      callContext.updateLastError();
-      return res;
-    }
+
+  if (!callContext.active()) {
+    res = MoveFileExA(lpExistingFileName, lpNewFileName, dwFlags);
+    callContext.updateLastError();
+    return res;
+  }
+
+  HOOK_END
+  HOOK_START
+
+  const auto& existingFileName = ush::string_cast<std::wstring>(lpExistingFileName);
+  const auto& newFileName = ush::string_cast<std::wstring>(lpNewFileName);
+
+  PRE_REALCALL
+    res = MoveFileExW(existingFileName.c_str(), newFileName.c_str(), dwFlags);
+  POST_REALCALL
+
   HOOK_END
 
-  return MoveFileExA(lpExistingFileName, lpNewFileName, dwFlags);
+  return res;
 }
 
 BOOL WINAPI usvfs::hook_MoveFileExW(LPCWSTR lpExistingFileName,
@@ -1174,18 +1210,29 @@ BOOL WINAPI usvfs::hook_MoveFileExW(LPCWSTR lpExistingFileName,
 
 BOOL WINAPI usvfs::hook_MoveFileWithProgressA(LPCSTR lpExistingFileName, LPCSTR lpNewFileName, LPPROGRESS_ROUTINE lpProgressRoutine, LPVOID lpData, DWORD dwFlags)
 {
+  BOOL res = FALSE;
+
   HOOK_START_GROUP(MutExHookGroup::SHELL_FILEOP)
-    if (callContext.active()) {
-      BOOL res = MoveFileWithProgressW(
-        ush::string_cast<std::wstring>(lpExistingFileName).c_str(),
-        ush::string_cast<std::wstring>(lpNewFileName).c_str(),
-        lpProgressRoutine, lpData, dwFlags);
-      callContext.updateLastError();
-      return res;
-    }
+
+  if (!callContext.active()) {
+    res = MoveFileWithProgressA(lpExistingFileName, lpNewFileName, lpProgressRoutine, lpData, dwFlags);
+    callContext.updateLastError();
+    return res;
+  }
+
+  HOOK_END
+  HOOK_START
+
+  const auto& existingFileName = ush::string_cast<std::wstring>(lpExistingFileName);
+  const auto& newFileName = ush::string_cast<std::wstring>(lpNewFileName);
+
+  PRE_REALCALL
+    res = MoveFileWithProgressW(existingFileName.c_str(), newFileName.c_str(), lpProgressRoutine, lpData, dwFlags);
+  POST_REALCALL
+
   HOOK_END
 
-  return MoveFileWithProgressA(lpExistingFileName, lpNewFileName, lpProgressRoutine, lpData, dwFlags);
+  return res;
 }
 
 BOOL WINAPI usvfs::hook_MoveFileWithProgressW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, LPPROGRESS_ROUTINE lpProgressRoutine, LPVOID lpData, DWORD dwFlags)
