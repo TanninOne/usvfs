@@ -1091,7 +1091,6 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log
 >> Listing directory {.}:
 [.] DIR (attributes 0x10)
 [..] DIR (attributes 0x10)
-[rfolder] DIR (attributes 0x10)
 [root0.txt] FILE (attributes 0x20, 21 bytes)
 # (W32) Reading file {root0.txt}
 # (W32)   CreateFileW last error 0 (0x0)
@@ -1099,6 +1098,14 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log
 == root0 original file
 # (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
 # Successfully read 21 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+[root0w.txt] FILE (attributes 0x20, 22 bytes)
+# (W32) Reading file {root0w.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== root0w original file
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 22 bytes.
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 [root2w.txt] FILE (attributes 0x20, 18 bytes)
 # (W32) Reading file {root2w.txt}
@@ -1132,14 +1139,7 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log
 # (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
 # Successfully read 17 bytes.
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
-[root0w.txt] FILE (attributes 0x20, 22 bytes)
-# (W32) Reading file {root0w.txt}
-# (W32)   CreateFileW last error 0 (0x0)
-# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
-== root0w original file
-# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
-# Successfully read 22 bytes.
-# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+[rfolder] DIR (attributes 0x10)
 [mod3.txt] FILE (attributes 0x20, 12 bytes)
 # (W32) Reading file {mod3.txt}
 # (W32)   CreateFileW last error 0 (0x0)
@@ -1248,6 +1248,7 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
+# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 0 (0x0) last error 18 (0x12)
 # (W32)   CloseHandle returned 1 (0x1) last error 18 (0x12)
 >> Listing directory {mfolder4}:
@@ -1318,14 +1319,8 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log
 # (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
 # Successfully read 40 bytes.
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
-[mfile.txt] FILE (attributes 0x20, 28 bytes)
-# (W32) Reading file {mfolder4\mfile.txt}
-# (W32)   CreateFileW last error 0 (0x0)
-# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
-== mfolder4\mfile.txt by mod4
-# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
-# Successfully read 28 bytes.
-# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+[mfile.txt] DIR (attributes 0x10)
+[fail] DIR (attributes 0x10)
 # (W32) Querying directory {mfolder4\newfolder4}
 # (W32)   FindFirstFileW last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
@@ -1418,6 +1413,40 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log
 == newfile4.txt recursive overwrite
 # (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
 # Successfully read 34 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+# (W32) Querying directory {mfolder4\mfile.txt}
+# (W32)   FindFirstFileW last error 0 (0x0)
+# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
+# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
+# (W32)   FindNextFileW returned 0 (0x0) last error 18 (0x12)
+# (W32)   CloseHandle returned 1 (0x1) last error 18 (0x12)
+>> Listing directory {mfolder4\mfile.txt}:
+[.] DIR (attributes 0x10)
+[..] DIR (attributes 0x10)
+[fail] FILE (attributes 0x20, 40 bytes)
+# (W32) Reading file {mfolder4\mfile.txt\fail}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== rfolder\rcopyme4.txt original contents
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 40 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+# (W32) Querying directory {mfolder4\fail}
+# (W32)   FindFirstFileW last error 0 (0x0)
+# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
+# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
+# (W32)   FindNextFileW returned 0 (0x0) last error 18 (0x12)
+# (W32)   CloseHandle returned 1 (0x1) last error 18 (0x12)
+>> Listing directory {mfolder4\fail}:
+[.] DIR (attributes 0x10)
+[..] DIR (attributes 0x10)
+[rcopyme4.txt] FILE (attributes 0x20, 40 bytes)
+# (W32) Reading file {mfolder4\fail\rcopyme4.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== rfolder\rcopyme4.txt original contents
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 40 bytes.
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 # (W32) Querying directory {mfolder3}
 # (W32)   FindFirstFileW last error 0 (0x0)

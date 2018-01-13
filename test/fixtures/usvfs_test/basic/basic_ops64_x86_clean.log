@@ -283,9 +283,10 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 >> Listing directory {.}:
 [.] DIR (attributes 0x10)
 [..] DIR (attributes 0x10)
-[rfolder] DIR (attributes 0x10)
 [root0.txt] FILE (attributes 0x20, 21 bytes)
 == root0 original file
+[root0w.txt] FILE (attributes 0x20, 22 bytes)
+== root0w original file
 [root2w.txt] FILE (attributes 0x20, 18 bytes)
 == root2w source file
 [root2.txt] FILE (attributes 0x20, 17 bytes)
@@ -294,8 +295,7 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 == root1w source file
 [root1.txt] FILE (attributes 0x20, 17 bytes)
 == root1 source file
-[root0w.txt] FILE (attributes 0x20, 22 bytes)
-== root0w original file
+[rfolder] DIR (attributes 0x10)
 [mod3.txt] FILE (attributes 0x20, 12 bytes)
 == hello mod3
 [mod2.txt] FILE (attributes 0x20, 12 bytes)
@@ -342,8 +342,8 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 == mfolder4\mfiledeletemove2p.txt overwrite
 [mfiledeletemove.txt] FILE (attributes 0x20, 40 bytes)
 == mfolder4\mfiledeletemove.txt overwrite
-[mfile.txt] FILE (attributes 0x20, 28 bytes)
-== mfolder4\mfile.txt by mod4
+[mfile.txt] DIR (attributes 0x10)
+[fail] DIR (attributes 0x10)
 >> Listing directory {mfolder4\newfolder4}:
 [.] DIR (attributes 0x10)
 [..] DIR (attributes 0x10)
@@ -373,6 +373,16 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 == newfile4e.txt recursive overwrite
 [newfile4.txt] FILE (attributes 0x20, 34 bytes)
 == newfile4.txt recursive overwrite
+>> Listing directory {mfolder4\mfile.txt}:
+[.] DIR (attributes 0x10)
+[..] DIR (attributes 0x10)
+[fail] FILE (attributes 0x20, 40 bytes)
+== rfolder\rcopyme4.txt original contents
+>> Listing directory {mfolder4\fail}:
+[.] DIR (attributes 0x10)
+[..] DIR (attributes 0x10)
+[rcopyme4.txt] FILE (attributes 0x20, 40 bytes)
+== rfolder\rcopyme4.txt original contents
 >> Listing directory {mfolder3}:
 [.] DIR (attributes 0x10)
 [..] DIR (attributes 0x10)
