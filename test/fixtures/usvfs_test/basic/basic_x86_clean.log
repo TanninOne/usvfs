@@ -7,7 +7,9 @@ Updating VFS mappings:
   mapdir: source:mod4 => mount:.
   mapdircreate: source:overwrite => mount:.
   mapfile: source:root1.txt => mount:root1.txt
+  mapfile: source:root1w.txt => mount:root1w.txt
   mapfile: source:root2.txt => mount:root2.txt
+  mapfile: source:root2w.txt => mount:root2w.txt
 
 running scenario basic:
 
@@ -18,14 +20,22 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 [rfolder] DIR (attributes 0x10)
 [root0.txt] FILE (attributes 0x20, 21 bytes)
 == root0 original file
+[root0w.txt] FILE (attributes 0x20, 22 bytes)
+== root0w original file
+[root2w.txt] FILE (attributes 0x20, 18 bytes)
+== root2w source file
 [root2.txt] FILE (attributes 0x20, 17 bytes)
 == root2 source file
+[root1w.txt] FILE (attributes 0x20, 18 bytes)
+== root1w source file
 [root1.txt] FILE (attributes 0x20, 17 bytes)
 == root1 source file
 [mod3.txt] FILE (attributes 0x20, 12 bytes)
 == hello mod3
 [mod2.txt] FILE (attributes 0x20, 12 bytes)
 == hello mod2
+[mod1w.txt] FILE (attributes 0x20, 13 bytes)
+== hello mod1w
 [mod1.txt] FILE (attributes 0x20, 12 bytes)
 == hello mod1
 [mfolder4] DIR (attributes 0x10)
@@ -82,6 +92,8 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 >> Listing directory {mfolder1}:
 [.] DIR (attributes 0x10)
 [..] DIR (attributes 0x10)
+[mfilew.txt] FILE (attributes 0x20, 29 bytes)
+== mfolder1\mfilew.txt by mod1
 [mfile.txt] FILE (attributes 0x20, 28 bytes)
 == mfolder1\mfile.txt by mod1
 
@@ -144,6 +156,26 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -overwrite mount:
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder4\newfolder4\d\e\epnewfile4.txt
 == epnewfile4.txt nonrecursive overwrite
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -touch mount:root0.txt
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -touch mount:root1.txt
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -touch mount:root2.txt
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -touch mount:mod1.txt
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -touch mount:mfolder1\mfile.txt
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -touchw mount:root0w.txt
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -touchw mount:root1w.txt
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -touchw mount:root2w.txt
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -touchw mount:mod1w.txt
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -touchw mount:mfolder1\mfilew.txt
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -overwrite mount:mfolder4\mfileoverwrite.txt "mfolder4\mfileoverwrite.txt overwrite"
 
@@ -226,14 +258,22 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 [rfolder] DIR (attributes 0x10)
 [root0.txt] FILE (attributes 0x20, 21 bytes)
 == root0 original file
+[root2w.txt] FILE (attributes 0x20, 18 bytes)
+== root2w source file
 [root2.txt] FILE (attributes 0x20, 17 bytes)
 == root2 source file
+[root1w.txt] FILE (attributes 0x20, 18 bytes)
+== root1w source file
 [root1.txt] FILE (attributes 0x20, 17 bytes)
 == root1 source file
+[root0w.txt] FILE (attributes 0x20, 22 bytes)
+== root0w original file
 [mod3.txt] FILE (attributes 0x20, 12 bytes)
 == hello mod3
 [mod2.txt] FILE (attributes 0x20, 12 bytes)
 == hello mod2
+[mod1w.txt] FILE (attributes 0x20, 13 bytes)
+== hello mod1w
 [mod1.txt] FILE (attributes 0x20, 12 bytes)
 == hello mod1
 [mfolder4] DIR (attributes 0x10)
@@ -330,6 +370,8 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 [..] DIR (attributes 0x10)
 [newfile1.txt] FILE (attributes 0x20, 37 bytes)
 == newfile1.txt nonrecursive overwrite
+[mfilew.txt] FILE (attributes 0x20, 29 bytes)
+== mfolder1\mfilew.txt by mod1
 [mfile.txt] FILE (attributes 0x20, 28 bytes)
 == mfolder1\mfile.txt by mod1
 

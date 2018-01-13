@@ -18,5 +18,9 @@ mapdircreate
 #   ...
 mapfile root1.txt
   root1.txt
+mapfile root1w.txt
+  root1w.txt
 mapfile root2.txt
   root2.txt
+mapfile root2w.txt
+  root2w.txt
