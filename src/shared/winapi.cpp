@@ -442,7 +442,7 @@ std::vector<FileResult> quickFindFiles(LPCWSTR directoryName, LPCWSTR pattern)
   return result;
 }
 
-void createPath(boost::filesystem::path path, LPSECURITY_ATTRIBUTES securityAttributes)
+bool createPath(boost::filesystem::path path, LPSECURITY_ATTRIBUTES securityAttributes)
 {
   // sanity and guaranteed recursion end:
   if (!path.has_relative_path())
@@ -452,7 +452,7 @@ void createPath(boost::filesystem::path path, LPSECURITY_ATTRIBUTES securityAttr
   DWORD err = GetLastError();
   if (attr != INVALID_FILE_ATTRIBUTES) {
     if (attr & FILE_ATTRIBUTE_DIRECTORY)
-      return; // if directory already exists all is good
+      return false; // if directory already exists all is good
     else
       throw usvfs::shared::windows_error("createPath() called on a file: " + path.string());
   }
@@ -467,6 +467,7 @@ void createPath(boost::filesystem::path path, LPSECURITY_ATTRIBUTES securityAttr
     err = GetLastError();
     throw usvfs::shared::windows_error("createPath() CreateDirectoryW failed on: " + path.string(), err);
   }
+  return true;
 }
 
 std::wstring getWindowsBuildLab(bool ex)

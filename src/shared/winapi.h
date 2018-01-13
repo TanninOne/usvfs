@@ -476,11 +476,12 @@ namespace ex {
      * @param securityAttributes the security attributes to use for all created
      *        directories. if this is null (default), the standard attributes
      *        are used
-     * @note it is not considered an error if the path already exists
+     * @return true if the directory (and possibly parent directories) were actually created
+     *        and false if the directory already existed. Throws exceptions on failure.
      */
-    void createPath(boost::filesystem::path path,
+    bool createPath(boost::filesystem::path path,
                     LPSECURITY_ATTRIBUTES securityAttributes = nullptr);
-    inline void createPath(LPCWSTR path,
+    inline bool createPath(LPCWSTR path,
                     LPSECURITY_ATTRIBUTES securityAttributes = nullptr)
     {
       return createPath(boost::filesystem::path(path), securityAttributes);

@@ -143,6 +143,7 @@ class RerouteW
   bool m_Rerouted{false};
   LPCWSTR m_FileName{nullptr};
   bool m_PathCreated{false};
+  bool m_NewReroute{false};
 
   usvfs::RedirectionTree::NodePtrT m_FileNode;
 
@@ -150,12 +151,15 @@ public:
   RerouteW() = default;
 
   RerouteW(RerouteW &&reference)
-    : m_Buffer(reference.m_Buffer)
-    , m_RealPath(reference.m_RealPath)
+    : m_Buffer(std::move(reference.m_Buffer))
+    , m_RealPath(std::move(reference.m_RealPath))
     , m_Rerouted(reference.m_Rerouted)
-    , m_FileNode(reference.m_FileNode)
+    , m_PathCreated(reference.m_PathCreated)
+    , m_NewReroute(reference.m_NewReroute)
+    , m_FileNode(std::move(reference.m_FileNode))
   {
     m_FileName = reference.m_FileName != nullptr ? m_Buffer.c_str() : nullptr;
+    reference.m_FileName = nullptr;
   }
 
   RerouteW &operator=(RerouteW &&reference)
@@ -163,8 +167,10 @@ public:
     m_Buffer   = std::move(reference.m_Buffer);
     m_RealPath = std::move(reference.m_RealPath);
     m_Rerouted = reference.m_Rerouted;
+    m_PathCreated = reference.m_PathCreated;
+    m_NewReroute = reference.m_NewReroute;
     m_FileName = reference.m_FileName != nullptr ? m_Buffer.c_str() : nullptr;
-    m_FileNode = reference.m_FileNode;
+    m_FileNode = std::move(reference.m_FileNode);
     return *this;
   }
 
@@ -184,6 +190,11 @@ public:
   bool wasRerouted() const
   {
     return m_Rerouted;
+  }
+
+  bool newReroute() const
+  {
+    return m_NewReroute;
   }
 
   void insertMapping(const usvfs::HookContext::Ptr &context, bool directory = false)
@@ -243,7 +254,7 @@ public:
       reroutedU8 += "\\";
 
     spdlog::get("hooks")->info("mapping directory in vfs: {}, {}",
-      reroutedU8.c_str(), ush::string_cast<std::string>(originalPath.wstring(), ush::CodePage::UTF8));
+      ush::string_cast<std::string>(originalPath.wstring(), ush::CodePage::UTF8), reroutedU8.c_str());
 
     context->redirectionTable().addDirectory(
       originalPath, usvfs::RedirectionDataLocal(reroutedU8),
@@ -381,8 +392,8 @@ public:
         if (createPath)
           try {
             usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::ALL_GROUPS);
-            winapi::ex::wide::createPath(fs::path(result.m_Buffer).parent_path(), securityAttributes);
-            result.m_PathCreated = true;
+            result.m_PathCreated =
+              winapi::ex::wide::createPath(fs::path(result.m_Buffer).parent_path(), securityAttributes);
           } catch (const std::exception &e) {
             spdlog::get("hooks")->error("failed to create {}: {}",
               ush::string_cast<std::string>(result.m_Buffer), e.what());
@@ -390,6 +401,7 @@ public:
 
         std::replace(result.m_Buffer.begin(), result.m_Buffer.end(), L'/', L'\\');
         result.m_Rerouted = true;
+        result.m_NewReroute = true;
       }
       else
         result.m_Buffer = inPath;
@@ -400,6 +412,17 @@ public:
     if (inPath)
       result.m_FileName = result.m_Buffer.c_str();
     return result;
+  }
+
+  static RerouteW createOrNew(const usvfs::HookContext::ConstPtr &context, const usvfs::HookCallContext &callContext,
+                              LPCWSTR inPath, bool createPath = true, LPSECURITY_ATTRIBUTES securityAttributes = nullptr)
+  {
+    {
+      auto res = create(context, callContext, inPath);
+      if (res.wasRerouted() || !interestingPath(inPath) || !callContext.active() || pathExists(inPath))
+        return std::move(res);
+    }
+    return createNew(context, callContext, inPath, createPath, securityAttributes);
   }
 
   static RerouteW noReroute(LPCWSTR inPath)
@@ -635,19 +658,17 @@ namespace usvfs {
     bool rereoute(const usvfs::HookContext::ConstPtr &context, const usvfs::HookCallContext &callContext,
       LPCWSTR lpFileName, DWORD& dwCreationDisposition, DWORD dwDesiredAccess, LPSECURITY_ATTRIBUTES lpSecurityAttributes)
     {
-      enum class Open { existing, create, empty, readWrite, speculativeWrite };
+      enum class Open { existing, create, empty };
       Open open = Open::existing;
 
       // Notice since we are calling our patched GetFileAttributesW here this will also check virtualized paths
       DWORD virtAttr = GetFileAttributesW(lpFileName);
-      bool directlyAvailable = virtAttr == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND;
+      m_directlyAvailable = virtAttr == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND;
       bool isFile = virtAttr != INVALID_FILE_ATTRIBUTES && (virtAttr & FILE_ATTRIBUTE_DIRECTORY) == 0;
       m_isDir = virtAttr != INVALID_FILE_ATTRIBUTES && (virtAttr & FILE_ATTRIBUTE_DIRECTORY);
 
-      if (!m_isDir) {
-        bool readAccess = dwDesiredAccess & (GENERIC_ALL | GENERIC_READ | FILE_READ_DATA);
-        bool writeAccess = dwDesiredAccess & (GENERIC_ALL | GENERIC_WRITE | FILE_WRITE_DATA | FILE_APPEND_DATA);
-
+      if (!m_isDir)
+      {
         switch (dwCreationDisposition) {
         case CREATE_ALWAYS:
           open = Open::create;
@@ -665,25 +686,10 @@ namespace usvfs {
           break;
 
         case OPEN_ALWAYS:
-          if (isFile) {
+          if (isFile)
             m_error_on_success = ERROR_ALREADY_EXISTS;
-            if (writeAccess)
-              if (readAccess)
-                open = Open::readWrite;
-              else
-                open = Open::speculativeWrite;
-          }
           else
             open = Open::create;
-          break;
-
-        case OPEN_EXISTING:
-          if (isFile && writeAccess)
-            if (readAccess)
-              open = Open::readWrite;
-            else
-              open = Open::speculativeWrite;
-          // if !isFile we let the OS create function set the error value
           break;
 
         case TRUNCATE_EXISTING:
@@ -696,44 +702,6 @@ namespace usvfs {
           // if !isFile we let the OS create function set the error value
           break;
         }
-
-        if (open == Open::create || open == Open::empty || open == Open::speculativeWrite)
-        {
-          bool createPath = open == Open::speculativeWrite || directlyAvailable || isFile;
-          m_reroute = RerouteW::createNew(context, callContext, lpFileName, createPath, lpSecurityAttributes);
-          // createNew may "fail" to reroute an existing file, for example if it exists only outside our writtable
-          // locations (i.e. outside overwrite folder) even if there is a regular mapping for this file.
-          // Therefore, fallback to the regular create in this case:
-          bool createFallback = !m_reroute.wasRerouted();
-          bool newFile = !createFallback && pathDirectlyAvailable(m_reroute.fileName());
-
-          if (newFile && open == Open::empty)
-            // TRUNCATE_EXISTING will fail since the new file doesn't exist, so change disposition:
-            dwCreationDisposition = CREATE_ALWAYS;
-
-          if (newFile && open == Open::speculativeWrite)
-          {
-            spdlog::get("hooks")->info(
-              "file opened only for writing, activating copy-on-speculative-write: {}",
-              ush::string_cast<std::string>(lpFileName, ush::CodePage::UTF8));
-
-            RerouteW source = RerouteW::create(context, callContext, lpFileName);
-            DWORD copyRes = copyFileDirect(source.fileName(), m_reroute.fileName(), false);
-            if (copyRes != ERROR_SUCCESS)
-            {
-              spdlog::get("hooks")->info(
-                "copy-on-speculative-write failed to copy: {} => {}",
-                ush::string_cast<std::string>(source.fileName(), ush::CodePage::UTF8),
-                ush::string_cast<std::string>(m_reroute.fileName(), ush::CodePage::UTF8));
-              createFallback = true;
-            }
-          }
-
-          if (!createFallback) {
-            m_create = m_reroute.wasRerouted();
-            return true;
-          }
-        }
       }
 
       if (m_isDir && pathIsDirectory(lpFileName))
@@ -741,18 +709,29 @@ namespace usvfs {
       else
         m_reroute = RerouteW::create(context, callContext, lpFileName);
 
-      if (m_reroute.wasRerouted() && open == Open::readWrite)
-        spdlog::get("hooks")->info(
-          "file opened for both reading and writing, original file may be altered (copy-on-readwrite not supported): {}",
-          ush::string_cast<std::string>(lpFileName, ush::CodePage::UTF8));
+      if (!m_isDir && !isFile && !m_reroute.wasRerouted() && (open == Open::create || open == Open::empty))
+      {
+        m_reroute = RerouteW::createNew(context, callContext, lpFileName, m_directlyAvailable, lpSecurityAttributes);
+
+        bool newFile = !m_reroute.wasRerouted() && pathDirectlyAvailable(m_reroute.fileName());
+        if (newFile && open == Open::empty)
+          // TRUNCATE_EXISTING will fail since the new file doesn't exist, so change disposition:
+          dwCreationDisposition = CREATE_ALWAYS;
+
+        m_create = m_reroute.wasRerouted();
+      }
 
       return true;
     }
 
     DWORD fixErrorCode(bool success, DWORD error)
     {
-      if (success && m_error_on_success != ERROR_SUCCESS)
-        return m_error_on_success;
+      if (success) {
+        if (m_error_on_success != ERROR_SUCCESS)
+          return m_error_on_success;
+      }
+      else if (error == ERROR_PATH_NOT_FOUND && m_directlyAvailable)
+        return ERROR_FILE_NOT_FOUND;
       return error;
     }
 
@@ -767,6 +746,7 @@ namespace usvfs {
   private:
     DWORD m_error = ERROR_SUCCESS;
     DWORD m_error_on_success = ERROR_SUCCESS;
+    bool m_directlyAvailable = false;
     bool m_isDir = false;
     bool m_create = false;
     RerouteW m_reroute;
@@ -1146,7 +1126,7 @@ BOOL WINAPI usvfs::hook_MoveFileW(LPCWSTR lpExistingFileName,
   {
     auto context = READ_CONTEXT();
     readReroute  = RerouteW::create(context, callContext, lpExistingFileName);
-    writeReroute = RerouteW::createNew(context, callContext, lpNewFileName);
+    writeReroute = RerouteW::createOrNew(context, callContext, lpNewFileName);
     updateMoveFileFlags(lpExistingFileName, lpNewFileName, readReroute, writeReroute, newFlags);
   }
 
@@ -1160,7 +1140,7 @@ BOOL WINAPI usvfs::hook_MoveFileW(LPCWSTR lpExistingFileName,
   if (res) {
     readReroute.removeMapping();
 
-    if (writeReroute.wasRerouted()) {
+    if (writeReroute.newReroute()) {
       writeReroute.insertMapping(WRITE_CONTEXT());
     }
   }
@@ -1226,7 +1206,7 @@ BOOL WINAPI usvfs::hook_MoveFileExW(LPCWSTR lpExistingFileName,
   {
     auto context = READ_CONTEXT();
     readReroute  = RerouteW::create(context, callContext, lpExistingFileName);
-    writeReroute = RerouteW::createNew(context, callContext, lpNewFileName);
+    writeReroute = RerouteW::createOrNew(context, callContext, lpNewFileName);
     updateMoveFileFlags(lpExistingFileName, lpNewFileName, readReroute, writeReroute, newFlags);
   }
 
@@ -1237,7 +1217,7 @@ BOOL WINAPI usvfs::hook_MoveFileExW(LPCWSTR lpExistingFileName,
   if (res) {
     readReroute.removeMapping();
 
-    if (writeReroute.wasRerouted()) {
+    if (writeReroute.newReroute()) {
       writeReroute.insertMapping(WRITE_CONTEXT());
     }
   }
@@ -1302,7 +1282,7 @@ BOOL WINAPI usvfs::hook_MoveFileWithProgressW(LPCWSTR lpExistingFileName, LPCWST
   {
     auto context = READ_CONTEXT();
     readReroute  = RerouteW::create(context, callContext, lpExistingFileName);
-    writeReroute = RerouteW::createNew(context, callContext, lpNewFileName);
+    writeReroute = RerouteW::createOrNew(context, callContext, lpNewFileName);
     updateMoveFileFlags(lpExistingFileName, lpNewFileName, readReroute, writeReroute, newFlags);
   }
 
@@ -1313,7 +1293,7 @@ BOOL WINAPI usvfs::hook_MoveFileWithProgressW(LPCWSTR lpExistingFileName, LPCWST
   if (res) {
     readReroute.removeMapping();
 
-    if (writeReroute.wasRerouted()) {
+    if (writeReroute.newReroute()) {
       writeReroute.insertMapping(WRITE_CONTEXT());
     }
   }
@@ -1354,7 +1334,7 @@ BOOL WINAPI usvfs::hook_CopyFileExW(LPCWSTR lpExistingFileName,
   {
     auto context = READ_CONTEXT();
     readReroute  = RerouteW::create(context, callContext, lpExistingFileName);
-    writeReroute = RerouteW::createNew(context, callContext, lpNewFileName);
+    writeReroute = RerouteW::createOrNew(context, callContext, lpNewFileName);
   }
 
   PRE_REALCALL
@@ -1362,11 +1342,8 @@ BOOL WINAPI usvfs::hook_CopyFileExW(LPCWSTR lpExistingFileName,
                       lpProgressRoutine, lpData, pbCancel, dwCopyFlags);
   POST_REALCALL
 
-  if (res) {
-    if (writeReroute.wasRerouted()) {
-      writeReroute.insertMapping(WRITE_CONTEXT());
-    }
-  }
+  if (res && writeReroute.newReroute())
+    writeReroute.insertMapping(WRITE_CONTEXT());
 
   if (readReroute.wasRerouted() || writeReroute.wasRerouted()) {
     LOG_CALL()
@@ -1501,20 +1478,18 @@ DLLEXPORT BOOL WINAPI usvfs::hook_CreateDirectoryW(
   BOOL res = FALSE;
   HOOK_START
 
-  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpPathName);
-  bool create = reroute.fileName() && !pathExists(reroute.fileName());
-  if (create)
-    reroute = RerouteW::createNew(READ_CONTEXT(), callContext, lpPathName);
+  RerouteW reroute = RerouteW::createOrNew(READ_CONTEXT(), callContext, lpPathName);
 
   PRE_REALCALL
   res = ::CreateDirectoryW(reroute.fileName(), lpSecurityAttributes);
   POST_REALCALL
 
-  if (create && reroute.wasRerouted()) {
+  if (res && reroute.newReroute())
     reroute.insertMapping(WRITE_CONTEXT(), true);
 
+  if (reroute.wasRerouted())
     LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(reroute.fileName()).PARAM(res);
-  }
+
   HOOK_END
 
   return res;
@@ -1745,7 +1720,7 @@ HRESULT WINAPI usvfs::hook_CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszNew
   {
     auto context = READ_CONTEXT();
     readReroute = RerouteW::create(context, callContext, pwszExistingFileName);
-    writeReroute = RerouteW::createNew(context, callContext, pwszNewFileName);
+    writeReroute = RerouteW::createOrNew(context, callContext, pwszNewFileName);
   }
 
 	PRE_REALCALL
@@ -1757,11 +1732,8 @@ HRESULT WINAPI usvfs::hook_CopyFile2(PCWSTR pwszExistingFileName, PCWSTR pwszNew
     }
     POST_REALCALL
 
-  if (SUCCEEDED(res)) {
-    if (writeReroute.wasRerouted()) {
-      writeReroute.insertMapping(WRITE_CONTEXT());
-    }
-  }
+  if (SUCCEEDED(res) && writeReroute.newReroute())
+    writeReroute.insertMapping(WRITE_CONTEXT());
 
   if (readReroute.wasRerouted() || writeReroute.wasRerouted()) {
     LOG_CALL()
@@ -1927,13 +1899,7 @@ BOOL WINAPI usvfs::hook_WritePrivateProfileStringA(LPCSTR lpAppName, LPCSTR lpKe
   RerouteW reroute;
   {
     std::wstring fileName = ush::string_cast<std::wstring>(lpFileName);
-    auto context = READ_CONTEXT();
-    reroute = RerouteW::create(context, callContext, fileName.c_str());
-    if (!reroute.wasRerouted() && !pathExists(fileName.c_str())) {
-      // the file will be created so now we need to know where
-      reroute = RerouteW::createNew(context, callContext, fileName.c_str());
-      create = reroute.wasRerouted();
-    }
+    reroute = RerouteW::createOrNew(READ_CONTEXT(), callContext, fileName.c_str());
   }
 
   PRE_REALCALL
@@ -1941,7 +1907,7 @@ BOOL WINAPI usvfs::hook_WritePrivateProfileStringA(LPCSTR lpAppName, LPCSTR lpKe
     ::WritePrivateProfileStringA(lpAppName, lpKeyName, lpString, ush::string_cast<std::string>(reroute.fileName()).c_str());
   POST_REALCALL
 
-  if (create && (res != FALSE))
+  if (res && reroute.newReroute())
     reroute.insertMapping(WRITE_CONTEXT());
 
   if (reroute.wasRerouted()) {
@@ -1973,23 +1939,14 @@ BOOL WINAPI usvfs::hook_WritePrivateProfileStringW(LPCWSTR lpAppName, LPCWSTR lp
 
   bool create = false;
 
-  RerouteW reroute;
-  {
-    auto context = READ_CONTEXT();
-    reroute = RerouteW::create(context, callContext, lpFileName);
-    if (!reroute.wasRerouted() && !pathExists(lpFileName)) {
-      // the file will be created so now we need to know where
-      reroute = RerouteW::createNew(context, callContext, lpFileName);
-      create = reroute.wasRerouted();
-    }
-  }
+  RerouteW reroute = RerouteW::createOrNew(READ_CONTEXT(), callContext, lpFileName);
 
   PRE_REALCALL
   res =
     ::WritePrivateProfileStringW(lpAppName, lpKeyName, lpString, reroute.fileName());
   POST_REALCALL
 
-  if (create && (res != FALSE))
+  if (res && reroute.newReroute())
     reroute.insertMapping(WRITE_CONTEXT());
 
   if (reroute.wasRerouted()) {
