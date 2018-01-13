@@ -673,7 +673,7 @@ namespace usvfs {
         case CREATE_ALWAYS:
           open = Open::create;
           if (isFile)
-            m_error_on_success = ERROR_ALREADY_EXISTS;
+            m_error = ERROR_ALREADY_EXISTS;
           break;
 
         case CREATE_NEW:
@@ -687,7 +687,7 @@ namespace usvfs {
 
         case OPEN_ALWAYS:
           if (isFile)
-            m_error_on_success = ERROR_ALREADY_EXISTS;
+            m_error = ERROR_ALREADY_EXISTS;
           else
             open = Open::create;
           break;
@@ -724,18 +724,26 @@ namespace usvfs {
       return true;
     }
 
-    DWORD fixErrorCode(bool success, DWORD error)
+    void updateResult(usvfs::HookCallContext &callContext, bool success)
     {
+      m_originalError = callContext.lastError();
       if (success) {
-        if (m_error_on_success != ERROR_SUCCESS)
-          return m_error_on_success;
+        // m_error != ERROR_SUCCESS means we are overriding the error on success
+        if (m_error == ERROR_SUCCESS)
+          m_error = m_originalError;
       }
-      else if (error == ERROR_PATH_NOT_FOUND && m_directlyAvailable)
-        return ERROR_FILE_NOT_FOUND;
-      return error;
+      else if (m_originalError == ERROR_PATH_NOT_FOUND && m_directlyAvailable)
+        m_error = ERROR_FILE_NOT_FOUND;
+      else
+        m_error = m_originalError;
+      if (m_error != m_originalError)
+        callContext.updateLastError(m_error);
     }
 
     DWORD error() const { return m_error; }
+    DWORD originalError() const { return m_originalError; }
+    bool changedError() const { return m_error != m_originalError; }
+
     bool isDir() const { return m_isDir; }
     bool create() const { return m_create; }
     bool wasRerouted() const { return m_reroute.wasRerouted(); }
@@ -745,7 +753,7 @@ namespace usvfs {
 
   private:
     DWORD m_error = ERROR_SUCCESS;
-    DWORD m_error_on_success = ERROR_SUCCESS;
+    DWORD m_originalError = ERROR_SUCCESS;
     bool m_directlyAvailable = false;
     bool m_isDir = false;
     bool m_create = false;
@@ -779,10 +787,7 @@ HANDLE WINAPI usvfs::hook_CreateFileW(
         lpSecurityAttributes, dwCreationDisposition,
         dwFlagsAndAttributes, hTemplateFile);
     POST_REALCALL
-    DWORD originalError = callContext.lastError();
-    DWORD fixedError = rerouter.fixErrorCode(res != INVALID_HANDLE_VALUE, originalError);
-    if (fixedError != originalError)
-      callContext.updateLastError(fixedError);
+    rerouter.updateResult(callContext, res != INVALID_HANDLE_VALUE);
 
     if (res != INVALID_HANDLE_VALUE) {
       if (rerouter.create())
@@ -797,7 +802,7 @@ HANDLE WINAPI usvfs::hook_CreateFileW(
       }
     }
 
-    if (rerouter.wasRerouted() || fixedError != originalError || originalDisposition != dwCreationDisposition) {
+    if (rerouter.wasRerouted() || rerouter.changedError() || originalDisposition != dwCreationDisposition) {
       LOG_CALL()
         .PARAMWRAP(lpFileName)
         .PARAMWRAP(rerouter.fileName())
@@ -806,8 +811,8 @@ HANDLE WINAPI usvfs::hook_CreateFileW(
         .PARAMHEX(dwCreationDisposition)
         .PARAMHEX(dwFlagsAndAttributes)
         .PARAMHEX(res)
-        .PARAMHEX(originalError)
-        .PARAMHEX(fixedError);
+        .PARAMHEX(rerouter.originalError())
+        .PARAMHEX(rerouter.error());
     }
   }
   else {
@@ -848,10 +853,7 @@ HANDLE WINAPI usvfs::hook_CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAccess,
     PRE_REALCALL
       res = CreateFile2(rerouter.fileName(), dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
     POST_REALCALL
-    DWORD originalError = callContext.lastError();
-    DWORD fixedError = rerouter.fixErrorCode(res != INVALID_HANDLE_VALUE, originalError);
-    if (fixedError != originalError)
-      callContext.updateLastError(fixedError);
+    rerouter.updateResult(callContext, res != INVALID_HANDLE_VALUE);
 
     if (res != INVALID_HANDLE_VALUE) {
       if (rerouter.create())
@@ -867,7 +869,7 @@ HANDLE WINAPI usvfs::hook_CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAccess,
       }
     }
 
-    if (rerouter.wasRerouted() || fixedError != originalError || originalDisposition != dwCreationDisposition) {
+    if (rerouter.wasRerouted() || rerouter.changedError() || originalDisposition != dwCreationDisposition) {
       LOG_CALL()
         .PARAMWRAP(lpFileName)
         .PARAMWRAP(rerouter.fileName())
@@ -875,8 +877,8 @@ HANDLE WINAPI usvfs::hook_CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAccess,
         .PARAMHEX(originalDisposition)
         .PARAMHEX(dwCreationDisposition)
         .PARAMHEX(res)
-        .PARAMHEX(originalError)
-        .PARAMHEX(fixedError);
+        .PARAMHEX(rerouter.originalError())
+        .PARAMHEX(rerouter.error());
     }
   }
   else {
