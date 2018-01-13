@@ -46,6 +46,8 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 >> Listing directory {rfolder}:
 [.] DIR (attributes 0x10)
 [..] DIR (attributes 0x10)
+[rcopyme4.txt] FILE (attributes 0x20, 40 bytes)
+== rfolder\rcopyme4.txt original contents
 [rfile0.txt] FILE (attributes 0x20, 34 bytes)
 == rfolder\rfile0.txt original file
 [rfiledelete.txt] FILE (attributes 0x20, 39 bytes)
@@ -136,6 +138,32 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -overwrite mou
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder4\newfolder4\d\e\e\p\newfile4.txt
 == newfile4.txt recursive overwrite
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -overwrite mount:mfolder4\newfolder4\d\e\e\p\newfile4e.txt "newfile4e.txt recursive overwrite"
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder4\newfolder4\d\e\e\p\newfile4e.txt
+== newfile4e.txt recursive overwrite
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -overwrite mount:mfolder4\newfolder4\d\e\e\p\newfile4enr.txt "newfile4enr.txt nonrecursive overwrite"
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder4\newfolder4\d\e\e\p\newfile4enr.txt
+== newfile4enr.txt nonrecursive overwrite
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -overwrite mount:mfolder4\newfolder4\d\e\epnewfile4r.txt "epnewfile4r.txt recursive overwrite"
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder4\newfolder4\d\e\epnewfile4r.txt
+== epnewfile4r.txt recursive overwrite
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -overwrite mount:mfolder4\newfolder4\d\e\epnewfile4.txt "epnewfile4.txt nonrecursive overwrite"
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder4\newfolder4\d\e\epnewfile4.txt
+== epnewfile4.txt nonrecursive overwrite
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -copyover mount:rfolder\rcopyme4.txt mount:mfolder4\fail\rcopyme4.txt
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -copyover mount:rfolder\rcopyme4.txt mount:mfolder4\mfile.txt\fail
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -copy mount:rfolder\rcopyme4.txt mount:mfolder4\rcopyme4.txt
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -overwrite mount:mfolder4\newfolder4\d\e\e\p\newfile4e.txt "newfile4e.txt recursive overwrite"
 
@@ -284,6 +312,8 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 >> Listing directory {rfolder}:
 [.] DIR (attributes 0x10)
 [..] DIR (attributes 0x10)
+[rcopyme4.txt] FILE (attributes 0x20, 40 bytes)
+== rfolder\rcopyme4.txt original contents
 [rfile0.txt] FILE (attributes 0x20, 34 bytes)
 == rfolder\rfile0.txt original file
 [rfilerewrite.txt] FILE (attributes 0x20, 34 bytes)
@@ -295,6 +325,8 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 >> Listing directory {mfolder4}:
 [.] DIR (attributes 0x10)
 [..] DIR (attributes 0x10)
+[rcopyme4.txt] FILE (attributes 0x20, 40 bytes)
+== rfolder\rcopyme4.txt original contents
 [newfolder4] DIR (attributes 0x10)
 [mfilerewrite.txt] FILE (attributes 0x20, 35 bytes)
 == mfolder4\mfilerewrite.txt rewrite

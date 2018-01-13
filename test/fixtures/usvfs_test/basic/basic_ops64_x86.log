@@ -138,11 +138,20 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
+# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 0 (0x0) last error 18 (0x12)
 # (W32)   CloseHandle returned 1 (0x1) last error 18 (0x12)
 >> Listing directory {rfolder}:
 [.] DIR (attributes 0x10)
 [..] DIR (attributes 0x10)
+[rcopyme4.txt] FILE (attributes 0x20, 40 bytes)
+# (W32) Reading file {rfolder\rcopyme4.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== rfolder\rcopyme4.txt original contents
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 40 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 [rfile0.txt] FILE (attributes 0x20, 34 bytes)
 # (W32) Reading file {rfolder\rfile0.txt}
 # (W32)   CreateFileW last error 0 (0x0)
@@ -573,6 +582,112 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log
 # (W32)   WriteFile <new line> returned 2 (0x2) last error 0 (0x0)
 # Successfully written 39 bytes {epnewfile4.txt nonrecursive overwrite}
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -read mount:mfolder4\newfolder4\d\e\epnewfile4.txt
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -read epnewfile4.txt
+# (W32) Reading file {mfolder4\newfolder4\d\e\epnewfile4.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== epnewfile4.txt nonrecursive overwrite
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 39 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -copyover mount:rfolder\rcopyme4.txt mount:mfolder4\fail\rcopyme4.txt
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -copyover rcopyme4.txt rcopyme4.txt
+# (W32) Copy file over {rfolder\rcopyme4.txt} {mfolder4\fail\rcopyme4.txt}
+# (W32)   CopyFileW returned 1 (0x1) last error 0 (0x0)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -copyover mount:rfolder\rcopyme4.txt mount:mfolder4\mfile.txt\fail
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -copyover rcopyme4.txt fail
+# (W32) Copy file over {rfolder\rcopyme4.txt} {mfolder4\mfile.txt\fail}
+# (W32)   CopyFileW returned 1 (0x1) last error 0 (0x0)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -copy mount:rfolder\rcopyme4.txt mount:mfolder4\rcopyme4.txt
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -copy rcopyme4.txt rcopyme4.txt
+# (W32) Copy file {rfolder\rcopyme4.txt} {mfolder4\rcopyme4.txt}
+# (W32)   CopyFileW returned 1 (0x1) last error 0 (0x0)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -r -overwrite mount:mfolder4\newfolder4\d\e\e\p\newfile4e.txt "newfile4e.txt recursive overwrite"
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -r -overwrite newfile4e.txt "newfile4e.txt recursive overwrite"
+# (W32) Checking directory {mfolder4\newfolder4\d\e\e\p}
+# (W32)   GetFileAttributesW returned 16 (0x10) last error 0 (0x0)
+# (W32) Overwriting file {mfolder4\newfolder4\d\e\e\p\newfile4e.txt}
+# (W32)   CreateFileW last error 183 (0xb7)
+# (W32)   WriteFile returned 33 (0x21) last error 183 (0xb7)
+# (W32)   WriteFile <new line> returned 2 (0x2) last error 183 (0xb7)
+# Successfully written 35 bytes {newfile4e.txt recursive overwrite}
+# (W32)   CloseHandle returned 1 (0x1) last error 183 (0xb7)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -read mount:mfolder4\newfolder4\d\e\e\p\newfile4e.txt
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -read newfile4e.txt
+# (W32) Reading file {mfolder4\newfolder4\d\e\e\p\newfile4e.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== newfile4e.txt recursive overwrite
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 35 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -overwrite mount:mfolder4\newfolder4\d\e\e\p\newfile4enr.txt "newfile4enr.txt nonrecursive overwrite"
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -overwrite newfile4enr.txt "newfile4enr.txt nonrecursive overwrite"
+# (W32) Overwriting file {mfolder4\newfolder4\d\e\e\p\newfile4enr.txt}
+# (W32)   CreateFileW last error 183 (0xb7)
+# (W32)   WriteFile returned 38 (0x26) last error 183 (0xb7)
+# (W32)   WriteFile <new line> returned 2 (0x2) last error 183 (0xb7)
+# Successfully written 40 bytes {newfile4enr.txt nonrecursive overwrite}
+# (W32)   CloseHandle returned 1 (0x1) last error 183 (0xb7)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -read mount:mfolder4\newfolder4\d\e\e\p\newfile4enr.txt
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -read newfile4enr.txt
+# (W32) Reading file {mfolder4\newfolder4\d\e\e\p\newfile4enr.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== newfile4enr.txt nonrecursive overwrite
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 40 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -r -overwrite mount:mfolder4\newfolder4\d\e\epnewfile4r.txt "epnewfile4r.txt recursive overwrite"
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -r -overwrite epnewfile4r.txt "epnewfile4r.txt recursive overwrite"
+# (W32) Checking directory {mfolder4\newfolder4\d\e}
+# (W32)   GetFileAttributesW returned 16 (0x10) last error 0 (0x0)
+# (W32) Overwriting file {mfolder4\newfolder4\d\e\epnewfile4r.txt}
+# (W32)   CreateFileW last error 183 (0xb7)
+# (W32)   WriteFile returned 35 (0x23) last error 183 (0xb7)
+# (W32)   WriteFile <new line> returned 2 (0x2) last error 183 (0xb7)
+# Successfully written 37 bytes {epnewfile4r.txt recursive overwrite}
+# (W32)   CloseHandle returned 1 (0x1) last error 183 (0xb7)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -read mount:mfolder4\newfolder4\d\e\epnewfile4r.txt
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -read epnewfile4r.txt
+# (W32) Reading file {mfolder4\newfolder4\d\e\epnewfile4r.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== epnewfile4r.txt recursive overwrite
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 37 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -overwrite mount:mfolder4\newfolder4\d\e\epnewfile4.txt "epnewfile4.txt nonrecursive overwrite"
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -overwrite epnewfile4.txt "epnewfile4.txt nonrecursive overwrite"
+# (W32) Overwriting file {mfolder4\newfolder4\d\e\epnewfile4.txt}
+# (W32)   CreateFileW last error 183 (0xb7)
+# (W32)   WriteFile returned 37 (0x25) last error 183 (0xb7)
+# (W32)   WriteFile <new line> returned 2 (0x2) last error 183 (0xb7)
+# Successfully written 39 bytes {epnewfile4.txt nonrecursive overwrite}
+# (W32)   CloseHandle returned 1 (0x1) last error 183 (0xb7)
 #< test_file_operations_x64.exe ended properly.
 
 Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log -read mount:mfolder4\newfolder4\d\e\epnewfile4.txt
@@ -1074,11 +1189,20 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
+# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 0 (0x0) last error 18 (0x12)
 # (W32)   CloseHandle returned 1 (0x1) last error 18 (0x12)
 >> Listing directory {rfolder}:
 [.] DIR (attributes 0x10)
 [..] DIR (attributes 0x10)
+[rcopyme4.txt] FILE (attributes 0x20, 40 bytes)
+# (W32) Reading file {rfolder\rcopyme4.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== rfolder\rcopyme4.txt original contents
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 40 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 [rfile0.txt] FILE (attributes 0x20, 34 bytes)
 # (W32) Reading file {rfolder\rfile0.txt}
 # (W32)   CreateFileW last error 0 (0x0)
@@ -1123,11 +1247,20 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_ops64_x86.log
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
+# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 0 (0x0) last error 18 (0x12)
 # (W32)   CloseHandle returned 1 (0x1) last error 18 (0x12)
 >> Listing directory {mfolder4}:
 [.] DIR (attributes 0x10)
 [..] DIR (attributes 0x10)
+[rcopyme4.txt] FILE (attributes 0x20, 40 bytes)
+# (W32) Reading file {mfolder4\rcopyme4.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== rfolder\rcopyme4.txt original contents
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 40 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 [newfolder4] DIR (attributes 0x10)
 [mfilerewrite.txt] FILE (attributes 0x20, 35 bytes)
 # (W32) Reading file {mfolder4\mfilerewrite.txt}
