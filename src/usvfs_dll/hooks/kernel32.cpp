@@ -27,6 +27,47 @@ namespace ush = usvfs::shared;
 using ush::string_cast;
 using ush::CodePage;
 
+// returns true iff the path exists (checks only real paths)
+static inline bool pathExists(LPCWSTR fileName)
+{
+  usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FILE_ATTRIBUTES);
+  DWORD attrib = GetFileAttributesW(fileName);
+  return attrib != INVALID_FILE_ATTRIBUTES;
+}
+
+// returns true iff the path exists and is a file (checks only real paths)
+static inline bool pathIsFile(LPCWSTR fileName)
+{
+  usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FILE_ATTRIBUTES);
+  DWORD attrib = GetFileAttributesW(fileName);
+  return attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY) == 0;
+}
+
+// returns true iff the path exists and is a file (checks only real paths)
+static inline bool pathIsDirectory(LPCWSTR fileName)
+{
+  usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FILE_ATTRIBUTES);
+  DWORD attrib = GetFileAttributesW(fileName);
+  return attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY);
+}
+
+// returns true iff the path does not exist but it parent directory does (checks only real paths)
+static inline bool pathDirectlyAvailable(LPCWSTR pathName)
+{
+  usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FILE_ATTRIBUTES);
+  DWORD attrib = GetFileAttributesW(pathName);
+  return attrib == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND;
+}
+
+// attempts to copy source to destination and return the error code
+static inline DWORD copyFileDirect(LPCWSTR source, LPCWSTR destination, bool overwrite)
+{
+  usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::SHELL_FILEOP);
+  return
+    CopyFileExW(source, destination, NULL, NULL, NULL, overwrite ? 0 : COPY_FILE_FAIL_IF_EXISTS) ?
+    ERROR_SUCCESS : GetLastError();
+}
+
 static inline WCHAR pathNameDriveLetter(LPCWSTR path)
 {
   if (!path || !path[0])
@@ -499,47 +540,6 @@ BOOL WINAPI usvfs::hook_CreateProcessInternalW(
   HOOK_END
 
   return res;
-}
-
-// returns true iff the path exists (checks only real paths)
-static inline bool pathExists(LPCWSTR fileName)
-{
-  usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FILE_ATTRIBUTES);
-  DWORD attrib = GetFileAttributesW(fileName);
-  return attrib != INVALID_FILE_ATTRIBUTES;
-}
-
-// returns true iff the path exists and is a file (checks only real paths)
-static inline bool pathIsFile(LPCWSTR fileName)
-{
-  usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FILE_ATTRIBUTES);
-  DWORD attrib = GetFileAttributesW(fileName);
-  return attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY) == 0;
-}
-
-// returns true iff the path exists and is a file (checks only real paths)
-static inline bool pathIsDirectory(LPCWSTR fileName)
-{
-  usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FILE_ATTRIBUTES);
-  DWORD attrib = GetFileAttributesW(fileName);
-  return attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY);
-}
-
-// returns true iff the path does not exist but it parent directory does (checks only real paths)
-static inline bool pathDirectlyAvailable(LPCWSTR pathName)
-{
-  usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FILE_ATTRIBUTES);
-  DWORD attrib = GetFileAttributesW(pathName);
-  return attrib == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND;
-}
-
-// attempts to copy source to destination and return the error code
-static inline DWORD copyFileDirect(LPCWSTR source, LPCWSTR destination, bool overwrite)
-{
-  usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::SHELL_FILEOP);
-  return
-    CopyFileExW(source, destination, NULL, NULL, NULL, overwrite ? 0 : COPY_FILE_FAIL_IF_EXISTS) ?
-    ERROR_SUCCESS : GetLastError();
 }
 
 HANDLE WINAPI usvfs::hook_CreateFileA(
