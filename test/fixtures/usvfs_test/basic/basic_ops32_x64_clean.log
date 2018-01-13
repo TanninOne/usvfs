@@ -40,6 +40,8 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 == rfolder\rfile0.txt original file
 [rfiledelete.txt] FILE (attributes 0x20, 39 bytes)
 == rfolder\rfiledelete.txt original file
+[rfiledeletewrite.txt] FILE (attributes 0x20, 43 bytes)
+== rfolder\rfiledeletewrite.txt orignal file
 [rfileoldname.txt] FILE (attributes 0x20, 40 bytes)
 == rfolder\rfileoldname.txt original file
 [rfilerewrite.txt] FILE (attributes 0x20, 40 bytes)
@@ -53,8 +55,12 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 == mfolder4\mfileoverwrite.txt by mod4
 [mfilemoveover.txt] FILE (attributes 0x20, 36 bytes)
 == mfolder4/mfilemoveover.txt by mod4
+[mfiledeletewrite2p.txt] FILE (attributes 0x20, 41 bytes)
+== mfolder4/mfiledeletewrite2p.txt by mod4
 [mfiledeletewrite.txt] FILE (attributes 0x20, 39 bytes)
 == mfolder4/mfiledeletewrite.txt by mod4
+[mfiledeletemove2p.txt] FILE (attributes 0x20, 40 bytes)
+== mfolder4/mfiledeletemove2p.txt by mod4
 [mfiledeletemove.txt] FILE (attributes 0x20, 38 bytes)
 == mfolder4/mfiledeletemove.txt by mod4
 [mfile.txt] FILE (attributes 0x20, 28 bytes)
@@ -156,21 +162,33 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -renameover mount
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder4\mfilemoveover.txt
 == mfolder4\mfilemoveover.txt overwrite
 
-Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -delete mount:mfolder4\mfiledeletewrite.txt
-
-Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -overwrite mount:mfolder4\mfiledeletewrite.txt "mfolder4\mfiledeletewrite.txt overwrite"
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -deleteoverwrite mount:mfolder4\mfiledeletewrite.txt "mfolder4\mfiledeletewrite.txt overwrite"
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder4\mfiledeletewrite.txt
 == mfolder4\mfiledeletewrite.txt overwrite
 
-Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -delete mount:mfolder4\mfiledeletemove.txt
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -delete mount:mfolder4\mfiledeletewrite2p.txt
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -overwrite mount:mfolder4\mfiledeletewrite2p.txt "mfolder4\mfiledeletewrite2p.txt overwrite"
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder4\mfiledeletewrite2p.txt
+== mfolder4\mfiledeletewrite2p.txt overwrite
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -overwrite mount:mfolder4\temp_mfiledeletemove.txt "mfolder4\mfiledeletemove.txt overwrite"
 
-Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -rename mount:mfolder4\temp_mfiledeletemove.txt mount:mfolder4\mfiledeletemove.txt
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -deleterename mount:mfolder4\temp_mfiledeletemove.txt mount:mfolder4\mfiledeletemove.txt
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder4\mfiledeletemove.txt
 == mfolder4\mfiledeletemove.txt overwrite
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -delete mount:mfolder4\mfiledeletemove2p.txt
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -overwrite mount:mfolder4\temp_mfiledeletemove2p.txt "mfolder4\mfiledeletemove2p.txt overwrite"
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -rename mount:mfolder4\temp_mfiledeletemove2p.txt mount:mfolder4\mfiledeletemove2p.txt
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:mfolder4\mfiledeletemove2p.txt
+== mfolder4\mfiledeletemove2p.txt overwrite
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -rewrite mount:rfolder\rfilerewrite.txt "rfolder\rfilerewrite.txt rewrite"
 
@@ -182,6 +200,11 @@ ERROR: Failed to create_path [rfolder\rfilerewrite.txt] : path exists but not a 
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -overwrite mount:rfolder\rfile0.txt\fail "rfile0.txt is a file so folder creation should fail"
 ERROR: Failed to create_path [rfolder\rfile0.txt] : path exists but not a directory
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -deleteoverwrite mount:rfolder\rfiledeletewrite.txt "rfolder\rfiledeletewrite.txt overwrite"
+
+Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -read mount:rfolder\rfiledeletewrite.txt
+== rfolder\rfiledeletewrite.txt overwrite
 
 Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -delete mount:rfolder\rfiledelete.txt
 
@@ -227,6 +250,8 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 == rfolder\rfilerewrite.txt rewrite
 [rfilenewname.txt] FILE (attributes 0x20, 40 bytes)
 == rfolder\rfileoldname.txt original file
+[rfiledeletewrite.txt] FILE (attributes 0x20, 40 bytes)
+== rfolder\rfiledeletewrite.txt overwrite
 >> Listing directory {mfolder4}:
 [.] DIR (attributes 0x10)
 [..] DIR (attributes 0x10)
@@ -237,8 +262,12 @@ Spawning: test_file_operations_x??.exe -basedir mount -cout+ ? -r -listcontents 
 == mfolder4\mfileoverwrite.txt overwrite
 [mfilemoveover.txt] FILE (attributes 0x20, 38 bytes)
 == mfolder4\mfilemoveover.txt overwrite
+[mfiledeletewrite2p.txt] FILE (attributes 0x20, 43 bytes)
+== mfolder4\mfiledeletewrite2p.txt overwrite
 [mfiledeletewrite.txt] FILE (attributes 0x20, 41 bytes)
 == mfolder4\mfiledeletewrite.txt overwrite
+[mfiledeletemove2p.txt] FILE (attributes 0x20, 42 bytes)
+== mfolder4\mfiledeletemove2p.txt overwrite
 [mfiledeletemove.txt] FILE (attributes 0x20, 40 bytes)
 == mfolder4\mfiledeletemove.txt overwrite
 [mfile.txt] FILE (attributes 0x20, 28 bytes)

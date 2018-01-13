@@ -99,6 +99,7 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -r -l
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
+# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 0 (0x0) last error 18 (0x12)
 # (W32)   CloseHandle returned 1 (0x1) last error 18 (0x12)
 >> Listing directory {rfolder}:
@@ -120,6 +121,14 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -r -l
 # (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
 # Successfully read 39 bytes.
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+[rfiledeletewrite.txt] FILE (attributes 0x20, 43 bytes)
+# (W32) Reading file {rfolder\rfiledeletewrite.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== rfolder\rfiledeletewrite.txt orignal file
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 43 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 [rfileoldname.txt] FILE (attributes 0x20, 40 bytes)
 # (W32) Reading file {rfolder\rfileoldname.txt}
 # (W32)   CreateFileW last error 0 (0x0)
@@ -138,6 +147,8 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -r -l
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 # (W32) Querying directory {mfolder4}
 # (W32)   FindFirstFileW last error 0 (0x0)
+# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
+# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
@@ -174,6 +185,14 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -r -l
 # (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
 # Successfully read 36 bytes.
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+[mfiledeletewrite2p.txt] FILE (attributes 0x20, 41 bytes)
+# (W32) Reading file {mfolder4\mfiledeletewrite2p.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== mfolder4/mfiledeletewrite2p.txt by mod4
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 41 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 [mfiledeletewrite.txt] FILE (attributes 0x20, 39 bytes)
 # (W32) Reading file {mfolder4\mfiledeletewrite.txt}
 # (W32)   CreateFileW last error 0 (0x0)
@@ -181,6 +200,14 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -r -l
 == mfolder4/mfiledeletewrite.txt by mod4
 # (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
 # Successfully read 39 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+[mfiledeletemove2p.txt] FILE (attributes 0x20, 40 bytes)
+# (W32) Reading file {mfolder4\mfiledeletemove2p.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== mfolder4/mfiledeletemove2p.txt by mod4
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 40 bytes.
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 [mfiledeletemove.txt] FILE (attributes 0x20, 38 bytes)
 # (W32) Reading file {mfolder4\mfiledeletemove.txt}
@@ -587,14 +614,10 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -read
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 #< test_file_operations_x64.exe ended properly.
 
-Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -delete mount:mfolder4\mfiledeletewrite.txt
-#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -delete mfiledeletewrite.txt
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -deleteoverwrite mount:mfolder4\mfiledeletewrite.txt "mfolder4\mfiledeletewrite.txt overwrite"
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -deleteoverwrite mfiledeletewrite.txt "mfolder4\mfiledeletewrite.txt overwrite"
 # (W32) Deleting file {mfolder4\mfiledeletewrite.txt}
 # (W32)   DeleteFileW returned 1 (0x1) last error 0 (0x0)
-#< test_file_operations_x64.exe ended properly.
-
-Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -overwrite mount:mfolder4\mfiledeletewrite.txt "mfolder4\mfiledeletewrite.txt overwrite"
-#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -overwrite mfiledeletewrite.txt "mfolder4\mfiledeletewrite.txt overwrite"
 # (W32) Overwriting file {mfolder4\mfiledeletewrite.txt}
 # (W32)   CreateFileW last error 0 (0x0)
 # (W32)   WriteFile returned 39 (0x27) last error 0 (0x0)
@@ -614,10 +637,31 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -read
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 #< test_file_operations_x64.exe ended properly.
 
-Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -delete mount:mfolder4\mfiledeletemove.txt
-#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -delete mfiledeletemove.txt
-# (W32) Deleting file {mfolder4\mfiledeletemove.txt}
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -delete mount:mfolder4\mfiledeletewrite2p.txt
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -delete mfiledeletewrite2p.txt
+# (W32) Deleting file {mfolder4\mfiledeletewrite2p.txt}
 # (W32)   DeleteFileW returned 1 (0x1) last error 0 (0x0)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -overwrite mount:mfolder4\mfiledeletewrite2p.txt "mfolder4\mfiledeletewrite2p.txt overwrite"
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -overwrite mfiledeletewrite2p.txt "mfolder4\mfiledeletewrite2p.txt overwrite"
+# (W32) Overwriting file {mfolder4\mfiledeletewrite2p.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   WriteFile returned 41 (0x29) last error 0 (0x0)
+# (W32)   WriteFile <new line> returned 2 (0x2) last error 0 (0x0)
+# Successfully written 43 bytes {mfolder4\mfiledeletewrite2p.txt overwrite}
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -read mount:mfolder4\mfiledeletewrite2p.txt
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -read mfiledeletewrite2p.txt
+# (W32) Reading file {mfolder4\mfiledeletewrite2p.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== mfolder4\mfiledeletewrite2p.txt overwrite
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 43 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 #< test_file_operations_x64.exe ended properly.
 
 Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -overwrite mount:mfolder4\temp_mfiledeletemove.txt "mfolder4\mfiledeletemove.txt overwrite"
@@ -630,8 +674,10 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -over
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 #< test_file_operations_x64.exe ended properly.
 
-Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -rename mount:mfolder4\temp_mfiledeletemove.txt mount:mfolder4\mfiledeletemove.txt
-#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -rename temp_mfiledeletemove.txt mfiledeletemove.txt
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -deleterename mount:mfolder4\temp_mfiledeletemove.txt mount:mfolder4\mfiledeletemove.txt
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -deleterename temp_mfiledeletemove.txt mfiledeletemove.txt
+# (W32) Deleting file {mfolder4\mfiledeletemove.txt}
+# (W32)   DeleteFileW returned 1 (0x1) last error 0 (0x0)
 # (W32) Renaming file {mfolder4\temp_mfiledeletemove.txt} {mfolder4\mfiledeletemove.txt}
 # (W32)   MoveFileExW returned 1 (0x1) last error 0 (0x0)
 #< test_file_operations_x64.exe ended properly.
@@ -644,6 +690,39 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -read
 == mfolder4\mfiledeletemove.txt overwrite
 # (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
 # Successfully read 40 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -delete mount:mfolder4\mfiledeletemove2p.txt
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -delete mfiledeletemove2p.txt
+# (W32) Deleting file {mfolder4\mfiledeletemove2p.txt}
+# (W32)   DeleteFileW returned 1 (0x1) last error 0 (0x0)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -overwrite mount:mfolder4\temp_mfiledeletemove2p.txt "mfolder4\mfiledeletemove2p.txt overwrite"
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -overwrite temp_mfiledeletemove2p.txt "mfolder4\mfiledeletemove2p.txt overwrite"
+# (W32) Overwriting file {mfolder4\temp_mfiledeletemove2p.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   WriteFile returned 40 (0x28) last error 0 (0x0)
+# (W32)   WriteFile <new line> returned 2 (0x2) last error 0 (0x0)
+# Successfully written 42 bytes {mfolder4\mfiledeletemove2p.txt overwrite}
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -rename mount:mfolder4\temp_mfiledeletemove2p.txt mount:mfolder4\mfiledeletemove2p.txt
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -rename temp_mfiledeletemove2p.txt mfiledeletemove2p.txt
+# (W32) Renaming file {mfolder4\temp_mfiledeletemove2p.txt} {mfolder4\mfiledeletemove2p.txt}
+# (W32)   MoveFileExW returned 1 (0x1) last error 0 (0x0)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -read mount:mfolder4\mfiledeletemove2p.txt
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -read mfiledeletemove2p.txt
+# (W32) Reading file {mfolder4\mfiledeletemove2p.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== mfolder4\mfiledeletemove2p.txt overwrite
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 42 bytes.
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 #< test_file_operations_x64.exe ended properly.
 
@@ -685,6 +764,29 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -r -o
 # (W32) Checking directory {rfolder\rfile0.txt}
 # (W32)   GetFileAttributesW returned 32 (0x20) last error 0 (0x0)
 ERROR: Failed to create_path [rfolder\rfile0.txt] : path exists but not a directory
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -deleteoverwrite mount:rfolder\rfiledeletewrite.txt "rfolder\rfiledeletewrite.txt overwrite"
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -deleteoverwrite rfiledeletewrite.txt "rfolder\rfiledeletewrite.txt overwrite"
+# (W32) Deleting file {rfolder\rfiledeletewrite.txt}
+# (W32)   DeleteFileW returned 1 (0x1) last error 0 (0x0)
+# (W32) Overwriting file {rfolder\rfiledeletewrite.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   WriteFile returned 38 (0x26) last error 0 (0x0)
+# (W32)   WriteFile <new line> returned 2 (0x2) last error 0 (0x0)
+# Successfully written 40 bytes {rfolder\rfiledeletewrite.txt overwrite}
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+#< test_file_operations_x64.exe ended properly.
+
+Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -read mount:rfolder\rfiledeletewrite.txt
+#> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -read rfiledeletewrite.txt
+# (W32) Reading file {rfolder\rfiledeletewrite.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== rfolder\rfiledeletewrite.txt overwrite
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 40 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+#< test_file_operations_x64.exe ended properly.
 
 Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -delete mount:rfolder\rfiledelete.txt
 #> Output log openned for: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -delete rfiledelete.txt
@@ -808,6 +910,7 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -r -l
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
+# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 0 (0x0) last error 18 (0x12)
 # (W32)   CloseHandle returned 1 (0x1) last error 18 (0x12)
 >> Listing directory {rfolder}:
@@ -837,8 +940,18 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -r -l
 # (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
 # Successfully read 40 bytes.
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+[rfiledeletewrite.txt] FILE (attributes 0x20, 40 bytes)
+# (W32) Reading file {rfolder\rfiledeletewrite.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== rfolder\rfiledeletewrite.txt overwrite
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 40 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 # (W32) Querying directory {mfolder4}
 # (W32)   FindFirstFileW last error 0 (0x0)
+# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
+# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
@@ -877,6 +990,14 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -r -l
 # (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
 # Successfully read 38 bytes.
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+[mfiledeletewrite2p.txt] FILE (attributes 0x20, 43 bytes)
+# (W32) Reading file {mfolder4\mfiledeletewrite2p.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== mfolder4\mfiledeletewrite2p.txt overwrite
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 43 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 [mfiledeletewrite.txt] FILE (attributes 0x20, 41 bytes)
 # (W32) Reading file {mfolder4\mfiledeletewrite.txt}
 # (W32)   CreateFileW last error 0 (0x0)
@@ -884,6 +1005,14 @@ Spawning: test_file_operations_x64.exe -basedir mount -cout+ basic_x64.log -r -l
 == mfolder4\mfiledeletewrite.txt overwrite
 # (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
 # Successfully read 41 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
+[mfiledeletemove2p.txt] FILE (attributes 0x20, 42 bytes)
+# (W32) Reading file {mfolder4\mfiledeletemove2p.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== mfolder4\mfiledeletemove2p.txt overwrite
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 42 bytes.
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 [mfiledeletemove.txt] FILE (attributes 0x20, 40 bytes)
 # (W32) Reading file {mfolder4\mfiledeletemove.txt}
