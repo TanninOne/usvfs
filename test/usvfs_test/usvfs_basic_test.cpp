@@ -73,24 +73,12 @@ bool usvfs_basic_test::scenario_run()
 
   verify_mount_existance(LR"(rfolder\rcopyme4.txt)");
   verify_source_existance(LR"(overwrite\mfolder4\fail)", false);
-  if (bool move_copy_path_creation_not_bugged = false) {
-    ops_copy(LR"(rfolder\rcopyme4.txt)", LR"(mfolder4\fail\rcopyme4.txt)", true, false);
-    verify_source_existance(LR"(overwrite\mfolder4\fail)", false);
-  }
-  else {
-    ops_copy(LR"(rfolder\rcopyme4.txt)", LR"(mfolder4\fail\rcopyme4.txt)", true);
-    verify_source_existance(LR"(overwrite\mfolder4\fail\rcopyme4.txt)");
-  }
+  ops_copy(LR"(rfolder\rcopyme4.txt)", LR"(mfolder4\fail\rcopyme4.txt)", true, false);
+  verify_source_existance(LR"(overwrite\mfolder4\fail)", false);
   verify_source_existance(LR"(mod4\mfolder4\mfile.txt)");
   verify_source_existance(LR"(overwrite\mfolder4\mfile.txt)", false);
-  if (bool move_copy_path_creation_not_bugged = false) {
-    ops_copy(LR"(rfolder\rcopyme4.txt)", LR"(mfolder4\mfile.txt\fail)", true, false);
-    verify_source_existance(LR"(overwrite\mfolder4\mfile.txt)", false);
-  }
-  else {
-    ops_copy(LR"(rfolder\rcopyme4.txt)", LR"(mfolder4\mfile.txt\fail)", true);
-    verify_source_existance(LR"(overwrite\mfolder4\mfile.txt\fail)");
-  }
+  ops_copy(LR"(rfolder\rcopyme4.txt)", LR"(mfolder4\mfile.txt\fail)", true, false);
+  verify_source_existance(LR"(overwrite\mfolder4\mfile.txt)", false);
   ops_copy(LR"(rfolder\rcopyme4.txt)", LR"(mfolder4\rcopyme4.txt)", false);
   verify_source_existance(LR"(overwrite\mfolder4\rcopyme4.txt)");
 
