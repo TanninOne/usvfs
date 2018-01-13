@@ -17,6 +17,11 @@ bool usvfs_basic_test::scenario_run()
   // C. For open issues the verifications here serve as a "documentation" of the issue (i.e. not having
   //    proper copy_on_write, etc.).
 
+  // Cases not covered by the test:
+  // - When a "temporary" virtualized directory is created (meaning the directory is created only to "shadow"
+  //  a real directory) and is then emptied. This needs to be tested within the same prcoess and across
+  //  different processes.
+
   ops_list(LR"(.)", true, true);
 
   // test proper path creation under overwrite when a virtualized folder is written to:

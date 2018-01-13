@@ -29,34 +29,45 @@ namespace ush = usvfs::shared;
 using ush::string_cast;
 using ush::CodePage;
 
-class DeleteTracker {
+class MapTracker {
 public:
   using wstring = std::wstring;
 
-  wstring lookup(const wstring& deletePath) const {
-    if (!deletePath.empty())
+  wstring lookup(const wstring& fromPath) const {
+    if (!fromPath.empty())
     {
       std::shared_lock<std::shared_mutex> lock(m_mutex);
-      auto find = m_map.find(deletePath);
+      auto find = m_map.find(fromPath);
       if (find != m_map.end())
         return find->second;
     }
     return wstring();
   }
 
-  void insert(const wstring& deletePath, const wstring& realPath) {
-    if (deletePath.empty())
-      return;
-    std::unique_lock<std::shared_mutex> lock(m_mutex);
-    m_map[deletePath] = realPath;
+  bool contains(const wstring& fromPath) const {
+    if (!fromPath.empty())
+    {
+      std::shared_lock<std::shared_mutex> lock(m_mutex);
+      auto find = m_map.find(fromPath);
+      if (find != m_map.end())
+        return true;
+    }
+    return false;
   }
 
-  void erase(const wstring& deletePath)
-  {
-    if (deletePath.empty())
+  void insert(const wstring& fromPath, const wstring& toPath) {
+    if (fromPath.empty())
       return;
     std::unique_lock<std::shared_mutex> lock(m_mutex);
-    m_map.erase(deletePath);
+    m_map[fromPath] = toPath;
+  }
+
+  bool erase(const wstring& fromPath)
+  {
+    if (fromPath.empty())
+      return false;
+    std::unique_lock<std::shared_mutex> lock(m_mutex);
+    return m_map.erase(fromPath);
   }
 
 private:
@@ -64,7 +75,8 @@ private:
   std::unordered_map<wstring, wstring> m_map;
 };
 
-DeleteTracker k32DeleteTracker;
+MapTracker k32DeleteTracker;
+MapTracker k32FakeDirTracker;
 
 // returns true iff the path exists (checks only real paths)
 static inline bool pathExists(LPCWSTR fileName)
@@ -200,7 +212,15 @@ public:
   void insertMapping(const usvfs::HookContext::Ptr &context, bool directory = false)
   {
     if (directory)
+    {
       addDirectoryMapping(context, m_RealPath, m_FileName);
+
+      // In case we have just created a "fake" directory, it is no longer fake and need to remove it and all its
+      // parent folders from the fake map:
+      std::wstring dir = m_FileName;
+      while (k32FakeDirTracker.erase(dir))
+        dir = fs::path(dir).parent_path().wstring();
+    }
     else
     {
       if (m_PathCreated)
@@ -221,11 +241,67 @@ public:
     if (!directory)
       k32DeleteTracker.insert(m_RealPath, m_FileName);
 
-    if (wasRerouted())
+    if (wasRerouted()) {
       if (m_FileNode.get())
         m_FileNode->removeFromTree();
       else
         spdlog::get("usvfs")->warn("Node not removed: {}", string_cast<std::string>(m_FileName));
+
+      if (!directory)
+      {
+        // check if this file was the last file inside a "fake" directory then remove it
+        // and possibly also its fake empty parent folders:
+        std::wstring parent = m_FileName;
+        while (true)
+        {
+          parent = fs::path(parent).parent_path().wstring();
+          if (k32FakeDirTracker.contains(parent))
+          {
+            if (RemoveDirectoryW(parent.c_str())) {
+              k32FakeDirTracker.erase(parent);
+              spdlog::get("usvfs")->info("removed empty fake directory: {}", string_cast<std::string>(parent));
+            }
+            else if (GetLastError() != ERROR_DIR_NOT_EMPTY) {
+              auto error = GetLastError();
+              spdlog::get("usvfs")->warn("removing fake directory failed: {}, error={}", string_cast<std::string>(parent), error);
+              break;
+            }
+          }
+          else
+            break;
+        }
+      }
+    }
+  }
+
+  static bool createFakePath(fs::path path, LPSECURITY_ATTRIBUTES securityAttributes)
+  {
+    // sanity and guaranteed recursion end:
+    if (!path.has_relative_path())
+      throw usvfs::shared::windows_error("createFakePath() refusing to create non-existing top level path: " + path.string());
+
+    DWORD attr = GetFileAttributesW(path.c_str());
+    DWORD err = GetLastError();
+    if (attr != INVALID_FILE_ATTRIBUTES) {
+      if (attr & FILE_ATTRIBUTE_DIRECTORY)
+        return false; // if directory already exists all is good
+      else
+        throw usvfs::shared::windows_error("createFakePath() called on a file: " + path.string());
+    }
+    if (err != ERROR_FILE_NOT_FOUND && err != ERROR_PATH_NOT_FOUND)
+      throw usvfs::shared::windows_error("createFakePath() GetFileAttributesW failed on: " + path.string(), err);
+
+    if (err != ERROR_FILE_NOT_FOUND) // ERROR_FILE_NOT_FOUND means parent directory already exists
+      createFakePath(path.parent_path(), securityAttributes); // otherwise create parent directory (recursively)
+
+    BOOL res = CreateDirectoryW(path.c_str(), securityAttributes);
+    if (res)
+      k32FakeDirTracker.insert(path.wstring(), std::wstring());
+    else {
+      err = GetLastError();
+      throw usvfs::shared::windows_error("createFakePath() CreateDirectoryW failed on: " + path.string(), err);
+    }
+    return true;
   }
 
   static bool addDirectoryMapping(const usvfs::HookContext::Ptr &context, const fs::path& originalPath, const fs::path& reroutedPath)
@@ -393,7 +469,7 @@ public:
           try {
             usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::ALL_GROUPS);
             result.m_PathCreated =
-              winapi::ex::wide::createPath(fs::path(result.m_Buffer).parent_path(), securityAttributes);
+              createFakePath(fs::path(result.m_Buffer).parent_path(), securityAttributes);
           } catch (const std::exception &e) {
             spdlog::get("hooks")->error("failed to create {}: {}",
               ush::string_cast<std::string>(result.m_Buffer), e.what());
