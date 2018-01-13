@@ -71,6 +71,46 @@ bool usvfs_basic_test::scenario_run()
   ops_read(LR"(mfolder4\newfolder4\d\e\epnewfile4.txt)");
   verify_source_contents(LR"(overwrite\mfolder4\newfolder4\d\e\epnewfile4.txt)", R"(epnewfile4.txt nonrecursive overwrite)");
 
+  verify_mount_existance(LR"(rfolder\rcopyme4.txt)");
+  verify_source_existance(LR"(overwrite\mfolder4\fail)", false);
+  if (bool move_copy_path_creation_not_bugged = false) {
+    ops_copy(LR"(rfolder\rcopyme4.txt)", LR"(mfolder4\fail\rcopyme4.txt)", true, false);
+    verify_source_existance(LR"(overwrite\mfolder4\fail)", false);
+  }
+  else {
+    ops_copy(LR"(rfolder\rcopyme4.txt)", LR"(mfolder4\fail\rcopyme4.txt)", true);
+    verify_source_existance(LR"(overwrite\mfolder4\fail\rcopyme4.txt)");
+  }
+  verify_source_existance(LR"(mod4\mfolder4\mfile.txt)");
+  verify_source_existance(LR"(overwrite\mfolder4\mfile.txt)", false);
+  if (bool move_copy_path_creation_not_bugged = false) {
+    ops_copy(LR"(rfolder\rcopyme4.txt)", LR"(mfolder4\mfile.txt\fail)", true, false);
+    verify_source_existance(LR"(overwrite\mfolder4\mfile.txt)", false);
+  }
+  else {
+    ops_copy(LR"(rfolder\rcopyme4.txt)", LR"(mfolder4\mfile.txt\fail)", true);
+    verify_source_existance(LR"(overwrite\mfolder4\mfile.txt\fail)");
+  }
+  ops_copy(LR"(rfolder\rcopyme4.txt)", LR"(mfolder4\rcopyme4.txt)", false);
+  verify_source_existance(LR"(overwrite\mfolder4\rcopyme4.txt)");
+
+  verify_source_contents(LR"(overwrite\mfolder4\newfolder4\d\e\e\p\newfile4.txt)", R"(newfile4.txt recursive overwrite)");
+  // repeat mfolder4\newfolder4\d\e\e\p test as that folder now exists in overwrite and that changes things
+  ops_overwrite(LR"(mfolder4\newfolder4\d\e\e\p\newfile4e.txt)", R"(newfile4e.txt recursive overwrite)", true);
+  ops_read(LR"(mfolder4\newfolder4\d\e\e\p\newfile4e.txt)");
+  verify_source_contents(LR"(overwrite\mfolder4\newfolder4\d\e\e\p\newfile4e.txt)", R"(newfile4e.txt recursive overwrite)");
+  // and finally verify also non-recursive works
+  ops_overwrite(LR"(mfolder4\newfolder4\d\e\e\p\newfile4enr.txt)", R"(newfile4enr.txt nonrecursive overwrite)", false);
+  ops_read(LR"(mfolder4\newfolder4\d\e\e\p\newfile4enr.txt)");
+  verify_source_contents(LR"(overwrite\mfolder4\newfolder4\d\e\e\p\newfile4enr.txt)", R"(newfile4enr.txt nonrecursive overwrite)");
+  // finally check an intermediate folder:
+  ops_overwrite(LR"(mfolder4\newfolder4\d\e\epnewfile4r.txt)", R"(epnewfile4r.txt recursive overwrite)", true);
+  ops_read(LR"(mfolder4\newfolder4\d\e\epnewfile4r.txt)");
+  verify_source_contents(LR"(overwrite\mfolder4\newfolder4\d\e\epnewfile4r.txt)", R"(epnewfile4r.txt recursive overwrite)");
+  ops_overwrite(LR"(mfolder4\newfolder4\d\e\epnewfile4.txt)", R"(epnewfile4.txt nonrecursive overwrite)", false);
+  ops_read(LR"(mfolder4\newfolder4\d\e\epnewfile4.txt)");
+  verify_source_contents(LR"(overwrite\mfolder4\newfolder4\d\e\epnewfile4.txt)", R"(epnewfile4.txt nonrecursive overwrite)");
+
   // test copy on write/delete against source "mod":
 
   ops_touch(LR"(root0.txt)");

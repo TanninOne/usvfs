@@ -64,6 +64,7 @@ public:
   virtual void ops_touch(const path& rel_path, bool full_write_access = false, bool should_succeed = true, const wstring& additional_args = wstring());
   virtual void ops_deleteoverwrite(const path& rel_path, const char* contents, bool recursive, bool should_succeed = true, const wstring& additional_args = wstring());
   virtual void ops_delete(const path& rel_path, bool should_succeed = true, const wstring& additional_args = wstring());
+  virtual void ops_copy(const path& src_rel_path, const path& dest_rel_path, bool replace, bool should_succeed = true, const wstring& additional_args = wstring());
   virtual void ops_rename(const path& src_rel_path, const path& dest_rel_path, bool replace, bool allow_copy = false, bool should_succeed = true, const wstring& additional_args = wstring());
   virtual void ops_deleterename(const path& src_rel_path, const path& dest_rel_path, bool allow_copy = false, bool should_succeed = true, const wstring& additional_args = wstring());
 

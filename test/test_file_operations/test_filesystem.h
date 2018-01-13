@@ -56,6 +56,8 @@ public:
 
   virtual void delete_file(const path& file_path) = 0;
 
+  virtual void copy_file(const path& source_path, const path& destination_path, bool replace_existing) = 0;
+
   virtual void rename_file(const path& source_path, const path& destination_path, bool replace_existing, bool allow_copy) = 0;
 
 protected:

@@ -777,6 +777,11 @@ void usvfs_test_base::ops_delete(const path& rel_path, bool should_succeed, cons
   run_ops(should_succeed, L"-delete", rel_path, additional_args);
 }
 
+void usvfs_test_base::ops_copy(const path& src_rel_path, const path& dest_rel_path, bool replace, bool should_succeed, const wstring& additional_args)
+{
+  run_ops(should_succeed, replace ? L"-copyover" : L"-copy", src_rel_path, additional_args, wstring(), dest_rel_path);
+}
+
 void usvfs_test_base::ops_rename(const path& src_rel_path, const path& dest_rel_path, bool replace, bool allow_copy, bool should_succeed, const wstring& additional_args)
 {
   wstring command = allow_copy ? L"-move" : L"-rename";

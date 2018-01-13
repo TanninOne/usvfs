@@ -322,6 +322,16 @@ void TestW32Api::delete_file(const path& file_path)
     throw_testWinFuncFailed("DeleteFileW");
 }
 
+void TestW32Api::copy_file(const path& source_path, const path& destination_path, bool replace_existing)
+{
+  print_operation(replace_existing ? "Copy file over" : "Copy file", source_path, destination_path);
+
+  BOOL res = CopyFileW(source_path.c_str(), destination_path.c_str(),  !replace_existing);
+  print_result("CopyFileW", res, true);
+  if (!res)
+    throw_testWinFuncFailed("CopyFileW");
+}
+
 void TestW32Api::rename_file(const path& source_path, const path& destination_path, bool replace_existing, bool allow_copy)
 {
   print_operation(rename_operation_name(replace_existing, allow_copy), source_path, destination_path);

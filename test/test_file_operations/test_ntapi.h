@@ -21,6 +21,8 @@ public:
 
   void delete_file(const path& file_path) override;
 
+  void copy_file(const path& source_path, const path& destination_path, bool replace_existing) override;
+
   void rename_file(const path& source_path, const path& destination_path, bool replace_existing, bool allow_copy) override;
 
   const char* id() override;

@@ -423,6 +423,11 @@ void TestNtApi::delete_file(const path& file_path)
     throw test::FuncFailed("NtDeleteFile", status);
 }
 
+void TestNtApi::copy_file(const path& source_path, const path& destination_path, bool replace_existing)
+{
+  throw test::FuncFailed("copy_file", "ntapi does not support file copy");
+}
+
 void TestNtApi::rename_file(const path& source_path, const path& destination_path, bool replace_existing, bool allow_copy)
 {
   if (allow_copy)

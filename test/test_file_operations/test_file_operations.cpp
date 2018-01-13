@@ -26,6 +26,8 @@ void print_usage(const char* myname) {
   fprintf(stderr, " -touch <file>       : updates last write timestamp of specified file.\n");
   fprintf(stderr, " -touchw <file>      : updates last write timestamp using full write permissions.\n");
   fprintf(stderr, " -delete <file>      : deletes the given file.\n");
+  fprintf(stderr, " -copy <src> <dst>   : copies the given file.\n");
+  fprintf(stderr, " -copyover <src> <dst> : copies the given file (replacing existing destination).\n");
   fprintf(stderr, " -rename <src> <dst> : renames the given file.\n");
   fprintf(stderr, " -renameover <src> <dst> : renames the given file (replacing existing destination).\n");
   fprintf(stderr, " -deleterename <src> <dst> : shorthand for -delete <dst> -rename <src> <dst>.\n");
@@ -169,6 +171,13 @@ public:
     if (debug_pending()) __debugbreak();
 
     m_api->delete_file(m_api->real_path(path));
+  }
+
+  void rename(const char* source, const char* destination, bool replace_existing)
+  {
+    if (debug_pending()) __debugbreak();
+
+    m_api->copy_file(m_api->real_path(source), m_api->real_path(destination), replace_existing);
   }
 
   void rename(const char* source, const char* destination, bool replace_existing, bool allow_copy)
@@ -383,6 +392,14 @@ int main(int argc, char *argv[])
       else if (strcmp(argv[ai], "-delete") == 0 && verify_args_exist("-delete", 1, ai, argc))
       {
         executer.deletef(argv[++ai]);
+        found_commands = true;
+      }
+      else if (strcmp(argv[ai], "-copy") == 0 && verify_args_exist("-copy", 2, ai, argc)
+        || strcmp(argv[ai], "-copyover") == 0 && verify_args_exist("-copyover", 2, ai, argc))
+      {
+        bool over = argv[ai][5] == 'o';
+        executer.rename(argv[ai + 1], argv[ai + 2], over);
+        ++++ai;
         found_commands = true;
       }
       else if (strcmp(argv[ai], "-rename") == 0 && verify_args_exist("-rename", 2, ai, argc)
