@@ -61,8 +61,10 @@ public:
   virtual void ops_read(const path& rel_path, bool should_succeed = true, const wstring& additional_args = wstring());
   virtual void ops_rewrite(const path& rel_path, const char* contents, bool should_succeed = true, const wstring& additional_args = wstring());
   virtual void ops_overwrite(const path& rel_path, const char* contents, bool recursive, bool should_succeed = true, const wstring& additional_args = wstring());
+  virtual void ops_deleteoverwrite(const path& rel_path, const char* contents, bool recursive, bool should_succeed = true, const wstring& additional_args = wstring());
   virtual void ops_delete(const path& rel_path, bool should_succeed = true, const wstring& additional_args = wstring());
   virtual void ops_rename(const path& src_rel_path, const path& dest_rel_path, bool replace, bool allow_copy = false, bool should_succeed = true, const wstring& additional_args = wstring());
+  virtual void ops_deleterename(const path& src_rel_path, const path& dest_rel_path, bool allow_copy = false, bool should_succeed = true, const wstring& additional_args = wstring());
 
   virtual std::string mount_contents(const path& rel_path);
   virtual void verify_mount_contents(const path& rel_path, const char* contents);
@@ -81,7 +83,7 @@ private:
   void clean_output();
 
   test::ScopedFILE output();
-  void run_ops(bool should_succeed, wstring preargs, const path& rel_path, const wstring& additional_args, const wstring& postargs = wstring(), const path& rel_path2 = path());
+  void run_ops(bool should_succeed, const wstring& preargs, const path& rel_path, const wstring& additional_args, const wstring& postargs = wstring(), const path& rel_path2 = path());
   bool verify_contents(const path& file, const char* contents);
 
   const usvfs_test_options& m_o;

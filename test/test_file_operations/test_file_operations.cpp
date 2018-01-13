@@ -21,12 +21,15 @@ void print_usage(const char* myname) {
   fprintf(stderr, " -listcontents <dir> : lists the given directory, reading all files and outputs the results.\n");
   fprintf(stderr, " -read <file>        : reads the given file and outputs the results.\n");
   fprintf(stderr, " -overwrite <file> <string> : overwrites the file at the given path with the given line (creating directories if in recursive mode).\n");
+  fprintf(stderr, " -deleteoverwrite <file> <string> : shorthand for -delete <file> -overwrite <file> <string>\n");
   fprintf(stderr, " -rewrite <file> <string> : rewrites the file at the given path with the given line (fails if file doesn't exist; uses read/write access).\n");
   fprintf(stderr, " -delete <file>      : deletes the given file.\n");
   fprintf(stderr, " -rename <src> <dst> : renames the given file.\n");
   fprintf(stderr, " -renameover <src> <dst> : renames the given file (replacing existing destination).\n");
+  fprintf(stderr, " -deleterename <src> <dst> : shorthand for -delete <dst> -rename <src> <dst>.\n");
   fprintf(stderr, " -move <src> <dst>   : moves the given file (not supported by ntapi).\n");
   fprintf(stderr, " -moveover <src> <dst> : moves the given file (replacing existing destination; not supported by ntapi).\n");
+  fprintf(stderr, " -deletemove <src> <dst> : shorthand for -delete <dst> -move <src> <dst>.\n");
   fprintf(stderr, " -debug              : shows a message box and wait for a debugger to connect.\n");
   fprintf(stderr, "\nsupported options:\n");
   fprintf(stderr, " -out <file>         : file to log output to (use \"-\" for the stdout; otherwise path to output should exist).\n");
@@ -338,7 +341,10 @@ int main(int argc, char *argv[])
         executer.read(argv[++ai]);
         found_commands = true;
       }
-      else if (strcmp(argv[ai], "-overwrite") == 0 && verify_args_exist("-overwrite", 2, ai, argc)) {
+      else if (strcmp(argv[ai], "-overwrite") == 0 && verify_args_exist("-overwrite", 2, ai, argc)
+        || strcmp(argv[ai], "-deleteoverwrite") == 0 && verify_args_exist("-deleteoverwrite", 2, ai, argc)) {
+        if (argv[ai][1] == 'd')
+          executer.deletef(argv[ai + 1]);
         executer.overwrite(argv[ai + 1], argv[ai + 2]);
         ++++ai;
         found_commands = true;
@@ -355,11 +361,16 @@ int main(int argc, char *argv[])
       }
       else if (strcmp(argv[ai], "-rename") == 0 && verify_args_exist("-rename", 2, ai, argc)
         || strcmp(argv[ai], "-renameover") == 0 && verify_args_exist("-renameover", 2, ai, argc)
+        || strcmp(argv[ai], "-deleterename") == 0 && verify_args_exist("-deleterename", 2, ai, argc)
         || strcmp(argv[ai], "-move") == 0 && verify_args_exist("-move", 2, ai, argc)
-        || strcmp(argv[ai], "-moveover") == 0 && verify_args_exist("-moveover", 2, ai, argc))
+        || strcmp(argv[ai], "-moveover") == 0 && verify_args_exist("-moveover", 2, ai, argc)
+        || strcmp(argv[ai], "-deletemove") == 0 && verify_args_exist("-deletemove", 2, ai, argc))
       {
-        bool move = argv[ai][1] == 'm';
-        bool over = argv[ai][move ? 5 : 7] == 'o';
+        bool del = argv[ai][1] == 'd';
+        bool move = argv[ai][del ? 7 : 1] == 'm';
+        bool over = !del && argv[ai][move ? 5 : 7] == 'o';
+        if (del)
+          executer.deletef(argv[ai + 2]);
         executer.rename(argv[ai + 1], argv[ai + 2], over, move);
         ++++ai;
         found_commands = true;

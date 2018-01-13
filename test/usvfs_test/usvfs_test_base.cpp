@@ -757,7 +757,14 @@ void usvfs_test_base::ops_overwrite(const path& rel_path, const char* contents, 
 {
   using namespace usvfs::shared;
   run_ops(should_succeed, recursive ? L"-r -overwrite" : L"-overwrite", rel_path, additional_args,
-    L"\""+string_cast<wstring>(contents, CodePage::UTF8)+L"\"");
+    L"\"" + string_cast<wstring>(contents, CodePage::UTF8) + L"\"");
+}
+
+void usvfs_test_base::ops_deleteoverwrite(const path& rel_path, const char* contents, bool recursive, bool should_succeed, const wstring& additional_args)
+{
+  using namespace usvfs::shared;
+  run_ops(should_succeed, recursive ? L"-r -deleteoverwrite" : L"-deleteoverwrite", rel_path, additional_args,
+    L"\"" + string_cast<wstring>(contents, CodePage::UTF8) + L"\"");
 }
 
 void usvfs_test_base::ops_delete(const path& rel_path, bool should_succeed, const wstring& additional_args)
@@ -773,7 +780,14 @@ void usvfs_test_base::ops_rename(const path& src_rel_path, const path& dest_rel_
   run_ops(should_succeed, command, src_rel_path, additional_args, wstring(), dest_rel_path);
 }
 
-void usvfs_test_base::run_ops(bool should_succeed, wstring preargs, const path& rel_path, const wstring& additional_args, const wstring& postargs, const path& rel_path2)
+void usvfs_test_base::ops_deleterename(const path& src_rel_path, const path& dest_rel_path, bool allow_copy, bool should_succeed, const wstring& additional_args)
+{
+  wstring command = allow_copy ? L"-deletemove" : L"-deleterename";
+  run_ops(should_succeed, command, src_rel_path, additional_args, wstring(), dest_rel_path);
+}
+
+
+void usvfs_test_base::run_ops(bool should_succeed, const wstring& preargs, const path& rel_path, const wstring& additional_args, const wstring& postargs, const path& rel_path2)
 {
   using namespace usvfs::shared;
   using string = std::string;
