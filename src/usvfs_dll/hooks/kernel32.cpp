@@ -14,6 +14,8 @@
 #include <set>
 #include <sstream>
 #include <shlwapi.h>
+#include <mutex>
+#include <shared_mutex>
 
 #if 1
 #include <boost/filesystem.hpp>
@@ -26,6 +28,43 @@ namespace fs = std::tr2::sys;
 namespace ush = usvfs::shared;
 using ush::string_cast;
 using ush::CodePage;
+
+class DeleteTracker {
+public:
+  using wstring = std::wstring;
+
+  wstring lookup(const wstring& deletePath) const {
+    if (!deletePath.empty())
+    {
+      std::shared_lock<std::shared_mutex> lock(m_mutex);
+      auto find = m_map.find(deletePath);
+      if (find != m_map.end())
+        return find->second;
+    }
+    return wstring();
+  }
+
+  void insert(const wstring& deletePath, const wstring& realPath) {
+    if (deletePath.empty())
+      return;
+    std::unique_lock<std::shared_mutex> lock(m_mutex);
+    m_map[deletePath] = realPath;
+  }
+
+  void erase(const wstring& deletePath)
+  {
+    if (deletePath.empty())
+      return;
+    std::unique_lock<std::shared_mutex> lock(m_mutex);
+    m_map.erase(deletePath);
+  }
+
+private:
+  mutable std::shared_mutex m_mutex;
+  std::unordered_map<wstring, wstring> m_map;
+};
+
+DeleteTracker k32DeleteTracker;
 
 // returns true iff the path exists (checks only real paths)
 static inline bool pathExists(LPCWSTR fileName)
@@ -161,17 +200,21 @@ public:
         ush::string_cast<std::string>(m_FileName, ush::CodePage::UTF8));
       m_FileNode =
         context->redirectionTable().addFile(m_RealPath, usvfs::RedirectionDataLocal(string_cast<std::string>(m_FileName, CodePage::UTF8)));
+
+      k32DeleteTracker.erase(m_RealPath);
     }
   }
 
-  void removeMapping()
+  void removeMapping(bool directory = false)
   {
-    if (m_FileNode.get() != nullptr) {
-      m_FileNode->removeFromTree();
-    } else {
-      spdlog::get("usvfs")
-          ->warn("Node not removed: {}", string_cast<std::string>(m_FileName));
-    }
+    if (!directory)
+      k32DeleteTracker.insert(m_RealPath, m_FileName);
+
+    if (wasRerouted())
+      if (m_FileNode.get())
+        m_FileNode->removeFromTree();
+      else
+        spdlog::get("usvfs")->warn("Node not removed: {}", string_cast<std::string>(m_FileName));
   }
 
   static bool addDirectoryMapping(const usvfs::HookContext::Ptr &context, const fs::path& originalPath, const fs::path& reroutedPath)
@@ -265,7 +308,8 @@ public:
 
     if (interestingPath(inPath) && callContext.active())
     {
-      fs::path lookupPath = canonizePath(absolutePath(inPath));
+      const auto& lookupPath = canonizePath(absolutePath(inPath));
+      result.m_RealPath = lookupPath.wstring();
 
       const usvfs::RedirectionTreeContainer &table
         = inverse ? context->inverseTable() : context->redirectionTable();
@@ -307,31 +351,41 @@ public:
 
     if (interestingPath(inPath) && callContext.active())
     {
-      fs::path lookupPath = absolutePath(inPath);
-      result.m_RealPath = lookupPath.c_str();
-      lookupPath = canonizePath(lookupPath);
+      const auto& lookupPath = canonizePath(absolutePath(inPath));
+      result.m_RealPath = lookupPath.wstring();
 
-      FindCreateTarget visitor;
-      usvfs::RedirectionTree::VisitorFunction visitorWrapper = [&](
-          const usvfs::RedirectionTree::NodePtrT &node) { visitor(node); };
-      context->redirectionTable()->visitPath(lookupPath, visitorWrapper);
-      if (visitor.target.get() != nullptr) {
-        // the visitor has found the last (deepest in the directory hierarchy)
-        // create-target
-        fs::path relativePath
+      result.m_Buffer = k32DeleteTracker.lookup(result.m_RealPath);
+      bool found = !result.m_Buffer.empty();
+      if (found)
+        spdlog::get("hooks")->info("Rerouting file creation to original location of deleted file: {}",
+          ush::string_cast<std::string>(result.m_Buffer));
+      else
+      {
+        FindCreateTarget visitor;
+        usvfs::RedirectionTree::VisitorFunction visitorWrapper =
+          [&](const usvfs::RedirectionTree::NodePtrT &node) { visitor(node); };
+        context->redirectionTable()->visitPath(lookupPath, visitorWrapper);
+        if (visitor.target.get()) {
+          // the visitor has found the last (deepest in the directory hierarchy)
+          // create-target
+          fs::path relativePath
             = ush::make_relative(visitor.target->path(), lookupPath);
-        result.m_Buffer = (fs::path(visitor.target->data().linkTarget.c_str())
-                           / relativePath)
-                              .wstring();
+          result.m_Buffer =
+            (fs::path(visitor.target->data().linkTarget.c_str()) / relativePath).wstring();
+          found = true;
+        }
+      }
+
+      if (found)
+      {
         if (createPath)
           try {
             usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::ALL_GROUPS);
             winapi::ex::wide::createPath(fs::path(result.m_Buffer).parent_path(), securityAttributes);
             result.m_PathCreated = true;
           } catch (const std::exception &e) {
-            spdlog::get("hooks")
-                ->error("failed to create {}: {}",
-                        ush::string_cast<std::string>(result.m_Buffer), e.what());
+            spdlog::get("hooks")->error("failed to create {}: {}",
+              ush::string_cast<std::string>(result.m_Buffer), e.what());
           }
 
         std::replace(result.m_Buffer.begin(), result.m_Buffer.end(), L'/', L'\\');
@@ -1024,10 +1078,9 @@ BOOL WINAPI usvfs::hook_DeleteFileW(LPCWSTR lpFileName)
   }
   POST_REALCALL
 
-  if (reroute.wasRerouted()) {
-    reroute.removeMapping();
+  reroute.removeMapping();
+  if (reroute.wasRerouted())
     LOG_CALL().PARAMWRAP(lpFileName).PARAMWRAP(reroute.fileName()).PARAM(res);
-  }
 
   HOOK_END
 
@@ -1105,9 +1158,7 @@ BOOL WINAPI usvfs::hook_MoveFileW(LPCWSTR lpExistingFileName,
   POST_REALCALL
 
   if (res) {
-    if (readReroute.wasRerouted()) {
-      readReroute.removeMapping();
-    }
+    readReroute.removeMapping();
 
     if (writeReroute.wasRerouted()) {
       writeReroute.insertMapping(WRITE_CONTEXT());
@@ -1184,9 +1235,7 @@ BOOL WINAPI usvfs::hook_MoveFileExW(LPCWSTR lpExistingFileName,
   POST_REALCALL
 
   if (res) {
-    if (readReroute.wasRerouted()) {
-      readReroute.removeMapping();
-    }
+    readReroute.removeMapping();
 
     if (writeReroute.wasRerouted()) {
       writeReroute.insertMapping(WRITE_CONTEXT());
@@ -1262,9 +1311,7 @@ BOOL WINAPI usvfs::hook_MoveFileWithProgressW(LPCWSTR lpExistingFileName, LPCWST
   POST_REALCALL
 
   if (res) {
-    if (readReroute.wasRerouted()) {
-      readReroute.removeMapping();
-    }
+    readReroute.removeMapping();
 
     if (writeReroute.wasRerouted()) {
       writeReroute.insertMapping(WRITE_CONTEXT());
@@ -1492,10 +1539,9 @@ DLLEXPORT BOOL WINAPI usvfs::hook_RemoveDirectoryW(
 	}
 	POST_REALCALL
 
-	if (reroute.wasRerouted()) {
-		reroute.removeMapping();
-		LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(reroute.fileName()).PARAM(res);
-	}
+    reroute.removeMapping(true);
+    if (reroute.wasRerouted())
+      LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(reroute.fileName()).PARAM(res);
 
 	HOOK_END
 
