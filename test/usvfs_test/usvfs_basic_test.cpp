@@ -125,15 +125,15 @@ bool usvfs_basic_test::scenario_run()
   verify_source_existance(LR"(overwrite\mfolder1\mfile.txt)", false);
 
   ops_touch(LR"(root0w.txt)", true);
-  verify_source_existance(LR"(overwrite\root0w.txt)", true);
+  verify_source_existance(LR"(overwrite\root0w.txt)", false);
   ops_touch(LR"(root1w.txt)", true);
-  verify_source_existance(LR"(overwrite\root1w.txt)", true);
+  verify_source_existance(LR"(overwrite\root1w.txt)", false);
   ops_touch(LR"(root2w.txt)", true);
-  verify_source_existance(LR"(overwrite\root1w.txt)", true);
+  verify_source_existance(LR"(overwrite\root1w.txt)", false);
   ops_touch(LR"(mod1w.txt)", true);
-  verify_source_existance(LR"(overwrite\mod1w.txt)", true);
+  verify_source_existance(LR"(overwrite\mod1w.txt)", false);
   ops_touch(LR"(mfolder1\mfilew.txt)", true);
-  verify_source_existance(LR"(overwrite\mfolder1\mfilew.txt)", true);
+  verify_source_existance(LR"(overwrite\mfolder1\mfilew.txt)", false);
 
 
   {
@@ -141,8 +141,14 @@ bool usvfs_basic_test::scenario_run()
     verify_source_contents(LR"(mod4\mfolder4\mfileoverwrite.txt)", old_contents.c_str());
     ops_overwrite(LR"(mfolder4\mfileoverwrite.txt)", R"(mfolder4\mfileoverwrite.txt overwrite)", false);
     ops_read(LR"(mfolder4\mfileoverwrite.txt)");
-    verify_source_contents(LR"(mod4\mfolder4\mfileoverwrite.txt)", old_contents.c_str());
-    verify_source_contents(LR"(overwrite\mfolder4\mfileoverwrite.txt)", R"(mfolder4\mfileoverwrite.txt overwrite)");
+    if (bool protect_virtualized = false) {
+      verify_source_contents(LR"(mod4\mfolder4\mfileoverwrite.txt)", old_contents.c_str());
+      verify_source_contents(LR"(overwrite\mfolder4\mfileoverwrite.txt)", R"(mfolder4\mfileoverwrite.txt overwrite)");
+    }
+    else {
+      verify_source_contents(LR"(mod4\mfolder4\mfileoverwrite.txt)", R"(mfolder4\mfileoverwrite.txt overwrite)");
+      verify_source_existance(LR"(overwrite\mfolder4\mfileoverwrite.txt)", false);
+    }
   }
 
   {
@@ -150,11 +156,14 @@ bool usvfs_basic_test::scenario_run()
     verify_source_contents(LR"(mod4\mfolder4\mfilerewrite.txt)", old_contents.c_str());
     ops_rewrite(LR"(mfolder4\mfilerewrite.txt)", R"(mfolder4\mfilerewrite.txt rewrite)");
     ops_read(LR"(mfolder4\mfilerewrite.txt)");
-    verify_source_contents(LR"(overwrite\mfolder4\mfilerewrite.txt)", R"(mfolder4\mfilerewrite.txt rewrite)");
-    if (auto copy_on_readwrite_implemented = false)
+    if (auto copy_on_readwrite_implemented = false) {
       verify_source_contents(LR"(mod4\mfolder4\mfilerewrite.txt)", old_contents.c_str());
-    else
+      verify_source_contents(LR"(overwrite\mfolder4\mfilerewrite.txt)", R"(mfolder4\mfilerewrite.txt rewrite)");
+    }
+    else {
       verify_source_contents(LR"(mod4\mfolder4\mfilerewrite.txt)", R"(mfolder4\mfilerewrite.txt rewrite)");
+      verify_source_existance(LR"(overwrite\mfolder4\mfilerewrite.txt)", false);
+    }
   }
 
   {
@@ -165,8 +174,14 @@ bool usvfs_basic_test::scenario_run()
     ops_rename(LR"(mfolder4\temp_mfilemoveover.txt)", LR"(mfolder4\mfilemoveover.txt)", true);
     ops_read(LR"(mfolder4\mfilemoveover.txt)");
     verify_source_existance(LR"(overwrite\mfolder4\temp_mfilemoveover.txt)", false);
-    verify_source_contents(LR"(mod4\mfolder4\mfilemoveover.txt)", old_contents.c_str());
-    verify_source_contents(LR"(overwrite\mfolder4\mfilemoveover.txt)", R"(mfolder4\mfilemoveover.txt overwrite)");
+    if (bool protect_virtualized = false) {
+      verify_source_contents(LR"(mod4\mfolder4\mfilemoveover.txt)", old_contents.c_str());
+      verify_source_contents(LR"(overwrite\mfolder4\mfilemoveover.txt)", R"(mfolder4\mfilemoveover.txt overwrite)");
+    }
+    else {
+      verify_source_contents(LR"(mod4\mfolder4\mfilemoveover.txt)", R"(mfolder4\mfilemoveover.txt overwrite)");
+      verify_source_existance(LR"(overwrite\mfolder4\mfilemoveover.txt)", false);
+    }
   }
 
   {
@@ -174,11 +189,17 @@ bool usvfs_basic_test::scenario_run()
     verify_source_contents(LR"(mod4\mfolder4\mfiledeletewrite.txt)", old_contents.c_str());
     ops_deleteoverwrite(LR"(mfolder4\mfiledeletewrite.txt)", R"(mfolder4\mfiledeletewrite.txt overwrite)", false);
     ops_read(LR"(mfolder4\mfiledeletewrite.txt)");
-    verify_source_contents(LR"(overwrite\mfolder4\mfiledeletewrite.txt)", R"(mfolder4\mfiledeletewrite.txt overwrite)");
-    if (auto proper_delete_implemented = false)
-      verify_source_contents(LR"(mod4\mfolder4\mfiledeletewrite.txt)", old_contents.c_str());
-    else
-      verify_source_existance(LR"(mod4\mfolder4\mfiledeletewrite.txt)", false);
+    if (bool protect_virtualized = false) {
+      verify_source_contents(LR"(overwrite\mfolder4\mfiledeletewrite.txt)", R"(mfolder4\mfiledeletewrite.txt overwrite)");
+      if (auto proper_delete_implemented = false)
+        verify_source_contents(LR"(mod4\mfolder4\mfiledeletewrite.txt)", old_contents.c_str());
+      else
+        verify_source_existance(LR"(mod4\mfolder4\mfiledeletewrite.txt)", false);
+    }
+    else {
+      verify_source_contents(LR"(mod4\mfolder4\mfiledeletewrite.txt)", R"(mfolder4\mfiledeletewrite.txt overwrite)");
+      verify_source_existance(LR"(overwrite\mfolder4\mfiledeletewrite.txt)", false);
+    }
   }
 
   {
@@ -187,11 +208,17 @@ bool usvfs_basic_test::scenario_run()
     ops_delete(LR"(mfolder4\mfiledeletewrite2p.txt)");
     ops_overwrite(LR"(mfolder4\mfiledeletewrite2p.txt)", R"(mfolder4\mfiledeletewrite2p.txt overwrite)", false);
     ops_read(LR"(mfolder4\mfiledeletewrite2p.txt)");
-    verify_source_contents(LR"(overwrite\mfolder4\mfiledeletewrite2p.txt)", R"(mfolder4\mfiledeletewrite2p.txt overwrite)");
-    if (auto proper_delete_implemented = false)
-      verify_source_contents(LR"(mod4\mfolder4\mfiledeletewrite2p.txt)", old_contents.c_str());
-    else
-      verify_source_existance(LR"(mod4\mfolder4\mfiledeletewrite2p.txt)", false);
+    if (bool protect_virtualized_or_track_deleted_only_in_current_process = true)   {
+      verify_source_contents(LR"(overwrite\mfolder4\mfiledeletewrite2p.txt)", R"(mfolder4\mfiledeletewrite2p.txt overwrite)");
+      if (auto proper_delete_implemented = false)
+        verify_source_contents(LR"(mod4\mfolder4\mfiledeletewrite2p.txt)", old_contents.c_str());
+      else
+        verify_source_existance(LR"(mod4\mfolder4\mfiledeletewrite2p.txt)", false);
+    }
+    else {
+      verify_source_contents(LR"(mod4\mfolder4\mfiledeletewrite2p.txt)", R"(mfolder4\mfiledeletewrite2p.txt overwrite)");
+      verify_source_existance(LR"(overwrite\mfolder4\mfiledeletewrite2p.txt)", false);
+    }
   }
 
   {
@@ -202,11 +229,17 @@ bool usvfs_basic_test::scenario_run()
     ops_deleterename(LR"(mfolder4\temp_mfiledeletemove.txt)", LR"(mfolder4\mfiledeletemove.txt)");
     ops_read(LR"(mfolder4\mfiledeletemove.txt)");
     verify_source_existance(LR"(overwrite\mfolder4\temp_mfiledeletemove.txt)", false);
-    verify_source_contents(LR"(overwrite\mfolder4\mfiledeletemove.txt)", R"(mfolder4\mfiledeletemove.txt overwrite)");
-    if (auto proper_delete_implemented = false)
-      verify_source_contents(LR"(mod4\mfolder4\mfiledeletemove.txt)", old_contents.c_str());
-    else
-      verify_source_existance(LR"(mod4\mfolder4\mfiledeletemove.txt)", false);
+    if (bool protect_virtualized = false) {
+      verify_source_contents(LR"(overwrite\mfolder4\mfiledeletemove.txt)", R"(mfolder4\mfiledeletemove.txt overwrite)");
+      if (auto proper_delete_implemented = false)
+        verify_source_contents(LR"(mod4\mfolder4\mfiledeletemove.txt)", old_contents.c_str());
+      else
+        verify_source_existance(LR"(mod4\mfolder4\mfiledeletemove.txt)", false);
+    }
+    else {
+      verify_source_contents(LR"(mod4\mfolder4\mfiledeletemove.txt)", R"(mfolder4\mfiledeletemove.txt overwrite)");
+      verify_source_existance(LR"(overwrite\mfolder4\mfiledeletemove.txt)", false);
+    }
   }
 
   {
@@ -218,11 +251,17 @@ bool usvfs_basic_test::scenario_run()
     ops_rename(LR"(mfolder4\temp_mfiledeletemove2p.txt)", LR"(mfolder4\mfiledeletemove2p.txt)", false);
     ops_read(LR"(mfolder4\mfiledeletemove2p.txt)");
     verify_source_existance(LR"(overwrite\mfolder4\temp_mfiledeletemove2p.txt)", false);
-    verify_source_contents(LR"(overwrite\mfolder4\mfiledeletemove2p.txt)", R"(mfolder4\mfiledeletemove2p.txt overwrite)");
-    if (auto proper_delete_implemented = false)
-      verify_source_contents(LR"(mod4\mfolder4\mfiledeletemove2p.txt)", old_contents.c_str());
-    else
-      verify_source_existance(LR"(mod4\mfolder4\mfiledeletemove2p.txt)", false);
+    if (bool protect_virtualized_or_track_deleted_only_in_current_process = true) {
+      verify_source_contents(LR"(overwrite\mfolder4\mfiledeletemove2p.txt)", R"(mfolder4\mfiledeletemove2p.txt overwrite)");
+      if (auto proper_delete_implemented = false)
+        verify_source_contents(LR"(mod4\mfolder4\mfiledeletemove2p.txt)", old_contents.c_str());
+      else
+        verify_source_existance(LR"(mod4\mfolder4\mfiledeletemove2p.txt)", false);
+    }
+    else {
+      verify_source_contents(LR"(mod4\mfolder4\mfiledeletemove2p.txt)", R"(mfolder4\mfiledeletemove2p.txt overwrite)");
+      verify_source_existance(LR"(overwrite\mfolder4\mfiledeletemove2p.txt)", false);
+    }
   }
 
   // test copy on write/delete/move against original mount files:
@@ -231,15 +270,21 @@ bool usvfs_basic_test::scenario_run()
     const auto& old_contents = mount_contents(LR"(rfolder\rfilerewrite.txt)");
     ops_rewrite(LR"(rfolder\rfilerewrite.txt)", R"(rfolder\rfilerewrite.txt rewrite)");
     ops_read(LR"(rfolder\rfilerewrite.txt)");
-    verify_source_contents(LR"(overwrite\rfolder\rfilerewrite.txt)", R"(rfolder\rfilerewrite.txt rewrite)");
-    if (auto copy_on_readwrite_implemented = false)
+    if (auto copy_on_readwrite_implemented = false) {
       verify_mount_contents(LR"(rfolder\rfilerewrite.txt)", old_contents.c_str());
-    else if (auto copy_on_speculative_write_implemeted = true)
+      verify_source_contents(LR"(overwrite\rfolder\rfilerewrite.txt)", R"(rfolder\rfilerewrite.txt rewrite)");
+    }
+    else {
       verify_mount_contents(LR"(rfolder\rfilerewrite.txt)", R"(rfolder\rfilerewrite.txt rewrite)");
+      verify_source_existance(LR"(overwrite\rfolder\rfilerewrite.txt)", false);
+    }
   }
   ops_overwrite(LR"(rfolder\rfilerewrite.txt\fail)", R"(rfilerewrite.txt is a file so folder creation should fail)", true, false);
   verify_mount_existance(LR"(rfolder\rfilerewrite.txt)"); // verifies its a file and not a directory
-  verify_source_existance(LR"(overwrite\rfolder\rfilerewrite.txt)"); // verifies its a file and not a directory
+  if (auto copy_on_readwrite_implemented = false)
+    verify_source_existance(LR"(overwrite\rfolder\rfilerewrite.txt)"); // verifies its a file and not a directory
+  else
+    verify_source_existance(LR"(overwrite\rfolder\rfilerewrite.txt)", false);
   ops_overwrite(LR"(rfolder\rfile0.txt\fail)", R"(rfile0.txt is a file so folder creation should fail)", true, false);
   verify_mount_existance(LR"(rfolder\rfile0.txt)"); // verifies its a file and not a directory
 
@@ -247,11 +292,17 @@ bool usvfs_basic_test::scenario_run()
     const auto& old_contents = mount_contents(LR"(rfolder\rfiledeletewrite.txt)");
     ops_deleteoverwrite(LR"(rfolder\rfiledeletewrite.txt)", R"(rfolder\rfiledeletewrite.txt overwrite)", false);
     ops_read(LR"(rfolder\rfiledeletewrite.txt)");
-    verify_source_contents(LR"(overwrite\rfolder\rfiledeletewrite.txt)", R"(rfolder\rfiledeletewrite.txt overwrite)");
-    if (auto proper_delete_implemented = false)
-      verify_mount_contents(LR"(rfolder\rfiledeletewrite.txt)", old_contents.c_str());
-    else
-      verify_mount_existance(LR"(rfolder\rfiledeletewrite.txt)", false);
+    if (bool protect_virtualized = false) {
+      verify_source_contents(LR"(overwrite\rfolder\rfiledeletewrite.txt)", R"(rfolder\rfiledeletewrite.txt overwrite)");
+      if (auto proper_delete_implemented = false)
+        verify_mount_contents(LR"(rfolder\rfiledeletewrite.txt)", old_contents.c_str());
+      else
+        verify_mount_existance(LR"(rfolder\rfiledeletewrite.txt)", false);
+    }
+    else {
+      verify_mount_contents(LR"(rfolder\rfiledeletewrite.txt)", R"(rfolder\rfiledeletewrite.txt overwrite)");
+      verify_source_existance(LR"(overwrite\rfolder\rfiledeletewrite.txt)", false);
+    }
   }
 
   {
