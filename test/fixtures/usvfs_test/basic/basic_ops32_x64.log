@@ -598,14 +598,14 @@ Spawning: test_file_operations_x86.exe -basedir mount -cout+ basic_ops32_x64.log
 Spawning: test_file_operations_x86.exe -basedir mount -cout+ basic_ops32_x64.log -copyover mount:rfolder\rcopyme4.txt mount:mfolder4\fail\rcopyme4.txt
 #> Output log openned for: test_file_operations_x86.exe -basedir mount -cout+ basic_ops32_x64.log -copyover rcopyme4.txt rcopyme4.txt
 # (W32) Copy file over {rfolder\rcopyme4.txt} {mfolder4\fail\rcopyme4.txt}
-# (W32)   CopyFileW returned 1 (0x1) last error 0 (0x0)
-#< test_file_operations_x86.exe ended properly.
+# (W32)   CopyFileW returned 0 (0x0) last error 3 (0x3)
+ERROR: CopyFileW() failed : lastError=3
 
 Spawning: test_file_operations_x86.exe -basedir mount -cout+ basic_ops32_x64.log -copyover mount:rfolder\rcopyme4.txt mount:mfolder4\mfile.txt\fail
 #> Output log openned for: test_file_operations_x86.exe -basedir mount -cout+ basic_ops32_x64.log -copyover rcopyme4.txt fail
 # (W32) Copy file over {rfolder\rcopyme4.txt} {mfolder4\mfile.txt\fail}
-# (W32)   CopyFileW returned 1 (0x1) last error 0 (0x0)
-#< test_file_operations_x86.exe ended properly.
+# (W32)   CopyFileW returned 0 (0x0) last error 3 (0x3)
+ERROR: CopyFileW() failed : lastError=3
 
 Spawning: test_file_operations_x86.exe -basedir mount -cout+ basic_ops32_x64.log -copy mount:rfolder\rcopyme4.txt mount:mfolder4\rcopyme4.txt
 #> Output log openned for: test_file_operations_x86.exe -basedir mount -cout+ basic_ops32_x64.log -copy rcopyme4.txt rcopyme4.txt
@@ -842,7 +842,7 @@ Spawning: test_file_operations_x86.exe -basedir mount -cout+ basic_ops32_x64.log
 Spawning: test_file_operations_x86.exe -basedir mount -cout+ basic_ops32_x64.log -renameover mount:mfolder4\temp_mfilemoveover.txt mount:mfolder4\mfilemoveover.txt
 #> Output log openned for: test_file_operations_x86.exe -basedir mount -cout+ basic_ops32_x64.log -renameover temp_mfilemoveover.txt mfilemoveover.txt
 # (W32) Renaming file over {mfolder4\temp_mfilemoveover.txt} {mfolder4\mfilemoveover.txt}
-# (W32)   MoveFileExW returned 1 (0x1) last error 0 (0x0)
+# (W32)   MoveFileExW returned 1 (0x1) last error 183 (0xb7)
 #< test_file_operations_x86.exe ended properly.
 
 Spawning: test_file_operations_x86.exe -basedir mount -cout+ basic_ops32_x64.log -read mount:mfolder4\mfilemoveover.txt
@@ -1248,7 +1248,6 @@ Spawning: test_file_operations_x86.exe -basedir mount -cout+ basic_ops32_x64.log
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
-# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
 # (W32)   FindNextFileW returned 0 (0x0) last error 18 (0x12)
 # (W32)   CloseHandle returned 1 (0x1) last error 18 (0x12)
 >> Listing directory {mfolder4}:
@@ -1319,8 +1318,14 @@ Spawning: test_file_operations_x86.exe -basedir mount -cout+ basic_ops32_x64.log
 # (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
 # Successfully read 40 bytes.
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
-[mfile.txt] DIR (attributes 0x10)
-[fail] DIR (attributes 0x10)
+[mfile.txt] FILE (attributes 0x20, 28 bytes)
+# (W32) Reading file {mfolder4\mfile.txt}
+# (W32)   CreateFileW last error 0 (0x0)
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+== mfolder4\mfile.txt by mod4
+# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
+# Successfully read 28 bytes.
+# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 # (W32) Querying directory {mfolder4\newfolder4}
 # (W32)   FindFirstFileW last error 0 (0x0)
 # (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
@@ -1413,40 +1418,6 @@ Spawning: test_file_operations_x86.exe -basedir mount -cout+ basic_ops32_x64.log
 == newfile4.txt recursive overwrite
 # (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
 # Successfully read 34 bytes.
-# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
-# (W32) Querying directory {mfolder4\mfile.txt}
-# (W32)   FindFirstFileW last error 0 (0x0)
-# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
-# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
-# (W32)   FindNextFileW returned 0 (0x0) last error 18 (0x12)
-# (W32)   CloseHandle returned 1 (0x1) last error 18 (0x12)
->> Listing directory {mfolder4\mfile.txt}:
-[.] DIR (attributes 0x10)
-[..] DIR (attributes 0x10)
-[fail] FILE (attributes 0x20, 40 bytes)
-# (W32) Reading file {mfolder4\mfile.txt\fail}
-# (W32)   CreateFileW last error 0 (0x0)
-# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
-== rfolder\rcopyme4.txt original contents
-# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
-# Successfully read 40 bytes.
-# (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
-# (W32) Querying directory {mfolder4\fail}
-# (W32)   FindFirstFileW last error 0 (0x0)
-# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
-# (W32)   FindNextFileW returned 1 (0x1) last error 0 (0x0)
-# (W32)   FindNextFileW returned 0 (0x0) last error 18 (0x12)
-# (W32)   CloseHandle returned 1 (0x1) last error 18 (0x12)
->> Listing directory {mfolder4\fail}:
-[.] DIR (attributes 0x10)
-[..] DIR (attributes 0x10)
-[rcopyme4.txt] FILE (attributes 0x20, 40 bytes)
-# (W32) Reading file {mfolder4\fail\rcopyme4.txt}
-# (W32)   CreateFileW last error 0 (0x0)
-# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
-== rfolder\rcopyme4.txt original contents
-# (W32)   ReadFile returned 1 (0x1) last error 0 (0x0)
-# Successfully read 40 bytes.
 # (W32)   CloseHandle returned 1 (0x1) last error 0 (0x0)
 # (W32) Querying directory {mfolder3}
 # (W32)   FindFirstFileW last error 0 (0x0)
