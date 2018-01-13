@@ -73,6 +73,29 @@ bool usvfs_basic_test::scenario_run()
 
   // test copy on write/delete against source "mod":
 
+  ops_touch(LR"(root0.txt)");
+  verify_source_existance(LR"(overwrite\root0.txt)", false);
+  ops_touch(LR"(root1.txt)");
+  verify_source_existance(LR"(overwrite\root1.txt)", false);
+  ops_touch(LR"(root2.txt)");
+  verify_source_existance(LR"(overwrite\root1.txt)", false);
+  ops_touch(LR"(mod1.txt)");
+  verify_source_existance(LR"(overwrite\mod1.txt)", false);
+  ops_touch(LR"(mfolder1\mfile.txt)");
+  verify_source_existance(LR"(overwrite\mfolder1\mfile.txt)", false);
+
+  ops_touch(LR"(root0w.txt)", true);
+  verify_source_existance(LR"(overwrite\root0w.txt)", true);
+  ops_touch(LR"(root1w.txt)", true);
+  verify_source_existance(LR"(overwrite\root1w.txt)", true);
+  ops_touch(LR"(root2w.txt)", true);
+  verify_source_existance(LR"(overwrite\root1w.txt)", true);
+  ops_touch(LR"(mod1w.txt)", true);
+  verify_source_existance(LR"(overwrite\mod1w.txt)", true);
+  ops_touch(LR"(mfolder1\mfilew.txt)", true);
+  verify_source_existance(LR"(overwrite\mfolder1\mfilew.txt)", true);
+
+
   {
     const auto& old_contents = source_contents(LR"(mod4\mfolder4\mfileoverwrite.txt)");
     verify_source_contents(LR"(mod4\mfolder4\mfileoverwrite.txt)", old_contents.c_str());

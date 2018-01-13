@@ -760,6 +760,11 @@ void usvfs_test_base::ops_overwrite(const path& rel_path, const char* contents, 
     L"\"" + string_cast<wstring>(contents, CodePage::UTF8) + L"\"");
 }
 
+void usvfs_test_base::ops_touch(const path& rel_path, bool full_write_access, bool should_succeed, const wstring& additional_args)
+{
+  run_ops(should_succeed, full_write_access ? L"-touchw" : L"-touch", rel_path, additional_args);
+}
+
 void usvfs_test_base::ops_deleteoverwrite(const path& rel_path, const char* contents, bool recursive, bool should_succeed, const wstring& additional_args)
 {
   using namespace usvfs::shared;

@@ -48,6 +48,8 @@ const char* TestFileSystem::write_operation_name(write_mode mode)
     return "Creating file";
   case write_mode::overwrite:
     return "Overwriting file";
+  case write_mode::opencreate:
+    return "Opening/Creating file";
   case write_mode::append:
     return "Appending file";
   }
@@ -121,7 +123,10 @@ void TestFileSystem::print_write_success(const void* data, std::size_t size, std
       fprintf(m_output, "{");
       if (size && reinterpret_cast<const char*>(data)[size - 1] == '\n')
         --size;
-      fwrite(data, 1, size, m_output);
+      if (data)
+        fwrite(data, 1, size, m_output);
+      else if (size)
+        fwrite("NULL?!", 1, 6, m_output);
       fprintf(m_output, "}");
     }
     fprintf(output(), "\n");

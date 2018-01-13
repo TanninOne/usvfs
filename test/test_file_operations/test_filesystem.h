@@ -49,8 +49,10 @@ public:
 
   virtual void read_file(const path& file_path) = 0;
 
-  enum class write_mode { manual_truncate, truncate, create, overwrite, append };
+  enum class write_mode { manual_truncate, truncate, create, overwrite, opencreate, append };
   virtual void write_file(const path& file_path, const void* data, std::size_t size, bool add_new_line, write_mode mode, bool rw_access = false) = 0;
+
+  virtual void touch_file(const path& file_path, bool full_write_access = false) = 0;
 
   virtual void delete_file(const path& file_path) = 0;
 

@@ -23,6 +23,8 @@ void print_usage(const char* myname) {
   fprintf(stderr, " -overwrite <file> <string> : overwrites the file at the given path with the given line (creating directories if in recursive mode).\n");
   fprintf(stderr, " -deleteoverwrite <file> <string> : shorthand for -delete <file> -overwrite <file> <string>\n");
   fprintf(stderr, " -rewrite <file> <string> : rewrites the file at the given path with the given line (fails if file doesn't exist; uses read/write access).\n");
+  fprintf(stderr, " -touch <file>       : updates last write timestamp of specified file.\n");
+  fprintf(stderr, " -touchw <file>      : updates last write timestamp using full write permissions.\n");
   fprintf(stderr, " -delete <file>      : deletes the given file.\n");
   fprintf(stderr, " -rename <src> <dst> : renames the given file.\n");
   fprintf(stderr, " -renameover <src> <dst> : renames the given file (replacing existing destination).\n");
@@ -137,16 +139,8 @@ public:
   {
     if (debug_pending()) __debugbreak();
 
-    auto real = m_api->real_path(path);
-    if (m_recursive)
-      try {
-        m_api->create_path(real.parent_path());
-      }
-      catch (const std::exception& e) {
-        fmt::MemoryWriter msg;
-        msg << "Failed to create_path [" << m_api->relative_path(real.parent_path()).u8string() << "] : " << e.what();
-        throw std::runtime_error(msg.str());
-      }
+    const auto& real = real_path_create_if_necessary(path);
+
     m_api->write_file(real, value, strlen(value), true, TestFileSystem::write_mode::overwrite);
   }
 
@@ -154,10 +148,20 @@ public:
   {
     if (debug_pending()) __debugbreak();
 
-    auto real = m_api->real_path(path);
+    const auto& real = real_path_create_if_necessary(path);
+
     // Use read/write access when rewriting to "simulate" the harder case where it is not known if the file is going to actually be changed
     m_api->write_file(real, value, strlen(value), false, TestFileSystem::write_mode::manual_truncate, true);
     m_api->write_file(real, "\r\n", 2, false, TestFileSystem::write_mode::append);
+  }
+
+  void touch(const char* path, bool full_write_access)
+  {
+    if (debug_pending()) __debugbreak();
+
+    const auto& real = real_path_create_if_necessary(path);
+
+    m_api->touch_file(real, full_write_access);
   }
 
   void deletef(const char* path)
@@ -217,6 +221,21 @@ public:
   }
 
 private:
+  TestFileSystem::path real_path_create_if_necessary(const char* path)
+  {
+    auto real = m_api->real_path(path);
+    if (m_recursive)
+      try {
+      m_api->create_path(real.parent_path());
+    }
+    catch (const std::exception& e) {
+      fmt::MemoryWriter msg;
+      msg << "Failed to create_path [" << m_api->relative_path(real.parent_path()).u8string() << "] : " << e.what();
+      throw std::runtime_error(msg.str());
+    }
+    return std::move(real);
+  }
+
   std::string clean_cmdline_arg(const char* arg_start, const char* arg_end)
   {
     if (arg_start == arg_end)
@@ -352,6 +371,13 @@ int main(int argc, char *argv[])
       else if (strcmp(argv[ai], "-rewrite") == 0 && verify_args_exist("-rewrite", 2, ai, argc)) {
         executer.rewrite(argv[ai + 1], argv[ai + 2]);
         ++++ai;
+        found_commands = true;
+      }
+      else if (strcmp(argv[ai], "-touch") == 0 && verify_args_exist("-touch", 1, ai, argc)
+        || strcmp(argv[ai], "-touchw") == 0 && verify_args_exist("-touchw", 1, ai, argc))
+      {
+        bool write_access = argv[ai][6] == 'w';
+        executer.touch(argv[++ai], write_access);
         found_commands = true;
       }
       else if (strcmp(argv[ai], "-delete") == 0 && verify_args_exist("-delete", 1, ai, argc))

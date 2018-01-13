@@ -294,6 +294,9 @@ void TestNtApi::write_file(const path& file_path, const void* data, std::size_t 
   case write_mode::overwrite:
     disposition = FILE_SUPERSEDE;
     break;
+  case write_mode::opencreate:
+    disposition = FILE_OPEN_IF;
+    break;
   case write_mode::append:
     disposition = FILE_OPEN_IF;
     access = FILE_APPEND_DATA | SYNCHRONIZE;
@@ -331,28 +334,75 @@ void TestNtApi::write_file(const path& file_path, const void* data, std::size_t 
   // finally write the data:
   size_t total = 0;
 
-  status =
-    NtWriteFile(file, NULL, NULL, NULL, &iosb, const_cast<void*>(data), static_cast<ULONG>(size), NULL, NULL);
-  print_result("NtWriteFile", status);
-  if (!NT_SUCCESS(status))
-    throw test::FuncFailed("NtWriteFile", status);
-  if (!NT_SUCCESS(iosb.Status))
-    throw test::FuncFailed("NtWriteFile", "bad iosb.Status", iosb.Status);
-  total += iosb.Information;
-
-  if (add_new_line)
+  if (data)
   {
     status =
-      NtWriteFile(file, NULL, NULL, NULL, &iosb, "\r\n", 2, NULL, NULL);
+      NtWriteFile(file, NULL, NULL, NULL, &iosb, const_cast<void*>(data), static_cast<ULONG>(size), NULL, NULL);
     print_result("NtWriteFile", status);
     if (!NT_SUCCESS(status))
       throw test::FuncFailed("NtWriteFile", status);
     if (!NT_SUCCESS(iosb.Status))
       throw test::FuncFailed("NtWriteFile", "bad iosb.Status", iosb.Status);
     total += iosb.Information;
+
+    if (add_new_line)
+    {
+      status =
+        NtWriteFile(file, NULL, NULL, NULL, &iosb, "\r\n", 2, NULL, NULL);
+      print_result("NtWriteFile", status);
+      if (!NT_SUCCESS(status))
+        throw test::FuncFailed("NtWriteFile", status);
+      if (!NT_SUCCESS(iosb.Status))
+        throw test::FuncFailed("NtWriteFile", "bad iosb.Status", iosb.Status);
+      total += iosb.Information;
+    }
   }
 
   print_write_success(data, size, total);
+}
+
+void TestNtApi::touch_file(const path& file_path, bool full_write_access)
+{
+  print_operation("Touching file", file_path);
+
+  SYSTEMTIME st;
+  GetSystemTime(&st);
+  FILETIME ft;
+  if (!SystemTimeToFileTime(&st, &ft))
+    throw_testWinFuncFailed("SystemTimeToFileTime");
+
+  UNICODE_STRING unicode_path;
+  RtlInitUnicodeString(&unicode_path, file_path.c_str());
+
+  OBJECT_ATTRIBUTES attributes;
+  InitializeObjectAttributes(&attributes, &unicode_path, OBJ_CASE_INSENSITIVE, NULL, NULL);
+
+  SafeHandle file(this);
+  IO_STATUS_BLOCK iosb;
+  auto share_all = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
+  auto access = (full_write_access ? GENERIC_WRITE : FILE_WRITE_ATTRIBUTES) | SYNCHRONIZE;
+  NTSTATUS status =
+    NtCreateFile(
+      file, access, &attributes, &iosb, NULL, FILE_ATTRIBUTE_NORMAL, share_all,
+      FILE_OPEN_IF, FILE_SYNCHRONOUS_IO_NONALERT, NULL, 0);
+  print_result("NtCreateFile", status);
+
+  if (!NT_SUCCESS(status))
+    throw test::FuncFailed("NtCreateFile", status);
+  if (!NT_SUCCESS(iosb.Status))
+    throw test::FuncFailed("NtCreateFile", "bad iosb.Status", iosb.Status);
+
+  FILE_BASIC_INFORMATION basicinfo{ 0 };
+  basicinfo.LastWriteTime.LowPart = ft.dwLowDateTime;
+  basicinfo.LastWriteTime.HighPart = ft.dwHighDateTime;
+  status =
+    NtSetInformationFile(file, &iosb, &basicinfo, sizeof(basicinfo), MyFileBasicInformation);
+  print_result("NtSetInformationFile", status, false, "Basic");
+
+  if (!NT_SUCCESS(status))
+    throw test::FuncFailed("NtSetInformationFile", status);
+  if (!NT_SUCCESS(iosb.Status))
+    throw test::FuncFailed("NtSetInformationFile", "bad iosb.Status", iosb.Status);
 }
 
 void TestNtApi::delete_file(const path& file_path)

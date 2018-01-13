@@ -230,6 +230,9 @@ void TestW32Api::write_file(const path& file_path, const void* data, std::size_t
   case write_mode::overwrite:
     disposition = CREATE_ALWAYS;
     break;
+  case write_mode::opencreate:
+    disposition = OPEN_ALWAYS;
+    break;
   case write_mode::append:
     disposition = OPEN_ALWAYS;
     access = FILE_APPEND_DATA;
@@ -260,26 +263,54 @@ void TestW32Api::write_file(const path& file_path, const void* data, std::size_t
       throw_testWinFuncFailed("SetEndOfFile");
   }
 
-  // finally write the data:
   size_t total = 0;
 
-  DWORD written = 0;
-  BOOL res = WriteFile(file, data, static_cast<DWORD>(size), &written, NULL);
-  print_result("WriteFile", written, true);
-  if (!res)
-    throw_testWinFuncFailed("WriteFile");
-  total += written;
-
-  if (add_new_line) {
-    res = WriteFile(file, "\r\n", 2, &written, NULL);
-    print_result("WriteFile", written, true, "<new line>");
+  if (data)
+  {
+    // finally write the data:
+    DWORD written = 0;
+    BOOL res = WriteFile(file, data, static_cast<DWORD>(size), &written, NULL);
+    print_result("WriteFile", written, true);
     if (!res)
       throw_testWinFuncFailed("WriteFile");
     total += written;
+
+    if (add_new_line) {
+      res = WriteFile(file, "\r\n", 2, &written, NULL);
+      print_result("WriteFile", written, true, "<new line>");
+      if (!res)
+        throw_testWinFuncFailed("WriteFile");
+      total += written;
+    }
   }
 
   print_write_success(data, size, total);
 }
+
+void TestW32Api::touch_file(const path& file_path, bool full_write_access)
+{
+  print_operation("Touching file", file_path);
+
+  SYSTEMTIME st;
+  GetSystemTime(&st);
+  FILETIME ft;
+  if (!SystemTimeToFileTime(&st, &ft))
+    throw_testWinFuncFailed("SystemTimeToFileTime");
+
+  auto share_all = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
+  auto access = full_write_access ? GENERIC_WRITE : FILE_WRITE_ATTRIBUTES;
+  SafeHandle file(this,
+    CreateFile(file_path.c_str(), access, share_all, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL));
+  print_result("CreateFileW", 0, true, nullptr, true);
+  if (!file.valid())
+    throw_testWinFuncFailed("CreateFile");
+
+  BOOL res = SetFileTime(file, nullptr, nullptr, &ft);
+  print_result("SetFileTime", res, true);
+  if (!res)
+    throw_testWinFuncFailed("SetFileTime");
+}
+
 
 void TestW32Api::delete_file(const path& file_path)
 {
