@@ -610,8 +610,9 @@ BOOL WINAPI usvfs::hook_CreateProcessInternalW(
   BOOL susp = dwCreationFlags & CREATE_SUSPENDED;
   dwCreationFlags |= CREATE_SUSPENDED;
 
-  std::wstring cmdline;
   RerouteW applicationReroute;
+  RerouteW cmdReroute;
+  LPWSTR cend = nullptr;
 
   std::wstring dllPath;
   USVFSParameters callParameters;
@@ -620,31 +621,51 @@ BOOL WINAPI usvfs::hook_CreateProcessInternalW(
     auto context = READ_CONTEXT();
 
     if (RerouteW::interestingPath(lpCommandLine)) {
-      // decompose command line
-      int argc = 0;
-      LPWSTR *argv = ::CommandLineToArgvW(lpCommandLine, &argc);
-      ON_BLOCK_EXIT([argv]() { LocalFree(argv); });
+      // First "argument" in the commandline is the command, we need to identify it and reroute it:
+      if (*lpCommandLine == '"') {
+        // If the first argument is quoted we trust its is quoted correctly
+        for (cend = lpCommandLine; *cend && *cend != ' '; ++cend)
+          if (*cend == '"') {
+            int escaped = 0;
+            for (++cend; *cend && (*cend != '"' || escaped % 2 != 0); ++cend)
+              escaped = *cend == '\\' ? escaped + 1 : 0;
+          }
 
-      RerouteW cmdReroute = RerouteW::create(context, callContext, argv[0]);
+        if (*(cend - 1) == '"')
+          --cend;
+        auto old_cend = *cend;
+        *cend = 0;
+        cmdReroute = RerouteW::create(context, callContext, lpCommandLine + 1);
+        *cend = old_cend;
+        if (old_cend == '"')
+          ++cend;
+      }
+      else {
+        // If the first argument we have no choice but to test all the options to quote the command as the
+        // real CreateProcess will do this:
+        cend = lpCommandLine;
+        while (true) {
+          while (*cend && *cend != ' ')
+            ++cend;
 
-      // find start of "real" arguments in lpCommandLine instead of using argv[1], ...
-      // because CommandLineToArgvW can change quoted/escaped sequences and we
-      // want to preserve them
-      LPCWSTR args = lpCommandLine;
-      for (; *args && *args != ' '; ++args)
-        if (*args == '"') {
-          int escaped = 0;
-          for (++args; *args && (*args != '"' || escaped % 2 != 0); ++args)
-            escaped = *args == '\\' ? escaped + 1 : 0;
+          auto old_cend = *cend;
+          *cend = 0;
+          cmdReroute = RerouteW::create(context, callContext, lpCommandLine);
+          *cend = old_cend;
+          if (cmdReroute.wasRerouted() || pathIsFile(cmdReroute.fileName()))
+            break;
+
+          while (*cend == ' ')
+            ++cend;
+
+          if (!*cend) {
+            // if we reached the end of the string we'll just use the whole commandline as is:
+            cend = nullptr;
+            break;
+          }
         }
-
-      // recompose command line
-      std::wstringstream stream;
-      stream << L"\"" << cmdReroute.fileName() << L"\"" << args;
-      cmdline = stream.str();
+      }
     }
-    else if (lpCommandLine)
-      cmdline = lpCommandLine;
 
     applicationReroute
         = RerouteW::create(context, callContext, lpApplicationName);
@@ -653,11 +674,23 @@ BOOL WINAPI usvfs::hook_CreateProcessInternalW(
     callParameters = context->callParameters();
   }
 
+  std::wstring cmdline;
+  if (cend && cmdReroute.fileName()) {
+    auto fileName = cmdReroute.fileName();
+    cmdline.reserve(wcslen(fileName) + wcslen(cend) + 2);
+    if (*fileName != '"')
+      cmdline += L"\"";
+    cmdline += fileName;
+    if (*fileName != '"')
+      cmdline += L"\"";
+    cmdline += cend;
+  }
+
   PRE_REALCALL
   res = CreateProcessInternalW(
       token,
       applicationReroute.fileName(),
-      lpCommandLine != nullptr ? &cmdline[0] : nullptr, lpProcessAttributes,
+      cmdline.empty() ? lpCommandLine : &cmdline[0], lpProcessAttributes,
       lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment,
       lpCurrentDirectory, lpStartupInfo, lpProcessInformation,
       newToken);
