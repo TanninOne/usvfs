@@ -537,7 +537,7 @@ HMODULE WINAPI usvfs::hook_LoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile,
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
-    LOG_CALL().PARAM(lpFileName).PARAM(reroute.fileName()).PARAM(res);
+    LOG_CALL().PARAM(lpFileName).PARAM(reroute.fileName()).PARAM(res).PARAM(callContext.lastError());
   }
 
   HOOK_END
@@ -688,8 +688,8 @@ BOOL WINAPI usvfs::hook_CreateProcessInternalW(
       .PARAM(lpApplicationName)
       .PARAM(applicationReroute.fileName())
       .PARAM(cmdline)
-      .PARAM(res);
-
+      .PARAM(res)
+      .PARAM(callContext.lastError());
   HOOK_END
 
   return res;
@@ -898,8 +898,8 @@ HANDLE WINAPI usvfs::hook_CreateFileW(
         .PARAMHEX(dwCreationDisposition)
         .PARAMHEX(dwFlagsAndAttributes)
         .PARAMHEX(res)
-        .PARAMHEX(rerouter.originalError())
-        .PARAMHEX(rerouter.error());
+        .PARAM(rerouter.originalError())
+        .PARAM(rerouter.error());
     }
   }
   else {
@@ -964,8 +964,8 @@ HANDLE WINAPI usvfs::hook_CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAccess,
         .PARAMHEX(originalDisposition)
         .PARAMHEX(dwCreationDisposition)
         .PARAMHEX(res)
-        .PARAMHEX(rerouter.originalError())
-        .PARAMHEX(rerouter.error());
+        .PARAM(rerouter.originalError())
+        .PARAM(rerouter.error());
     }
   }
   else {
@@ -1042,8 +1042,8 @@ BOOL WINAPI usvfs::hook_GetFileAttributesExW(
         .PARAMHEX(fInfoLevelId)
         .PARAMHEX(res)
         .PARAMHEX(resAttrib)
-        .PARAMHEX(originalError)
-        .PARAMHEX(fixedError);
+        .PARAM(originalError)
+        .PARAM(fixedError);
   }
 
   HOOK_END
@@ -1101,8 +1101,8 @@ DWORD WINAPI usvfs::hook_GetFileAttributesW(LPCWSTR lpFileName)
         .PARAMWRAP(lpFileName)
         .PARAMWRAP(reroute.fileName())
         .PARAMHEX(res)
-        .PARAMHEX(originalError)
-        .PARAMHEX(fixedError);
+        .PARAM(originalError)
+        .PARAM(fixedError);
   }
 
   HOOK_ENDP(usvfs::log::wrap(lpFileName));
@@ -1123,7 +1123,7 @@ DWORD WINAPI usvfs::hook_SetFileAttributesW(
   POST_REALCALL
 
   if (reroute.wasRerouted()) {
-    LOG_CALL().PARAMWRAP(reroute.fileName()).PARAM(res);
+    LOG_CALL().PARAMWRAP(reroute.fileName()).PARAM(res).PARAM(callContext.lastError());
   }
 
   HOOK_END
@@ -1149,7 +1149,7 @@ BOOL WINAPI usvfs::hook_DeleteFileW(LPCWSTR lpFileName)
 
   reroute.removeMapping();
   if (reroute.wasRerouted())
-    LOG_CALL().PARAMWRAP(lpFileName).PARAMWRAP(reroute.fileName()).PARAM(res);
+    LOG_CALL().PARAMWRAP(lpFileName).PARAMWRAP(reroute.fileName()).PARAM(res).PARAM(callContext.lastError());
 
   HOOK_END
 
@@ -1525,7 +1525,7 @@ DWORD WINAPI usvfs::hook_GetCurrentDirectoryW(DWORD nBufferLength,
   }
 
   if (!actualCWD.empty()) {
-    LOG_CALL().PARAMWRAP(lpBuffer).PARAM(res);
+    LOG_CALL().PARAMWRAP(lpBuffer).PARAM(res).PARAM(callContext.lastError());
   }
 
   HOOK_END
@@ -1579,7 +1579,7 @@ BOOL WINAPI usvfs::hook_SetCurrentDirectoryW(LPCWSTR lpPathName)
     context->customData<std::wstring>(ActualCWD) = lpPathName;
   }
 
-  LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(finalRoute.c_str()).PARAM(res);
+  LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(finalRoute.c_str()).PARAM(res).PARAM(callContext.lastError());
 
   HOOK_END
 
@@ -1603,7 +1603,7 @@ DLLEXPORT BOOL WINAPI usvfs::hook_CreateDirectoryW(
     reroute.insertMapping(WRITE_CONTEXT(), true);
 
   if (reroute.wasRerouted())
-    LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(reroute.fileName()).PARAM(res);
+    LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(reroute.fileName()).PARAM(res).PARAM(callContext.lastError());
 
   HOOK_END
 
@@ -1631,7 +1631,7 @@ DLLEXPORT BOOL WINAPI usvfs::hook_RemoveDirectoryW(
 
     reroute.removeMapping(true);
     if (reroute.wasRerouted())
-      LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(reroute.fileName()).PARAM(res);
+      LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(reroute.fileName()).PARAM(res).PARAM(callContext.lastError());
 
 	HOOK_END
 
@@ -1755,8 +1755,8 @@ DWORD WINAPI usvfs::hook_GetModuleFileNameW(HMODULE hModule,
           .addParam("lpFilename", usvfs::log::Wrap<LPCWSTR>(
                       (res != 0UL) ? lpFilename : L"<not set>"))
           .PARAM(nSize)
-          .PARAMHEX(callContext.lastError())
-          .PARAM(res);
+          .PARAM(res)
+          .PARAM(callContext.lastError());
     }
   }
   HOOK_END
@@ -1807,7 +1807,7 @@ HANDLE WINAPI usvfs::hook_FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVEL
       = lpFileName;
   }
 
-  LOG_CALL().PARAMWRAP(p.c_str()).PARAMWRAP(finalPath.c_str()).PARAM(res);
+  LOG_CALL().PARAMWRAP(p.c_str()).PARAMWRAP(finalPath.c_str()).PARAM(res).PARAM(callContext.lastError());
 
   HOOK_END
 
@@ -1890,7 +1890,7 @@ DWORD WINAPI usvfs::hook_GetPrivateProfileStringA(LPCSTR lpAppName, LPCSTR lpKey
       .PARAMWRAP(lpFileName)
       .PARAMWRAP(reroute.fileName())
       .PARAMHEX(res)
-      .PARAMHEX(callContext.lastError());
+      .PARAM(callContext.lastError());
   }
 
   HOOK_END
@@ -1924,7 +1924,7 @@ DWORD WINAPI usvfs::hook_GetPrivateProfileStringW(LPCWSTR lpAppName, LPCWSTR lpK
       .PARAMWRAP(lpFileName)
       .PARAMWRAP(reroute.fileName())
       .PARAMHEX(res)
-      .PARAMHEX(callContext.lastError());
+      .PARAM(callContext.lastError());
   }
 
   HOOK_END
@@ -1957,7 +1957,7 @@ DWORD WINAPI usvfs::hook_GetPrivateProfileSectionA(LPCSTR lpAppName, LPSTR lpRet
       .PARAMWRAP(lpFileName)
       .PARAMWRAP(reroute.fileName())
       .PARAMHEX(res)
-      .PARAMHEX(callContext.lastError());
+      .PARAM(callContext.lastError());
   }
 
   HOOK_END
@@ -1990,7 +1990,7 @@ DWORD WINAPI usvfs::hook_GetPrivateProfileSectionW(LPCWSTR lpAppName, LPWSTR lpR
       .PARAMWRAP(lpFileName)
       .PARAMWRAP(reroute.fileName())
       .PARAMHEX(res)
-      .PARAMHEX(callContext.lastError());
+      .PARAM(callContext.lastError());
   }
 
   HOOK_END
@@ -2031,8 +2031,8 @@ BOOL WINAPI usvfs::hook_WritePrivateProfileStringA(LPCSTR lpAppName, LPCSTR lpKe
         .PARAMWRAP(lpFileName)
         .PARAMWRAP(reroute.fileName())
         .PARAMHEX(res)
-        .PARAMHEX(reroute.originalError())
-        .PARAMHEX(callContext.lastError());
+        .PARAM(reroute.originalError())
+        .PARAM(callContext.lastError());
   }
 
   HOOK_END
@@ -2073,8 +2073,8 @@ BOOL WINAPI usvfs::hook_WritePrivateProfileStringW(LPCWSTR lpAppName, LPCWSTR lp
         .PARAMWRAP(lpFileName)
         .PARAMWRAP(reroute.fileName())
         .PARAMHEX(res)
-        .PARAMHEX(reroute.originalError())
-        .PARAMHEX(callContext.lastError());
+        .PARAM(reroute.originalError())
+        .PARAM(callContext.lastError());
   }
 
   HOOK_END
