@@ -375,7 +375,6 @@ public:
     else if (inPath[0] == L'\0' || inPath[1] == L':') {
       return inPath;
     }
-    usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::FULL_PATHNAME);
     return winapi::wide::getFullPathName(inPath).first;
   }
 
