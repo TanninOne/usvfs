@@ -78,6 +78,58 @@ private:
 MapTracker k32DeleteTracker;
 MapTracker k32FakeDirTracker;
 
+class CurrentDirectoryTracker {
+public:
+  using wstring = std::wstring;
+
+  bool get(wstring& currentDir, const wchar_t* forRelativePath = nullptr)
+  {
+    int index = m_currentDrive;
+    if (forRelativePath && *forRelativePath && forRelativePath[1] == ':')
+      if (!getDriveIndex(forRelativePath, index))
+        spdlog::get("usvfs")->warn("CurrentDirectoryTracker::get() invalid drive letter: {}, will use current drive {}",
+          string_cast<std::string>(forRelativePath), static_cast<char>('A'+ index)); // prints '@' for m_currentDrive == -1
+    if (index < 0)
+      return false;
+
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+    if (m_perDrive[index].empty())
+      return false;
+    else {
+      currentDir = m_perDrive[index];
+      return true;
+    }
+  }
+
+  bool set(const wstring& currentDir)
+  {
+    int index = -1;
+    bool good = !currentDir.empty() && getDriveIndex(currentDir.c_str(), index) && currentDir[1] == ':';
+    std::unique_lock<std::shared_mutex> lock(m_mutex);
+    m_currentDrive = good ? index : -1;
+    if (good)
+      m_perDrive[index] = currentDir;
+    return good;
+  }
+
+private:
+  static bool getDriveIndex(const wchar_t* path, int& index) {
+    if (*path >= 'a' && *path <= 'z')
+      index = *path - 'a';
+    else if (*path >= 'A' && *path <= 'Z')
+      index = *path - 'A';
+    else
+      return false;
+    return true;
+  }
+
+  mutable std::shared_mutex m_mutex;
+  wstring m_perDrive['z' - 'a' + 1];
+  int m_currentDrive{ -1 };
+};
+
+CurrentDirectoryTracker k32CurrentDirectoryTracker;
+
 // returns true iff the path exists (checks only real paths)
 static inline bool pathExists(LPCWSTR fileName)
 {
@@ -1536,10 +1588,9 @@ DWORD WINAPI usvfs::hook_GetCurrentDirectoryW(DWORD nBufferLength,
 
   HOOK_START
 
-  auto context = READ_CONTEXT();
-  std::wstring actualCWD = context->customData<std::wstring>(ActualCWD);
+  std::wstring actualCWD;
 
-  if (actualCWD.empty()) {
+  if (!k32CurrentDirectoryTracker.get(actualCWD)) {
     PRE_REALCALL
     res = ::GetCurrentDirectoryW(nBufferLength, lpBuffer);
     POST_REALCALL
@@ -1556,9 +1607,13 @@ DWORD WINAPI usvfs::hook_GetCurrentDirectoryW(DWORD nBufferLength,
     }
   }
 
-  if (!actualCWD.empty()) {
-    LOG_CALL().PARAMWRAP(lpBuffer).PARAM(res).PARAM(callContext.lastError());
-  }
+  if (nBufferLength)
+    LOG_CALL()
+      .PARAMWRAP(std::wstring(lpBuffer, res))
+      .PARAM(nBufferLength)
+      .PARAM(actualCWD.size())
+      .PARAM(res)
+      .PARAM(callContext.lastError());
 
   HOOK_END
 
@@ -1576,18 +1631,17 @@ BOOL WINAPI usvfs::hook_SetCurrentDirectoryW(LPCWSTR lpPathName)
 
   HOOK_START
 
+  const fs::path& realPath = RerouteW::canonizePath(RerouteW::absolutePath(lpPathName));
+  const std::wstring& realPathStr = realPath.wstring();
   std::wstring finalRoute;
   BOOL found = FALSE;
-
-  auto context = READ_CONTEXT();
 
   WCHAR processDir[MAX_PATH];
   if (::GetModuleFileNameW(NULL, processDir, MAX_PATH) != 0 && ::PathRemoveFileSpecW(processDir)) {
     WCHAR processName[MAX_PATH];
     ::GetModuleFileNameW(NULL, processName, MAX_PATH);
-    fs::path process(processName);
-    fs::path routedName = lpPathName / process.filename();
-    RerouteW rerouteTest = RerouteW::create(context, callContext, routedName.wstring().c_str());
+    fs::path routedName = realPath / processName;
+    RerouteW rerouteTest = RerouteW::create(READ_CONTEXT(), callContext, routedName.wstring().c_str());
     if (rerouteTest.wasRerouted()) {
       std::wstring reroutedPath = rerouteTest.fileName();
       if (routedName.wstring().find(processDir) != std::string::npos) {
@@ -1599,7 +1653,7 @@ BOOL WINAPI usvfs::hook_SetCurrentDirectoryW(LPCWSTR lpPathName)
   }
 
   if (!found) {
-    RerouteW reroute = RerouteW::create(context, callContext, lpPathName);
+    RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, realPathStr.c_str());
     finalRoute = reroute.fileName();
   }
 
@@ -1607,11 +1661,17 @@ BOOL WINAPI usvfs::hook_SetCurrentDirectoryW(LPCWSTR lpPathName)
   res = ::SetCurrentDirectoryW(finalRoute.c_str());
   POST_REALCALL
 
-  if (res) {
-    context->customData<std::wstring>(ActualCWD) = lpPathName;
-  }
+  if (res)
+    if (!k32CurrentDirectoryTracker.set(realPathStr))
+      spdlog::get("usvfs")->warn("Updating actual current directory failed: {} ?!", string_cast<std::string>(realPathStr));
 
-  LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(finalRoute.c_str()).PARAM(res).PARAM(callContext.lastError());
+
+  LOG_CALL()
+    .PARAMWRAP(lpPathName)
+    .PARAMWRAP(realPathStr.c_str())
+    .PARAMWRAP(finalRoute.c_str())
+    .PARAM(res)
+    .PARAM(callContext.lastError());
 
   HOOK_END
 
@@ -1681,29 +1741,30 @@ DWORD WINAPI usvfs::hook_GetFullPathNameA(LPCSTR lpFileName, DWORD nBufferLength
     return res;
   }
 
-  auto context = READ_CONTEXT();
+  std::string resolvedWithCMD;
 
-  std::wstring actualCWD = context->customData<std::wstring>(ActualCWD);
-  std::string temp;
-  if (actualCWD.empty() || fs::path(lpFileName).is_absolute()) {
-    temp = lpFileName;
+  std::wstring actualCWD;
+  fs::path filePath = lpFileName;
+  if (k32CurrentDirectoryTracker.get(actualCWD, filePath.wstring().c_str())) {
+    if (!filePath.is_absolute())
+      resolvedWithCMD =
+        ush::string_cast<std::string>((actualCWD / filePath.relative_path()).wstring());
   }
-  else {
-    temp = ush::string_cast<std::string>((fs::path(actualCWD) / lpFileName).wstring());
-  }
+
   PRE_REALCALL
-    res = ::GetFullPathNameA(temp.c_str(), nBufferLength, lpBuffer, lpFilePart);
+  res = ::GetFullPathNameA(
+    resolvedWithCMD.empty() ? lpFileName : resolvedWithCMD.c_str(), nBufferLength, lpBuffer, lpFilePart);
   POST_REALCALL
 
-    if (false) {
-      LOG_CALL()
-        .PARAMWRAP(lpFileName)
-        .PARAMWRAP(lpBuffer)
-        .PARAM(res)
-        .PARAM(callContext.lastError());
-    }
+  if (false && nBufferLength)
+    LOG_CALL()
+      .PARAMWRAP(lpFileName)
+      .PARAMWRAP(resolvedWithCMD.c_str())
+      .PARAMWRAP(std::string(lpBuffer, res).c_str())
+      .PARAM(nBufferLength)
+      .PARAM(res)
+      .PARAM(callContext.lastError());
 
-  // nothing to do here? Maybe if current directory is virtualised
   HOOK_END
 
   return res;
@@ -1722,28 +1783,29 @@ DWORD WINAPI usvfs::hook_GetFullPathNameW(LPCWSTR lpFileName,
     return res;
   }
 
-  auto context = READ_CONTEXT();
+  std::wstring resolvedWithCMD;
 
-  std::wstring actualCWD = context->customData<std::wstring>(ActualCWD);
-  std::wstring temp;
-  if (actualCWD.empty() || fs::path(lpFileName).is_absolute()) {
-    temp = lpFileName;
-  } else {
-    temp = (fs::wpath(actualCWD) / lpFileName).wstring();
+  std::wstring actualCWD;
+  if (k32CurrentDirectoryTracker.get(actualCWD, lpFileName)) {
+    fs::path filePath = lpFileName;
+    if (!filePath.is_absolute())
+      resolvedWithCMD = (actualCWD / filePath.relative_path()).wstring();
   }
+
   PRE_REALCALL
-  res = ::GetFullPathNameW(temp.c_str(), nBufferLength, lpBuffer, lpFilePart);
+  res = ::GetFullPathNameW(
+    resolvedWithCMD.empty() ? lpFileName : resolvedWithCMD.c_str(), nBufferLength, lpBuffer, lpFilePart);
   POST_REALCALL
 
-  if (false) {
-    LOG_CALL()
-        .PARAMWRAP(lpFileName)
-        .PARAMWRAP(lpBuffer)
-        .PARAM(res)
-        .PARAM(callContext.lastError());
-  }
+  if (false && nBufferLength)
+   LOG_CALL()
+    .PARAMWRAP(lpFileName)
+    .PARAMWRAP(resolvedWithCMD)
+    .PARAMWRAP(std::wstring(lpBuffer, res))
+    .PARAM(nBufferLength)
+    .PARAM(res)
+    .PARAM(callContext.lastError());
 
-  // nothing to do here? Maybe if current directory is virtualised
   HOOK_END
 
   return res;
