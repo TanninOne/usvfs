@@ -288,10 +288,24 @@ public:
     }
   }
 
-  void removeMapping(bool directory = false)
+  void removeMapping(const usvfs::HookContext::ConstPtr &readContext, bool directory = false)
   {
-    if (!directory)
-      k32DeleteTracker.insert(m_RealPath, m_FileName);
+    // We need to track deleted files even if they were not rerouted (i.e. files deleted from the real folder which there is
+    // a virtualized mapped folder on top of it). Since we don't want to add, *every* file which is deleted we check this:
+    if (!directory) {
+      bool found = wasRerouted();
+      if (!found)
+      {
+        FindCreateTarget visitor;
+        usvfs::RedirectionTree::VisitorFunction visitorWrapper =
+          [&](const usvfs::RedirectionTree::NodePtrT &node) { visitor(node); };
+        readContext->redirectionTable()->visitPath(m_RealPath, visitorWrapper);
+        if (visitor.target.get())
+          found = true;
+      }
+      if (found)
+        k32DeleteTracker.insert(m_RealPath, m_FileName);
+    }
 
     if (wasRerouted()) {
       if (m_FileNode.get())
@@ -1231,7 +1245,7 @@ BOOL WINAPI usvfs::hook_DeleteFileW(LPCWSTR lpFileName)
   }
   POST_REALCALL
 
-  reroute.removeMapping();
+  reroute.removeMapping(READ_CONTEXT());
   if (reroute.wasRerouted())
     LOG_CALL().PARAMWRAP(lpFileName).PARAMWRAP(reroute.fileName()).PARAM(res).PARAM(callContext.lastError());
 
@@ -1316,7 +1330,7 @@ BOOL WINAPI usvfs::hook_MoveFileW(LPCWSTR lpExistingFileName,
     writeReroute.updateResult(callContext, res);
 
     if (res) {
-      readReroute.removeMapping();
+      readReroute.removeMapping(READ_CONTEXT());
 
       if (writeReroute.newReroute()) {
         writeReroute.insertMapping(WRITE_CONTEXT());
@@ -1400,7 +1414,7 @@ BOOL WINAPI usvfs::hook_MoveFileExW(LPCWSTR lpExistingFileName,
     writeReroute.updateResult(callContext, res);
 
     if (res) {
-      readReroute.removeMapping();
+      readReroute.removeMapping(READ_CONTEXT());
 
       if (writeReroute.newReroute()) {
         writeReroute.insertMapping(WRITE_CONTEXT());
@@ -1483,7 +1497,7 @@ BOOL WINAPI usvfs::hook_MoveFileWithProgressW(LPCWSTR lpExistingFileName, LPCWST
     writeReroute.updateResult(callContext, res);
 
     if (res) {
-      readReroute.removeMapping();
+      readReroute.removeMapping(READ_CONTEXT());
 
       if (writeReroute.newReroute()) {
         writeReroute.insertMapping(WRITE_CONTEXT());
@@ -1721,7 +1735,7 @@ DLLEXPORT BOOL WINAPI usvfs::hook_RemoveDirectoryW(
 	}
 	POST_REALCALL
 
-    reroute.removeMapping(true);
+    reroute.removeMapping(READ_CONTEXT(), true);
     if (reroute.wasRerouted())
       LOG_CALL().PARAMWRAP(lpPathName).PARAMWRAP(reroute.fileName()).PARAM(res).PARAM(callContext.lastError());
 
