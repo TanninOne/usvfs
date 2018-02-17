@@ -1,4 +1,18 @@
-edit
-stderr.log
-stdout.log
-CMakeLists.txt.user
+# build outputs:
+/bin
+/lib
+/test/bin
+
+# build intermediates:
+/vsbuild/Release
+/vsbuild/Debug
+
+# test "side effects"
+/test/temp
+
+# VS generated files:
+.vs
+*.aps
+*.vcxproj.user
+msbuild.log
+

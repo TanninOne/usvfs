@@ -30,7 +30,7 @@ There are of course drawbacks
 # Current state
 
 usvfs is work in progress and should be considered in alpha state.
-It is a core component of Mod Organizer v2 <https://github.com/TanninOne/modorganizer> and thus receives serious real world testing
+It is a core component of Mod Organizer v2 <https://github.com/LePresidente/modorganizer> and thus receives serious real world testing
 
 # License
 

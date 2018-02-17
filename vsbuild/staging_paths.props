@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+    <STAGING_BASE>..\..\..</STAGING_BASE>
+    <STAGING_PATH_32>$(STAGING_BASE)\install</STAGING_PATH_32>
+    <STAGING_PATH_64>$(STAGING_BASE)\install</STAGING_PATH_64>
+    <STAGING_DLL_32>$(STAGING_PATH_32)\bin</STAGING_DLL_32>
+    <STAGING_DLL_64>$(STAGING_PATH_64)\bin</STAGING_DLL_64>
+    <STAGING_LIB_32>$(STAGING_PATH_32)\libs</STAGING_LIB_32>
+    <STAGING_LIB_64>$(STAGING_PATH_64)\libs</STAGING_LIB_64>
+    <STAGING_EXE_32>$(STAGING_PATH_32)\bin</STAGING_EXE_32>
+    <STAGING_EXE_64>$(STAGING_PATH_64)\bin</STAGING_EXE_64>
+    <STAGING_PDB_32>$(STAGING_PATH_32)\pdb</STAGING_PDB_32>
+    <STAGING_PDB_64>$(STAGING_PATH_64)\pdb</STAGING_PDB_64>
+  </PropertyGroup>
+  <PropertyGroup />
+  <ItemDefinitionGroup />
+  <ItemGroup>
+    <BuildMacro Include="STAGING_BASE">
+      <Value>$(STAGING_BASE)</Value>
+    </BuildMacro>
+    <BuildMacro Include="STAGING_PATH_32">
+      <Value>$(STAGING_PATH_32)</Value>
+    </BuildMacro>
+    <BuildMacro Include="STAGING_PATH_64">
+      <Value>$(STAGING_PATH_64)</Value>
+    </BuildMacro>
+    <BuildMacro Include="STAGING_DLL_32">
+      <Value>$(STAGING_DLL_32)</Value>
+    </BuildMacro>
+    <BuildMacro Include="STAGING_DLL_64">
+      <Value>$(STAGING_DLL_64)</Value>
+    </BuildMacro>
+    <BuildMacro Include="STAGING_LIB_32">
+      <Value>$(STAGING_LIB_32)</Value>
+    </BuildMacro>
+    <BuildMacro Include="STAGING_LIB_64">
+      <Value>$(STAGING_LIB_64)</Value>
+    </BuildMacro>
+    <BuildMacro Include="STAGING_EXE_32">
+      <Value>$(STAGING_EXE_32)</Value>
+    </BuildMacro>
+    <BuildMacro Include="STAGING_EXE_64">
+      <Value>$(STAGING_EXE_64)</Value>
+    </BuildMacro>
+    <BuildMacro Include="STAGING_PDB_32">
+      <Value>$(STAGING_PDB_32)</Value>
+    </BuildMacro>
+    <BuildMacro Include="STAGING_PDB_64">
+      <Value>$(STAGING_PDB_64)</Value>
+    </BuildMacro>
+  </ItemGroup>
+</Project>

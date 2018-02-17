@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectGuid>{562B0058-4701-4284-8B40-D87648A3F64C}</ProjectGuid>
+    <RootNamespace>usvfsdll</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="staging_paths.props" />
+    <Import Project="platform_x86.props" />
+    <Import Project="usvfs_common.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="staging_paths.props" />
+    <Import Project="platform_x86.props" />
+    <Import Project="usvfs_common.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="staging_paths.props" />
+    <Import Project="platform_x64.props" />
+    <Import Project="usvfs_common.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="staging_paths.props" />
+    <Import Project="platform_x64.props" />
+    <Import Project="usvfs_common.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>..\lib\</OutDir>
+    <TargetName>usvfs_$(PlatformShortName)</TargetName>
+    <CustomBuildAfterTargets>Build</CustomBuildAfterTargets>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>..\lib\</OutDir>
+    <TargetName>usvfs_$(PlatformShortName)</TargetName>
+    <CustomBuildAfterTargets>Build</CustomBuildAfterTargets>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>..\lib\</OutDir>
+    <TargetName>usvfs_$(PlatformShortName)</TargetName>
+    <CustomBuildAfterTargets>Build</CustomBuildAfterTargets>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>..\lib\</OutDir>
+    <TargetName>usvfs_$(PlatformShortName)</TargetName>
+    <CustomBuildAfterTargets>Build</CustomBuildAfterTargets>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>BUILDING_USVFS_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>Shlwapi.lib;Version.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <CustomBuildStep>
+      <Command>stage_helper.cmd $(TargetName) $(TargetPath) $(STAGING_DLL)\$(TargetFileName) $(TargetDir)$(TargetName).lib $(STAGING_LIB)\$(TargetName).lib $(TargetDir)$(TargetName).pdb $(STAGING_PDB)\$(TargetName).pdb</Command>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Message>Staging</Message>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Outputs>$(STAGING_DLL)\$(TargetFileName)</Outputs>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Inputs>$(TargetPath)</Inputs>
+    </CustomBuildStep>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>BUILDING_USVFS_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>Shlwapi.lib;Version.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <CustomBuildStep>
+      <Command>stage_helper.cmd $(TargetName) $(TargetPath) $(STAGING_DLL)\$(TargetFileName) $(TargetDir)$(TargetName).lib $(STAGING_LIB)\$(TargetName).lib $(TargetDir)$(TargetName).pdb $(STAGING_PDB)\$(TargetName).pdb</Command>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Message>Staging</Message>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Outputs>$(STAGING_DLL)\$(TargetFileName)</Outputs>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Inputs>$(TargetPath)</Inputs>
+    </CustomBuildStep>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PreprocessorDefinitions>BUILDING_USVFS_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>Shlwapi.lib;Version.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <CustomBuildStep>
+      <Command>stage_helper.cmd $(TargetName) $(TargetPath) $(STAGING_DLL)\$(TargetFileName) $(TargetDir)$(TargetName).lib $(STAGING_LIB)\$(TargetName).lib $(TargetDir)$(TargetName).pdb $(STAGING_PDB)\$(TargetName).pdb</Command>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Message>Staging</Message>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Outputs>$(STAGING_DLL)\$(TargetFileName)</Outputs>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Inputs>$(TargetPath)</Inputs>
+    </CustomBuildStep>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PreprocessorDefinitions>BUILDING_USVFS_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>Shlwapi.lib;Version.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <CustomBuildStep>
+      <Command>stage_helper.cmd $(TargetName) $(TargetPath) $(STAGING_DLL)\$(TargetFileName) $(TargetDir)$(TargetName).lib $(STAGING_LIB)\$(TargetName).lib $(TargetDir)$(TargetName).pdb $(STAGING_PDB)\$(TargetName).pdb</Command>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Message>Staging</Message>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Outputs>$(STAGING_DLL)\$(TargetFileName)</Outputs>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Inputs>$(TargetPath)</Inputs>
+    </CustomBuildStep>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\src\usvfs_dll\version.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\usvfs_dll\hookcallcontext.cpp" />
+    <ClCompile Include="..\src\usvfs_dll\hookcontext.cpp" />
+    <ClCompile Include="..\src\usvfs_dll\hookmanager.cpp" />
+    <ClCompile Include="..\src\usvfs_dll\hooks\kernel32.cpp" />
+    <ClCompile Include="..\src\usvfs_dll\hooks\ntdll.cpp" />
+    <ClCompile Include="..\src\usvfs_dll\hooks\ole32.cpp" />
+    <ClCompile Include="..\src\usvfs_dll\redirectiontree.cpp" />
+    <ClCompile Include="..\src\usvfs_dll\semaphore.cpp" />
+    <ClCompile Include="..\src\usvfs_dll\stringcast_boost.cpp" />
+    <ClCompile Include="..\src\usvfs_dll\usvfs.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\dllimport.h" />
+    <ClInclude Include="..\include\logging.h" />
+    <ClInclude Include="..\include\usvfs.h" />
+    <ClInclude Include="..\include\usvfsparameters.h" />
+    <ClInclude Include="..\src\usvfs_dll\hookcallcontext.h" />
+    <ClInclude Include="..\src\usvfs_dll\hookcontext.h" />
+    <ClInclude Include="..\src\usvfs_dll\hookmanager.h" />
+    <ClInclude Include="..\src\usvfs_dll\hooks\cogetserverpid.h" />
+    <ClInclude Include="..\src\usvfs_dll\hooks\kernel32.h" />
+    <ClInclude Include="..\src\usvfs_dll\hooks\ntdll.h" />
+    <ClInclude Include="..\src\usvfs_dll\hooks\ole32.h" />
+    <ClInclude Include="..\src\usvfs_dll\hooks\sharedids.h" />
+    <ClInclude Include="..\src\usvfs_dll\redirectiontree.h" />
+    <ClInclude Include="..\src\usvfs_dll\semaphore.h" />
+    <ClInclude Include="..\src\usvfs_dll\stringcast_boost.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="asmjit.vcxproj">
+      <Project>{5338b9d6-c2a9-4ded-b7e8-31292b96cbf2}</Project>
+    </ProjectReference>
+    <ProjectReference Include="fmt.vcxproj">
+      <Project>{e75f344a-1373-4e3f-97ea-bc80ca42e0f0}</Project>
+    </ProjectReference>
+    <ProjectReference Include="shared.vcxproj">
+      <Project>{2bb3300b-f08a-4063-95c4-8a0fadae6c51}</Project>
+    </ProjectReference>
+    <ProjectReference Include="spdlog.vcxproj">
+      <Project>{cdaddec0-b72b-43b4-831f-72ba85b72805}</Project>
+    </ProjectReference>
+    <ProjectReference Include="thooklib.vcxproj">
+      <Project>{1ce90f86-126e-40ab-bd8b-08b25fd2e68e}</Project>
+    </ProjectReference>
+    <ProjectReference Include="tinjectlib.vcxproj">
+      <Project>{d18d0b1c-37b4-48a8-88c0-399de2815c05}</Project>
+    </ProjectReference>
+    <ProjectReference Include="udis86.vcxproj">
+      <Project>{5b0e078a-d196-4ebb-bd6e-dcfb48b15e90}</Project>
+    </ProjectReference>
+    <ProjectReference Include="usvfs_helper.vcxproj">
+      <Project>{ba5b2cac-8b75-4c6b-83c7-ffb963e872b6}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
