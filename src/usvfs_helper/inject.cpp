@@ -82,34 +82,65 @@ void usvfs::injectProcess(const std::wstring &applicationPath
                              ::GetProcessId(processHandle), sameBitness ? "same" : "different");
 
   if (sameBitness) {
-    std::string libName = std::string("usvfs_") + (proc64 ? "x64" : "x86");
-#ifdef _DEBUG
-    std::wstring dllPath = (binPath / (libName + "-d.dll")).wstring();
-#else // DEBUG
-    std::wstring dllPath = (binPath / (libName + ".dll")).wstring();
-#endif // DEBUG
-    if (!boost::filesystem::exists(dllPath)) {
+    static constexpr auto USVFS_DLL =
+#ifdef _WIN64
+      L"usvfs_x64.dll";
+#else
+      L"usvfs_x86.dll";
+#endif
+    const auto& preferedDll = binPath / USVFS_DLL;
+    boost::filesystem::path dllPath = preferedDll;
+    bool dllFound = boost::filesystem::exists(dllPath);
+    // support for runing tests using a usvfs dll in lib folder (and proxy under bin):
+    if (!dllFound && binPath.filename() == L"bin") {
+      dllPath = binPath.parent_path() / L"lib" / USVFS_DLL;
+      dllFound = boost::filesystem::exists(dllPath);
+    }
+    if (!dllFound) {
       USVFS_THROW_EXCEPTION(
           file_not_found_error()
           << ex_msg(std::string("dll missing: ")
-                    + ush::string_cast<std::string>(dllPath).c_str()));
+                    + ush::string_cast<std::string>(preferedDll.wstring()).c_str()));
     }
 
-    spdlog::get("usvfs")->debug("dll path: {}", log::wrap(dllPath));
+    spdlog::get("usvfs")->info("dll path: {}", log::wrap(dllPath.wstring()));
 
     InjectLib::InjectDLL(processHandle, threadHandle, dllPath.c_str(),
                          "InitHooks", &parameters, sizeof(USVFSParameters));
 
     spdlog::get("usvfs")->info("injection to same bitness process {} successfull", ::GetProcessId(processHandle));
   } else {
-    std::wstring exePath = (binPath / "usvfs_proxy.exe").wstring();
-    if (!boost::filesystem::exists(exePath)) {
-      USVFS_THROW_EXCEPTION(file_not_found_error() << ex_msg(
-                                std::string("exe missing: ")
-                                + ush::string_cast<std::string>(exePath)));
+    // first try platform specific proxy exe:
+    static constexpr auto USVFS_PREFERED_EXE =
+#ifdef _WIN64
+      L"usvfs_proxy_x86.exe";
+#else
+      L"usvfs_proxy_x64.exe";
+#endif
+    const auto& preferedExe = binPath / USVFS_PREFERED_EXE;
+    boost::filesystem::path exePath = preferedExe;
+    bool exeFound = boost::filesystem::exists(exePath);
+    // support for runing tests using a usvfs dll in lib folder (and proxy under bin):
+    if (!exeFound && binPath.filename() == L"lib") {
+      exePath = binPath.parent_path() / L"bin" / USVFS_PREFERED_EXE;
+      exeFound = boost::filesystem::exists(exePath);
     }
+    // finally fallback to old proxy naming (but only for 64bit as we don't have a 64bit proxy in this case):
+#ifdef _WIN64
+    if (!exeFound) {
+      exePath = binPath / L"usvfs_proxy.exe";
+      exeFound = boost::filesystem::exists(exePath);
+    }
+#endif
+    if (!exeFound) {
+      USVFS_THROW_EXCEPTION(file_not_found_error() << ex_msg(
+                                std::string("usvfs proxy not found: ")
+                                + ush::string_cast<std::string>(preferedExe.wstring())));
+    }
+    else
+      spdlog::get("usvfs")->info("using usvfs proxy: {}", ush::string_cast<std::string>(preferedExe.wstring()));
     // need to use proxy aplication to inject
-    auto proxyProcess = std::move(wide::createProcess(exePath)
+    auto proxyProcess = std::move(wide::createProcess(exePath.wstring())
         .arg(L"--instance").arg(ush::string_cast<std::wstring>(parameters.instanceName))
         .arg(L"--pid").arg(GetProcessId(processHandle)));
 
@@ -120,7 +151,7 @@ void usvfs::injectProcess(const std::wstring &applicationPath
     if (!result.valid) {
       USVFS_THROW_EXCEPTION(unknown_error()
                             << ex_msg(std::string("failed to start proxy ")
-                                      + ush::string_cast<std::string>(exePath))
+                                      + ush::string_cast<std::string>(exePath.wstring()))
                             << ex_win_errcode(result.errorCode));
     } else {
       // wait for proxy completion. this shouldn't take long, 5 seconds is very generous

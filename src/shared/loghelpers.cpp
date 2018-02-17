@@ -25,6 +25,12 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 
 namespace ush = usvfs::shared;
 
+std::ostream &usvfs::log::operator<<(std::ostream &os, const Wrap<DWORD> &value)
+{
+  ush::FormatGuard guard(os);
+  os << std::hex << value.data();
+  return os;
+}
 
 std::ostream &usvfs::log::operator<<(std::ostream &os, const Wrap<NTSTATUS> &status)
 {
@@ -68,6 +74,15 @@ std::ostream &usvfs::log::operator<<(std::ostream &os, const Wrap<PUNICODE_STRIN
   return os;
 }
 
+static void writeToStream(std::ostream &os, LPCSTR str)
+{
+  if (str == nullptr) {
+    os << "<null>";
+  }
+  else {
+    os << str;
+  }
+}
 
 static void writeToStream(std::ostream &os, LPCWSTR str)
 {
@@ -78,6 +93,29 @@ static void writeToStream(std::ostream &os, LPCWSTR str)
   }
 }
 
+std::ostream &usvfs::log::operator<<(std::ostream &os, const Wrap<LPSTR> &str)
+{
+  try {
+    writeToStream(os, str.data());
+  }
+  catch (const std::exception &e) {
+    os << e.what();
+  }
+
+  return os;
+}
+
+std::ostream &usvfs::log::operator<<(std::ostream &os, const Wrap<LPCSTR> &str)
+{
+  try {
+    writeToStream(os, str.data());
+  }
+  catch (const std::exception &e) {
+    os << e.what();
+  }
+
+  return os;
+}
 
 std::ostream &usvfs::log::operator<<(std::ostream &os, const Wrap<LPWSTR> &str)
 {

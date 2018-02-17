@@ -245,6 +245,12 @@ typedef struct _OBJECT_HANDLE_INFORMATION {
   ACCESS_MASK GrantedAccess;
 } OBJECT_HANDLE_INFORMATION, *POBJECT_HANDLE_INFORMATION;
 
+typedef struct _RTL_RELATIVE_NAME {
+  UNICODE_STRING RelativeName;
+  HANDLE         ContainingDirectory;
+  void*          CurDirRef;
+} RTL_RELATIVE_NAME, *PRTL_RELATIVE_NAME;
+
 typedef struct _FILE_NETWORK_OPEN_INFORMATION {
   LARGE_INTEGER CreationTime;
   LARGE_INTEGER LastAccessTime;
@@ -290,6 +296,11 @@ typedef NTSTATUS(WINAPI *NtClose_type)(HANDLE);
 
 typedef NTSYSAPI BOOLEAN(NTAPI *RtlDoesFileExists_U_type)(PCWSTR);
 
+typedef NTSTATUS(NTAPI *RtlDosPathNameToRelativeNtPathName_U_WithStatus_type)(
+  PCWSTR DosFileName, PUNICODE_STRING NtFileName, PWSTR* FilePath, PRTL_RELATIVE_NAME RelativeName);
+
+typedef void (NTAPI *RtlReleaseRelativeName_type)(PRTL_RELATIVE_NAME RelativeName);
+
 typedef NTSTATUS (NTAPI *RtlGetVersion_type)(PRTL_OSVERSIONINFOW);
 
 typedef NTSTATUS(WINAPI *NtTerminateProcess_type)(HANDLE ProcessHandle, NTSTATUS ExitStatus);
@@ -301,6 +312,8 @@ extern NtOpenFile_type NtOpenFile;
 extern NtCreateFile_type NtCreateFile;
 extern NtClose_type NtClose;
 extern RtlDoesFileExists_U_type RtlDoesFileExists_U;
+extern RtlDosPathNameToRelativeNtPathName_U_WithStatus_type RtlDosPathNameToRelativeNtPathName_U_WithStatus;
+extern RtlReleaseRelativeName_type RtlReleaseRelativeName;
 extern RtlGetVersion_type RtlGetVersion;
 extern NtTerminateProcess_type NtTerminateProcess;
 
@@ -310,5 +323,8 @@ extern ObQueryNameString_type ObQueryNameString;
 extern ObDereferenceObject_type ObDereferenceObject;
 extern RtlInitUnicodeString_type RtlInitUnicodeString;
 */
+
+// ensures ntdll functions have been initialized (only needed during static objects initialization)
+void ntdll_declarations_init();
 
 #pragma warning(pop)

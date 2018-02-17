@@ -35,6 +35,8 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <utility>
 #include <shlobj.h>
 
+#include <boost/filesystem.hpp>
+
 
 #define ALIAS(alias, original) template <typename... Args>\
     auto alias(Args&&... args) -> decltype(original(std::forward<Args>(args)...)) {\
@@ -365,6 +367,8 @@ namespace ex {
   struct OSVersion {
     DWORD major;
     DWORD minor;
+    DWORD build;
+    DWORD platformid;
     DWORD servicpack;
   };
 
@@ -472,10 +476,18 @@ namespace ex {
      * @param securityAttributes the security attributes to use for all created
      *        directories. if this is null (default), the standard attributes
      *        are used
-     * @note it is not considered an error if the path already exists
+     * @return true if the directory (and possibly parent directories) were actually created
+     *        and false if the directory already existed. Throws exceptions on failure.
      */
-    void createPath(LPCWSTR path,
+    bool createPath(boost::filesystem::path path,
                     LPSECURITY_ATTRIBUTES securityAttributes = nullptr);
+    inline bool createPath(LPCWSTR path,
+                    LPSECURITY_ATTRIBUTES securityAttributes = nullptr)
+    {
+      return createPath(boost::filesystem::path(path), securityAttributes);
+    }
+
+    std::wstring getWindowsBuildLab(bool ex = false);
   }
 }
 

@@ -31,6 +31,7 @@ namespace usvfs {
 class HookStack {
 public:
   static HookStack &instance() {
+    PreserveGetLastError boostChangesGetLastError;
     if (s_Instance.get() == nullptr) {
       s_Instance.reset(new HookStack());
     }
@@ -88,6 +89,10 @@ HookCallContext::~HookCallContext()
   SetLastError(m_LastError);
 }
 
+void HookCallContext::restoreLastError()
+{
+  SetLastError(m_LastError);
+}
 
 void HookCallContext::updateLastError(DWORD lastError)
 {

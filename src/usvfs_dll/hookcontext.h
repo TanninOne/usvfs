@@ -241,6 +241,15 @@ private:
 extern "C" DLLEXPORT usvfs::HookContext *__cdecl CreateHookContext(
     const USVFSParameters &params, HMODULE module);
 
+class PreserveGetLastError
+{
+public:
+  PreserveGetLastError() : m_err(GetLastError()) {}
+  ~PreserveGetLastError() { SetLastError(m_err); }
+private:
+  DWORD m_err;
+};
+
 // declare an identifier that is guaranteed to be unique across the application
 #define DATA_ID(name)                                                          \
   static const usvfs::HookContext::DataIDT name = __COUNTER__
@@ -277,5 +286,5 @@ extern "C" DLLEXPORT usvfs::HookContext *__cdecl CreateHookContext(
     logExtInfo(e);                                                             \
   }
 
-#define PRE_REALCALL
+#define PRE_REALCALL callContext.restoreLastError();
 #define POST_REALCALL callContext.updateLastError();
