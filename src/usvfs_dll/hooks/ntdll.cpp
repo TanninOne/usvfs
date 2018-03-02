@@ -835,7 +835,7 @@ NTSTATUS WINAPI usvfs::hook_NtQueryDirectoryFile(
   return res;
 }
 
-NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFileEx(
+NTSTATUS WINAPI usvfs::hooks::hook_NtQueryDirectoryFileEx(
     HANDLE FileHandle,
     HANDLE Event,
     PIO_APC_ROUTINE ApcRoutine,
