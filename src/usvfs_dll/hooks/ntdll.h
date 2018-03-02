@@ -10,19 +10,16 @@
 namespace usvfs
 {
 
-namespace hooks
-{
-
 DLLEXPORT NTSTATUS WINAPI
-NtQueryFullAttributesFile(POBJECT_ATTRIBUTES ObjectAttributes,
+hook_NtQueryFullAttributesFile(POBJECT_ATTRIBUTES ObjectAttributes,
                           PFILE_NETWORK_OPEN_INFORMATION FileInformation);
 
 DLLEXPORT NTSTATUS WINAPI
-NtQueryAttributesFile(POBJECT_ATTRIBUTES      ObjectAttributes,
+hook_NtQueryAttributesFile(POBJECT_ATTRIBUTES      ObjectAttributes,
                       PFILE_BASIC_INFORMATION FileInformation);
 
 DLLEXPORT NTSTATUS WINAPI
-NtQueryDirectoryFile(HANDLE FileHandle,
+hook_NtQueryDirectoryFile(HANDLE FileHandle,
                      HANDLE Event,
                      PIO_APC_ROUTINE ApcRoutine,
                      PVOID ApcContext,
@@ -35,7 +32,7 @@ NtQueryDirectoryFile(HANDLE FileHandle,
                      BOOLEAN RestartScan);
 
 DLLEXPORT NTSTATUS WINAPI
-NtQueryDirectoryFileEx(HANDLE FileHandle,
+hook_NtQueryDirectoryFileEx(HANDLE FileHandle,
                        HANDLE Event,
                        PIO_APC_ROUTINE ApcRoutine,
                        PVOID ApcContext,
@@ -46,14 +43,14 @@ NtQueryDirectoryFileEx(HANDLE FileHandle,
                        ULONG QueryFlags,
                        PUNICODE_STRING FileName);
 
-DLLEXPORT NTSTATUS WINAPI NtOpenFile(PHANDLE FileHandle,
+DLLEXPORT NTSTATUS WINAPI hook_NtOpenFile(PHANDLE FileHandle,
                                      ACCESS_MASK DesiredAccess,
                                      POBJECT_ATTRIBUTES ObjectAttributes,
                                      PIO_STATUS_BLOCK IoStatusBlock,
                                      ULONG ShareAccess,
                                      ULONG OpenOptions);
 
-DLLEXPORT NTSTATUS WINAPI NtCreateFile(PHANDLE FileHandle,
+DLLEXPORT NTSTATUS WINAPI hook_NtCreateFile(PHANDLE FileHandle,
                                        ACCESS_MASK DesiredAccess,
                                        POBJECT_ATTRIBUTES ObjectAttributes,
                                        PIO_STATUS_BLOCK IoStatusBlock,
@@ -65,10 +62,8 @@ DLLEXPORT NTSTATUS WINAPI NtCreateFile(PHANDLE FileHandle,
                                        PVOID EaBuffer,
                                        ULONG EaLength);
 
-DLLEXPORT NTSTATUS WINAPI NtClose(HANDLE Handle);
+DLLEXPORT NTSTATUS WINAPI hook_NtClose(HANDLE Handle);
 
-DLLEXPORT NTSTATUS WINAPI NtTerminateProcess(HANDLE ProcessHandle, NTSTATUS ExitStatus);
-
-} // namespace hooks
+DLLEXPORT NTSTATUS WINAPI hook_NtTerminateProcess(HANDLE ProcessHandle, NTSTATUS ExitStatus);
 
 } // namespace usvfs

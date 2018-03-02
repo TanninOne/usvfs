@@ -122,7 +122,7 @@ void SHMLogger::get(char *buffer, size_t bufferSize)
 }
 
 spdlog::sinks::shm_sink::shm_sink(const char *queueName)
-  : m_LogQueue(open_only, (std::string("__shm_sink_") + queueName).c_str())
+  : m_LogQueue(open_only, (std::string("__shm_sink_") + queueName).c_str()), m_DroppedMessages(0)
 {
 }
 

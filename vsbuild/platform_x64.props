@@ -10,7 +10,11 @@
     <STAGING_PDB>$(STAGING_PDB_64)</STAGING_PDB>
   </PropertyGroup>
   <PropertyGroup />
-  <ItemDefinitionGroup />
+  <ItemDefinitionGroup>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <BuildMacro Include="PLATFORM_32">
       <Value>$(PLATFORM_32)</Value>

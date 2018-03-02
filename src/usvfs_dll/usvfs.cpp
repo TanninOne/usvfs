@@ -19,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 */
 #include "usvfs.h"
+#include "usvfs_version.h"
 #include "hookmanager.h"
 #include "redirectiontree.h"
 #include "loghelpers.h"
@@ -131,6 +132,8 @@ void InitLoggingInternal(bool toConsole, bool connectExistingSHM)
       spdlog::create<spdlog::sinks::null_sink>("hooks");
     }
   }
+
+  spdlog::get("usvfs")->info("usvfs dll {} initialized in process {}", USVFS_VERSION_STRING, GetCurrentProcessId());
 }
 
 

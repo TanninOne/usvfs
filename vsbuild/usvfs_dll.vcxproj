@@ -208,7 +208,6 @@
     <ClCompile Include="..\src\usvfs_dll\hookmanager.cpp" />
     <ClCompile Include="..\src\usvfs_dll\hooks\kernel32.cpp" />
     <ClCompile Include="..\src\usvfs_dll\hooks\ntdll.cpp" />
-    <ClCompile Include="..\src\usvfs_dll\hooks\ole32.cpp" />
     <ClCompile Include="..\src\usvfs_dll\redirectiontree.cpp" />
     <ClCompile Include="..\src\usvfs_dll\semaphore.cpp" />
     <ClCompile Include="..\src\usvfs_dll\stringcast_boost.cpp" />
@@ -219,13 +218,13 @@
     <ClInclude Include="..\include\logging.h" />
     <ClInclude Include="..\include\usvfs.h" />
     <ClInclude Include="..\include\usvfsparameters.h" />
+    <ClInclude Include="..\include\usvfs_version.h" />
     <ClInclude Include="..\src\usvfs_dll\hookcallcontext.h" />
     <ClInclude Include="..\src\usvfs_dll\hookcontext.h" />
     <ClInclude Include="..\src\usvfs_dll\hookmanager.h" />
     <ClInclude Include="..\src\usvfs_dll\hooks\cogetserverpid.h" />
     <ClInclude Include="..\src\usvfs_dll\hooks\kernel32.h" />
     <ClInclude Include="..\src\usvfs_dll\hooks\ntdll.h" />
-    <ClInclude Include="..\src\usvfs_dll\hooks\ole32.h" />
     <ClInclude Include="..\src\usvfs_dll\hooks\sharedids.h" />
     <ClInclude Include="..\src\usvfs_dll\redirectiontree.h" />
     <ClInclude Include="..\src\usvfs_dll\semaphore.h" />

@@ -18,6 +18,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 */
+
+#include <test_helpers.h>
+
 #pragma warning (push, 3)
 #include <iostream>
 #include <gtest/gtest.h>
@@ -29,7 +32,6 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <inject.h>
 #include <windows_sane.h>
 #include <stringutils.h>
-#include <winapi.h>
 
 #include <spdlog.h>
 
@@ -42,13 +44,9 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <logging.h>
 
 
-/*namespace logging = boost::log;
-namespace sinks = boost::log::sinks;
-namespace expr  = boost::log::expressions;*/
 
 namespace spd = spdlog;
 
-namespace uhooks = usvfs::hooks;
 namespace ush = usvfs::shared;
 
 
@@ -168,7 +166,7 @@ TEST_F(USVFSTest, CreateFileHookReportsCorrectErrorOnMissingFile)
     USVFSParameters params;
     USVFSInitParameters(&params, "usvfs_test", true, LogLevel::Debug, CrashDumpsType::None, "");
     std::unique_ptr<usvfs::HookContext> ctx(CreateHookContext(params, ::GetModuleHandle(nullptr)));
-    HANDLE res = uhooks::CreateFileW(VIRTUAL_FILEW
+    HANDLE res = usvfs::hook_CreateFileW(VIRTUAL_FILEW
                                      , GENERIC_READ
                                      , FILE_SHARE_READ | FILE_SHARE_WRITE
                                      , nullptr
@@ -184,7 +182,7 @@ TEST_F(USVFSTest, CreateFileHookReportsCorrectErrorOnMissingFile)
 TEST_F(USVFSTestWithReroute, CreateFileHookRedirectsFile)
 {
   EXPECT_NE(INVALID_HANDLE_VALUE
-            , uhooks::CreateFileW(VIRTUAL_FILEW
+            , usvfs::hook_CreateFileW(VIRTUAL_FILEW
                                   , GENERIC_READ
                                   , FILE_SHARE_READ | FILE_SHARE_WRITE
                                   , nullptr
@@ -201,7 +199,7 @@ TEST_F(USVFSTest, GetFileAttributesHookReportsCorrectErrorOnMissingFile)
         USVFSParameters params;
         USVFSInitParameters(&params, "usvfs_test", true, LogLevel::Debug, CrashDumpsType::None, "");
         std::unique_ptr<usvfs::HookContext> ctx(CreateHookContext(params, ::GetModuleHandle(nullptr)));
-        DWORD res = uhooks::GetFileAttributesW(VIRTUAL_FILEW);
+        DWORD res = usvfs::hook_GetFileAttributesW(VIRTUAL_FILEW);
 
         EXPECT_EQ(INVALID_FILE_ATTRIBUTES, res);
         EXPECT_EQ(ERROR_FILE_NOT_FOUND, ::GetLastError());
@@ -223,7 +221,7 @@ TEST_F(USVFSTest, GetFileAttributesHookRedirectsFile)
                , usvfs::RedirectionDataLocal(REAL_FILEA));
 
   EXPECT_EQ(::GetFileAttributesW(REAL_FILEW)
-            , uhooks::GetFileAttributesW(VIRTUAL_FILEW));
+            , usvfs::hook_GetFileAttributesW(VIRTUAL_FILEW));
 }
 /*
 TEST_F(USVFSTest, GetFullPathNameOnRegularCurrentDirectory)
@@ -238,7 +236,7 @@ TEST_F(USVFSTest, GetFullPathNameOnRegularCurrentDirectory)
   std::unique_ptr<wchar_t[]> buffer(new wchar_t[bufferLength]);
   LPWSTR filePart = nullptr;
 
-  DWORD res = uhooks::GetFullPathNameW(L"filename.txt", bufferLength, buffer.get(), &filePart);
+  DWORD res = usvfs::hook_GetFullPathNameW(L"filename.txt", bufferLength, buffer.get(), &filePart);
 
   EXPECT_NE(0UL, res);
   EXPECT_EQ(expected, std::wstring(buffer.get()));
@@ -261,7 +259,7 @@ TEST_F(USVFSTest, NtQueryDirectoryFileRegularFile)
   IO_STATUS_BLOCK status;
   char buffer[1024];
 
-  uhooks::NtQueryDirectoryFile(hdl
+  usvfs::hook_NtQueryDirectoryFile(hdl
                                , nullptr
                                , nullptr
                                , nullptr
@@ -298,7 +296,7 @@ TEST_F(USVFSTest, NtQueryDirectoryFileFindsVirtualFile)
 
   usvfs::UnicodeString fileName(L"np.exe");
 
-  uhooks::NtQueryDirectoryFile(hdl
+  usvfs::hook_NtQueryDirectoryFile(hdl
                                , nullptr
                                , nullptr
                                , nullptr
@@ -329,22 +327,18 @@ TEST_F(USVFSTestAuto, CanCreateMultipleLinks)
   EXPECT_EQ(TRUE, VirtualLinkDirectoryStatic(REAL_DIRW, outDir, 0));
 
   // both file and dir exist and have the correct type
-  EXPECT_NE(INVALID_FILE_ATTRIBUTES, uhooks::GetFileAttributesW(outFile));
-  EXPECT_NE(INVALID_FILE_ATTRIBUTES, uhooks::GetFileAttributesW(outDir));
-  EXPECT_EQ(0UL, uhooks::GetFileAttributesW(outFile) & FILE_ATTRIBUTE_DIRECTORY);
-  EXPECT_NE(0UL, uhooks::GetFileAttributesW(outDir)  & FILE_ATTRIBUTE_DIRECTORY);
-  EXPECT_NE(0UL, uhooks::GetFileAttributesW(outDirCanonizeTest) & FILE_ATTRIBUTE_DIRECTORY);
+  EXPECT_NE(INVALID_FILE_ATTRIBUTES, usvfs::hook_GetFileAttributesW(outFile));
+  EXPECT_NE(INVALID_FILE_ATTRIBUTES, usvfs::hook_GetFileAttributesW(outDir));
+  EXPECT_EQ(0UL, usvfs::hook_GetFileAttributesW(outFile) & FILE_ATTRIBUTE_DIRECTORY);
+  EXPECT_NE(0UL, usvfs::hook_GetFileAttributesW(outDir)  & FILE_ATTRIBUTE_DIRECTORY);
+  EXPECT_NE(0UL, usvfs::hook_GetFileAttributesW(outDirCanonizeTest) & FILE_ATTRIBUTE_DIRECTORY);
 }
 
 int main(int argc, char **argv) {
-  boost::filesystem::path dllPath(winapi::wide::getModuleFileName(nullptr));
-  dllPath = dllPath.parent_path().parent_path().parent_path() / "lib" /
-#if BOOST_ARCH_X86_64
-    "usvfs_x64.dll";
-#else
-    "usvfs_x86.dll";
-#endif
-  HMODULE loadDll = LoadLibrary(dllPath.c_str());
+  using namespace test;
+
+  auto dllPath = path_of_usvfs_lib(platform_dependant_executable("usvfs", "dll"));
+  ScopedLoadLibrary loadDll(dllPath.c_str());
   if (!loadDll) {
     std::wcerr << L"failed to load usvfs dll: " << dllPath.c_str() << L", " << GetLastError() << std::endl;
     return 1;
@@ -357,6 +351,5 @@ int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   int res = RUN_ALL_TESTS();
 
-  FreeLibrary(loadDll);
   return res;
 }

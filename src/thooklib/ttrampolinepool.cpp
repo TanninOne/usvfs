@@ -544,12 +544,18 @@ TrampolinePool::BufferMap::iterator TrampolinePool::allocateBuffer(LPVOID addres
 
 LPVOID TrampolinePool::barrier(LPVOID function)
 {
-  return instance().barrierInt(function);
+  DWORD err = GetLastError();
+  LPVOID res = instance().barrierInt(function);
+  SetLastError(err);
+  return res;
 }
 
 LPVOID TrampolinePool::release(LPVOID function)
 {
-  return instance().releaseInt(function);
+  DWORD err = GetLastError();
+  LPVOID res = instance().releaseInt(function);
+  SetLastError(err);
+  return res;
 }
 
 LPVOID TrampolinePool::barrierInt(LPVOID func)

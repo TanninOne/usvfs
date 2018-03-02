@@ -62,6 +62,8 @@ public:
   HookCallContext(const HookCallContext &reference) = delete;
   HookCallContext &operator=(const HookCallContext &reference) = delete;
 
+  void restoreLastError();
+
   void updateLastError(DWORD lastError = GetLastError());
 
   DWORD lastError() const { return m_LastError; }
