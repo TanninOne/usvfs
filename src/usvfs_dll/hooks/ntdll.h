@@ -31,6 +31,18 @@ hook_NtQueryDirectoryFile(HANDLE FileHandle,
                      PUNICODE_STRING FileName,
                      BOOLEAN RestartScan);
 
+DLLEXPORT NTSTATUS WINAPI
+hook_NtQueryDirectoryFileEx(HANDLE FileHandle,
+                       HANDLE Event,
+                       PIO_APC_ROUTINE ApcRoutine,
+                       PVOID ApcContext,
+                       PIO_STATUS_BLOCK IoStatusBlock,
+                       PVOID FileInformation,
+                       ULONG Length,
+                       FILE_INFORMATION_CLASS FileInformationClass,
+                       ULONG QueryFlags,
+                       PUNICODE_STRING FileName);
+
 DLLEXPORT NTSTATUS WINAPI hook_NtOpenFile(PHANDLE FileHandle,
                                      ACCESS_MASK DesiredAccess,
                                      POBJECT_ATTRIBUTES ObjectAttributes,
