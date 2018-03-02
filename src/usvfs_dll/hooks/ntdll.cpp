@@ -774,6 +774,197 @@ NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFile(
   return res;
 }
 
+NTSTATUS WINAPI usvfs::hooks::NtQueryDirectoryFileEx(
+    HANDLE FileHandle,
+    HANDLE Event,
+    PIO_APC_ROUTINE ApcRoutine,
+    PVOID ApcContext,
+    PIO_STATUS_BLOCK IoStatusBlock,
+    PVOID FileInformation,
+    ULONG Length,
+    FILE_INFORMATION_CLASS FileInformationClass,
+    ULONG QueryFlags,
+    PUNICODE_STRING FileName)
+{
+  NTSTATUS res = STATUS_NO_MORE_FILES;
+
+  typedef NTSTATUS(WINAPI * NtQueryDirectoryFileEx_t)(HANDLE, HANDLE, PIO_APC_ROUTINE, PVOID, PIO_STATUS_BLOCK, PVOID, ULONG, FILE_INFORMATION_CLASS, ULONG, PUNICODE_STRING);
+
+  HMODULE ntdll = ::GetModuleHandle(L"ntdll.dll");
+  NtQueryDirectoryFileEx_t dNtQueryDirectoryFileEx = NULL;
+  if (ntdll != NULL)
+    dNtQueryDirectoryFileEx = (NtQueryDirectoryFileEx_t)::GetProcAddress(ntdll, "NtQueryDirectoryFileEx");
+  if (dNtQueryDirectoryFileEx == NULL) return res;
+
+  // this is quite messy...
+  // first, this will gather the virtual locations mapping to the iterated one
+  // then we return results from the real location, skipping those that exist
+  //   in the virtual locations, as those take precedence
+  // finally the virtual results are returned, adding each result to a skip
+  //   list, so they don't get added twice
+  //
+  // if we don't add the regular files first, "." and ".." wouldn't be in the
+  //   first search result of wildcard searches which may confuse the caller
+  HOOK_START_GROUP(MutExHookGroup::FIND_FILES)
+    if (!callContext.active()) {
+      return dNtQueryDirectoryFileEx(FileHandle, Event, ApcRoutine, ApcContext,
+        IoStatusBlock, FileInformation, Length,
+        FileInformationClass, QueryFlags, FileName);
+    }
+
+  //  std::unique_lock<std::recursive_mutex> queryLock;
+  std::map<HANDLE, Searches::Info>::iterator infoIter;
+  bool firstSearch = false;
+
+  { // scope to limit context lifetime
+    HookContext::ConstPtr context = READ_CONTEXT();
+    Searches &activeSearches = context->customData<Searches>(SearchInfo);
+    //    queryLock = std::unique_lock<std::recursive_mutex>(activeSearches.queryMutex);
+
+    // TODO: Implement properly if we can decipher QueryFlags
+    /*
+    if (RestartScan) {
+      auto iter = activeSearches.info.find(FileHandle);
+      if (iter != activeSearches.info.end()) {
+        activeSearches.info.erase(iter);
+      }
+    }
+    */
+
+    // see if we already have a running search
+    infoIter = activeSearches.info.find(FileHandle);
+    firstSearch = (infoIter == activeSearches.info.end());
+  }
+
+  if (firstSearch) {
+    HookContext::Ptr context = WRITE_CONTEXT();
+    Searches &activeSearches = context->customData<Searches>(SearchInfo);
+    // tradeoff time: we store this search status even if no virtual results
+    // were found. This causes a little extra cost here and in NtClose every
+    // time a non-virtual dir is being searched. However if we don't,
+    // whenever NtQueryDirectoryFile is called another time on the same handle,
+    // this (expensive) block would be run again.
+    infoIter = activeSearches.info.insert(std::make_pair(FileHandle,
+      Searches::Info()))
+      .first;
+    infoIter->second.searchPattern.appendPath(FileName);
+
+    SearchHandleMap &searchMap
+      = context->customData<SearchHandleMap>(SearchHandles);
+    SearchHandleMap::iterator iter = searchMap.find(FileHandle);
+
+    UnicodeString searchPath;
+    if (iter != searchMap.end()) {
+      searchPath = UnicodeString(iter->second.c_str());
+      infoIter->second.currentSearchHandle =
+        CreateFileW(iter->second.c_str(), GENERIC_READ,
+          FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+          OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+    }
+    else {
+      searchPath = UnicodeString(FileHandle);
+    }
+    gatherVirtualEntries(searchPath, context->redirectionTable(), FileName,
+      infoIter->second);
+  }
+
+  ULONG dataRead = Length;
+  PVOID FileInformationCurrent = FileInformation;
+
+  // add regular search results, skipping those files we have in a virtual
+  // location
+  bool moreRegular = !infoIter->second.regularComplete;
+  bool dataReturned = false;
+  while (moreRegular && !dataReturned) {
+    dataRead = Length;
+
+    HANDLE handle = infoIter->second.currentSearchHandle;
+    if (handle == INVALID_HANDLE_VALUE) {
+      handle = FileHandle;
+    }
+    // TODO: Implement properly if we can decipher QueryFlags
+    /*NTSTATUS subRes = addNtSearchData(
+      handle, FileName, L"", FileInformationClass, FileInformationCurrent,
+      dataRead, infoIter->second.foundFiles, Event, ApcRoutine, ApcContext,
+      ReturnSingleEntry);*/
+    NTSTATUS subRes = addNtSearchData(
+      handle, FileName, L"", FileInformationClass, FileInformationCurrent,
+      dataRead, infoIter->second.foundFiles, Event, ApcRoutine, ApcContext,
+      false);
+    moreRegular = subRes == STATUS_SUCCESS;
+    if (moreRegular) {
+      dataReturned = dataRead != 0;
+    }
+    else {
+      infoIter->second.regularComplete = true;
+      infoIter->second.foundFiles.clear();
+      if (infoIter->second.currentSearchHandle != INVALID_HANDLE_VALUE) {
+        ::CloseHandle(infoIter->second.currentSearchHandle);
+        infoIter->second.currentSearchHandle = INVALID_HANDLE_VALUE;
+      }
+    }
+  }
+  if (!moreRegular) {
+    // add virtual results
+    while (!dataReturned && infoIter->second.virtualMatches.size() > 0) {
+      auto matchIter = infoIter->second.virtualMatches.rbegin();
+      if (matchIter->realPath.size() != 0) {
+        dataRead = Length;
+        // TODO: Implement properly if we can decipher QueryFlags
+        /*if (addVirtualSearchResult(FileInformationCurrent, FileInformationClass,
+          infoIter->second, matchIter->realPath,
+          matchIter->virtualName, ReturnSingleEntry,
+          dataRead)) {*/
+        if (addVirtualSearchResult(FileInformationCurrent, FileInformationClass,
+          infoIter->second, matchIter->realPath,
+          matchIter->virtualName, false,
+          dataRead)) {
+          // a positive result here means the call returned data and there may
+          // be further objects to be retrieved by repeating the call
+          dataReturned = true;
+        }
+        else {
+          // proceed to next search handle
+
+          // TODO: doesn't append search results from more than one redirection
+          // per call. This is bad for performance but otherwise we'd need to
+          // re-write the offsets between information objects
+          infoIter->second.virtualMatches.pop_back();
+          CloseHandle(infoIter->second.currentSearchHandle);
+          infoIter->second.currentSearchHandle = INVALID_HANDLE_VALUE;
+        }
+      }
+    }
+  }
+
+  if (!dataReturned) {
+    if (firstSearch) {
+      res = STATUS_NO_SUCH_FILE;
+    }
+    else {
+      res = STATUS_NO_MORE_FILES;
+    }
+  }
+  else {
+    res = STATUS_SUCCESS;
+  }
+  IoStatusBlock->Status = res;
+  IoStatusBlock->Information = dataRead;
+
+  size_t numVirtualFiles = infoIter->second.virtualMatches.size();
+  if ((numVirtualFiles > 0)) {
+    LOG_CALL()
+      .addParam("path", UnicodeString(FileHandle))
+      .PARAM(FileInformationClass)
+      .PARAMWRAP(FileName)
+      .PARAM(numVirtualFiles)
+      .PARAMWRAP(res);
+  }
+
+  HOOK_END
+    return res;
+}
+
 unique_ptr_deleter<OBJECT_ATTRIBUTES>
 makeObjectAttributes(std::pair<UnicodeString, bool> &redirInfo,
                      POBJECT_ATTRIBUTES attributeTemplate)
