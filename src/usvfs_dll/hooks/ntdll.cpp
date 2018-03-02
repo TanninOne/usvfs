@@ -958,7 +958,7 @@ NTSTATUS WINAPI usvfs::hook_NtQueryDirectoryFileEx(
         dataRead = Length;
         if (addVirtualSearchResult(FileInformationCurrent, FileInformationClass,
           infoIter->second, matchIter->realPath,
-          matchIter->virtualName, false,
+          matchIter->virtualName, QueryFlags & SL_RETURN_SINGLE_ENTRY,
           dataRead)) {
           // a positive result here means the call returned data and there may
           // be further objects to be retrieved by repeating the call
