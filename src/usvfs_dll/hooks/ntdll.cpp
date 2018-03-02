@@ -835,7 +835,7 @@ NTSTATUS WINAPI usvfs::hook_NtQueryDirectoryFile(
   return res;
 }
 
-NTSTATUS WINAPI usvfs::hooks::hook_NtQueryDirectoryFileEx(
+NTSTATUS WINAPI usvfs::hook_NtQueryDirectoryFileEx(
     HANDLE FileHandle,
     HANDLE Event,
     PIO_APC_ROUTINE ApcRoutine,
@@ -847,15 +847,8 @@ NTSTATUS WINAPI usvfs::hooks::hook_NtQueryDirectoryFileEx(
     ULONG QueryFlags,
     PUNICODE_STRING FileName)
 {
+  PreserveGetLastError ntFunctionsDoNotChangeGetLastError;
   NTSTATUS res = STATUS_NO_MORE_FILES;
-
-  typedef NTSTATUS(WINAPI * NtQueryDirectoryFileEx_t)(HANDLE, HANDLE, PIO_APC_ROUTINE, PVOID, PIO_STATUS_BLOCK, PVOID, ULONG, FILE_INFORMATION_CLASS, ULONG, PUNICODE_STRING);
-
-  HMODULE ntdll = ::GetModuleHandle(L"ntdll.dll");
-  NtQueryDirectoryFileEx_t dNtQueryDirectoryFileEx = NULL;
-  if (ntdll != NULL)
-    dNtQueryDirectoryFileEx = (NtQueryDirectoryFileEx_t)::GetProcAddress(ntdll, "NtQueryDirectoryFileEx");
-  if (dNtQueryDirectoryFileEx == NULL) return res;
 
   // this is quite messy...
   // first, this will gather the virtual locations mapping to the iterated one
@@ -867,11 +860,11 @@ NTSTATUS WINAPI usvfs::hooks::hook_NtQueryDirectoryFileEx(
   // if we don't add the regular files first, "." and ".." wouldn't be in the
   //   first search result of wildcard searches which may confuse the caller
   HOOK_START_GROUP(MutExHookGroup::FIND_FILES)
-    if (!callContext.active()) {
-      return dNtQueryDirectoryFileEx(FileHandle, Event, ApcRoutine, ApcContext,
-        IoStatusBlock, FileInformation, Length,
-        FileInformationClass, QueryFlags, FileName);
-    }
+  if (!callContext.active()) {
+    return ::NtQueryDirectoryFileEx(FileHandle, Event, ApcRoutine, ApcContext,
+      IoStatusBlock, FileInformation, Length,
+      FileInformationClass, QueryFlags, FileName);
+  }
 
   //  std::unique_lock<std::recursive_mutex> queryLock;
   std::map<HANDLE, Searches::Info>::iterator infoIter;
@@ -883,14 +876,13 @@ NTSTATUS WINAPI usvfs::hooks::hook_NtQueryDirectoryFileEx(
     //    queryLock = std::unique_lock<std::recursive_mutex>(activeSearches.queryMutex);
 
     // TODO: Implement properly if we can decipher QueryFlags
-    /*
-    if (RestartScan) {
+
+    if (QueryFlags & SL_RESTART_SCAN) {
       auto iter = activeSearches.info.find(FileHandle);
       if (iter != activeSearches.info.end()) {
         activeSearches.info.erase(iter);
       }
     }
-    */
 
     // see if we already have a running search
     infoIter = activeSearches.info.find(FileHandle);
@@ -923,7 +915,7 @@ NTSTATUS WINAPI usvfs::hooks::hook_NtQueryDirectoryFileEx(
           OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
     }
     else {
-      searchPath = UnicodeString(FileHandle);
+      searchPath = ntdllHandleTracker.lookup(FileHandle);
     }
     gatherVirtualEntries(searchPath, context->redirectionTable(), FileName,
       infoIter->second);
@@ -944,14 +936,10 @@ NTSTATUS WINAPI usvfs::hooks::hook_NtQueryDirectoryFileEx(
       handle = FileHandle;
     }
     // TODO: Implement properly if we can decipher QueryFlags
-    /*NTSTATUS subRes = addNtSearchData(
-      handle, FileName, L"", FileInformationClass, FileInformationCurrent,
-      dataRead, infoIter->second.foundFiles, Event, ApcRoutine, ApcContext,
-      ReturnSingleEntry);*/
     NTSTATUS subRes = addNtSearchData(
       handle, FileName, L"", FileInformationClass, FileInformationCurrent,
       dataRead, infoIter->second.foundFiles, Event, ApcRoutine, ApcContext,
-      false);
+      QueryFlags & SL_RETURN_SINGLE_ENTRY);
     moreRegular = subRes == STATUS_SUCCESS;
     if (moreRegular) {
       dataReturned = dataRead != 0;
@@ -971,11 +959,6 @@ NTSTATUS WINAPI usvfs::hooks::hook_NtQueryDirectoryFileEx(
       auto matchIter = infoIter->second.virtualMatches.rbegin();
       if (matchIter->realPath.size() != 0) {
         dataRead = Length;
-        // TODO: Implement properly if we can decipher QueryFlags
-        /*if (addVirtualSearchResult(FileInformationCurrent, FileInformationClass,
-          infoIter->second, matchIter->realPath,
-          matchIter->virtualName, ReturnSingleEntry,
-          dataRead)) {*/
         if (addVirtualSearchResult(FileInformationCurrent, FileInformationClass,
           infoIter->second, matchIter->realPath,
           matchIter->virtualName, false,
@@ -1015,15 +998,16 @@ NTSTATUS WINAPI usvfs::hooks::hook_NtQueryDirectoryFileEx(
   size_t numVirtualFiles = infoIter->second.virtualMatches.size();
   if ((numVirtualFiles > 0)) {
     LOG_CALL()
-      .addParam("path", UnicodeString(FileHandle))
+      .addParam("path", ntdllHandleTracker.lookup(FileHandle))
       .PARAM(FileInformationClass)
       .PARAMWRAP(FileName)
+      .PARAM(QueryFlags)
       .PARAM(numVirtualFiles)
       .PARAMWRAP(res);
   }
 
   HOOK_END
-    return res;
+  return res;
 }
 
 unique_ptr_deleter<OBJECT_ATTRIBUTES>

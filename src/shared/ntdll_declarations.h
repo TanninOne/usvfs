@@ -21,6 +21,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include "windows_sane.h"
+#include <Winternl.h>
 
 #pragma warning(push)
 #pragma warning(disable : 4201)
@@ -145,6 +146,13 @@ typedef struct _FILE_REPARSE_POINT_INFORMATION {
 #define STATUS_BUFFER_OVERFLOW ((NTSTATUS)0x80000005L)
 #define STATUS_NO_MORE_FILES ((NTSTATUS)0x80000006L)
 #define STATUS_NO_SUCH_FILE ((NTSTATUS)0xC000000FL)
+
+#define SL_RESTART_SCAN                 0x01
+#define SL_RETURN_SINGLE_ENTRY          0x02
+#define SL_INDEX_SPECIFIED              0x04
+#define SL_RETURN_ON_DISK_ENTRIES_ONLY  0x08
+
+#define SL_QUERY_DIRECTORY_MASK         0x0b
 
 typedef enum _FILE_INFORMATION_CLASS {
   FileDirectoryInformation       = 1,
@@ -276,6 +284,10 @@ typedef NTSTATUS(WINAPI *NtQueryDirectoryFile_type)(
     HANDLE, HANDLE, PIO_APC_ROUTINE, PVOID, PIO_STATUS_BLOCK, PVOID, ULONG,
     FILE_INFORMATION_CLASS, BOOLEAN, PUNICODE_STRING, BOOLEAN);
 
+typedef NTSTATUS(WINAPI *NtQueryDirectoryFileEx_type)(
+    HANDLE, HANDLE, PIO_APC_ROUTINE, PVOID, PIO_STATUS_BLOCK, PVOID, ULONG,
+    FILE_INFORMATION_CLASS, ULONG, PUNICODE_STRING);
+
 typedef NTSTATUS(WINAPI *NtQueryFullAttributesFile_type)(
     POBJECT_ATTRIBUTES, PFILE_NETWORK_OPEN_INFORMATION);
 
@@ -306,6 +318,7 @@ typedef NTSTATUS (NTAPI *RtlGetVersion_type)(PRTL_OSVERSIONINFOW);
 typedef NTSTATUS(WINAPI *NtTerminateProcess_type)(HANDLE ProcessHandle, NTSTATUS ExitStatus);
 
 extern NtQueryDirectoryFile_type NtQueryDirectoryFile;
+extern NtQueryDirectoryFileEx_type NtQueryDirectoryFileEx;
 extern NtQueryFullAttributesFile_type NtQueryFullAttributesFile;
 extern NtQueryAttributesFile_type NtQueryAttributesFile;
 extern NtOpenFile_type NtOpenFile;
