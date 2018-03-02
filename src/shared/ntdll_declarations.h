@@ -21,7 +21,6 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include "windows_sane.h"
-#include <Winternl.h>
 
 #pragma warning(push)
 #pragma warning(disable : 4201)

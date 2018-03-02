@@ -875,8 +875,6 @@ NTSTATUS WINAPI usvfs::hook_NtQueryDirectoryFileEx(
     Searches &activeSearches = context->customData<Searches>(SearchInfo);
     //    queryLock = std::unique_lock<std::recursive_mutex>(activeSearches.queryMutex);
 
-    // TODO: Implement properly if we can decipher QueryFlags
-
     if (QueryFlags & SL_RESTART_SCAN) {
       auto iter = activeSearches.info.find(FileHandle);
       if (iter != activeSearches.info.end()) {
@@ -935,7 +933,6 @@ NTSTATUS WINAPI usvfs::hook_NtQueryDirectoryFileEx(
     if (handle == INVALID_HANDLE_VALUE) {
       handle = FileHandle;
     }
-    // TODO: Implement properly if we can decipher QueryFlags
     NTSTATUS subRes = addNtSearchData(
       handle, FileName, L"", FileInformationClass, FileInformationCurrent,
       dataRead, infoIter->second.foundFiles, Event, ApcRoutine, ApcContext,
