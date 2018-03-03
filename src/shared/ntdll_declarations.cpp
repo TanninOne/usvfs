@@ -24,6 +24,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #define LOAD_EXT(mod, name) name = reinterpret_cast<name ## _type>(::GetProcAddress(mod, #name)); assert(name != nullptr)
 
 NtQueryDirectoryFile_type NtQueryDirectoryFile;
+NtQueryDirectoryFileEx_type NtQueryDirectoryFileEx;
 NtQueryFullAttributesFile_type NtQueryFullAttributesFile;
 NtQueryAttributesFile_type NtQueryAttributesFile;
 NtOpenFile_type NtOpenFile;
@@ -42,6 +43,7 @@ void ntdll_declarations_init() {
     HMODULE ntDLLMod = GetModuleHandleW(L"ntdll.dll");
 
     LOAD_EXT(ntDLLMod, NtQueryDirectoryFile);
+    LOAD_EXT(ntDLLMod, NtQueryDirectoryFileEx);
     LOAD_EXT(ntDLLMod, NtQueryFullAttributesFile);
     LOAD_EXT(ntDLLMod, NtQueryAttributesFile);
     LOAD_EXT(ntDLLMod, NtCreateFile);
