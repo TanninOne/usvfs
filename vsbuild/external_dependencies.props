@@ -6,7 +6,6 @@
   <PropertyGroup Label="UserMacros">
     <BOOST_PATH Condition="'$(BOOST_PATH)'==''">..\..\boost_1_66_0</BOOST_PATH>
     <GTEST_PATH Condition="'$(GTEST_PATH)'==''">..\..\googletest</GTEST_PATH>
-    <PYTHON2_CMD Condition="'$(PYTHON2_CMD)'==''">py -2</PYTHON2_CMD>
   </PropertyGroup>
   <PropertyGroup />
   <ItemDefinitionGroup />
@@ -16,9 +15,6 @@
     </BuildMacro>
     <BuildMacro Include="GTEST_PATH">
       <Value>$(GTEST_PATH)</Value>
-    </BuildMacro>
-    <BuildMacro Include="PYTHON2_CMD">
-      <Value>$(PYTHON2_CMD)</Value>
     </BuildMacro>
   </ItemGroup>
 </Project>
