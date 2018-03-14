@@ -58,18 +58,22 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="external_dependencies.props" />
     <Import Project="common.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="external_dependencies.props" />
     <Import Project="common.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="external_dependencies.props" />
     <Import Project="common.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="external_dependencies.props" />
     <Import Project="common.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
@@ -91,7 +95,7 @@
       <AdditionalIncludeDirectories>C:\Games\MO2\build\usvfs_clean\udis86\libudis86;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <CustomBuildStep>
-      <Command>python  ..\udis86\scripts\ud_itab.py ..\udis86\docs\x86\optable.xml ..\udis86\libudis86</Command>
+      <Command>$(PYTHON2_CMD) ..\udis86\scripts\ud_itab.py ..\udis86\docs\x86\optable.xml ..\udis86\libudis86</Command>
     </CustomBuildStep>
     <CustomBuildStep>
       <Message>Building udis86 optable</Message>
@@ -109,7 +113,7 @@
       <AdditionalIncludeDirectories>C:\Games\MO2\build\usvfs_clean\udis86\libudis86;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <CustomBuildStep>
-      <Command>python  ..\udis86\scripts\ud_itab.py ..\udis86\docs\x86\optable.xml ..\udis86\libudis86</Command>
+      <Command>$(PYTHON2_CMD) ..\udis86\scripts\ud_itab.py ..\udis86\docs\x86\optable.xml ..\udis86\libudis86</Command>
     </CustomBuildStep>
     <CustomBuildStep>
       <Message>Building udis86 optable</Message>
@@ -133,7 +137,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <CustomBuildStep>
-      <Command>python  ..\udis86\scripts\ud_itab.py ..\udis86\docs\x86\optable.xml ..\udis86\libudis86</Command>
+      <Command>$(PYTHON2_CMD) ..\udis86\scripts\ud_itab.py ..\udis86\docs\x86\optable.xml ..\udis86\libudis86</Command>
     </CustomBuildStep>
     <CustomBuildStep>
       <Message>Building udis86 optable</Message>
@@ -157,7 +161,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <CustomBuildStep>
-      <Command>python  ..\udis86\scripts\ud_itab.py ..\udis86\docs\x86\optable.xml ..\udis86\libudis86</Command>
+      <Command>$(PYTHON2_CMD) ..\udis86\scripts\ud_itab.py ..\udis86\docs\x86\optable.xml ..\udis86\libudis86</Command>
     </CustomBuildStep>
     <CustomBuildStep>
       <Message>Building udis86 optable</Message>
