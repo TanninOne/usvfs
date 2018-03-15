@@ -3,6 +3,9 @@
 /lib
 /test/bin
 
+# local overides
+/vsbuild/external_dependencies_local.props
+
 # build intermediates:
 /vsbuild/Release
 /vsbuild/Debug
