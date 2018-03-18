@@ -95,7 +95,7 @@
       <AdditionalIncludeDirectories>C:\Games\MO2\build\usvfs_clean\udis86\libudis86;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <CustomBuildStep>
-      <Command>$(PYTHON2_CMD) ..\udis86\scripts\ud_itab.py ..\udis86\docs\x86\optable.xml ..\udis86\libudis86</Command>
+      <Command>py -2 ..\udis86\scripts\ud_itab.py ..\udis86\docs\x86\optable.xml ..\udis86\libudis86 || python ..\udis86\scripts\ud_itab.py ..\udis86\docs\x86\optable.xml ..\udis86\libudis86</Command>
     </CustomBuildStep>
     <CustomBuildStep>
       <Message>Building udis86 optable</Message>
@@ -113,7 +113,7 @@
       <AdditionalIncludeDirectories>C:\Games\MO2\build\usvfs_clean\udis86\libudis86;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <CustomBuildStep>
-      <Command>$(PYTHON2_CMD) ..\udis86\scripts\ud_itab.py ..\udis86\docs\x86\optable.xml ..\udis86\libudis86</Command>
+      <Command>py -2 ..\udis86\scripts\ud_itab.py ..\udis86\docs\x86\optable.xml ..\udis86\libudis86 || python ..\udis86\scripts\ud_itab.py ..\udis86\docs\x86\optable.xml ..\udis86\libudis86</Command>
     </CustomBuildStep>
     <CustomBuildStep>
       <Message>Building udis86 optable</Message>
@@ -137,7 +137,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <CustomBuildStep>
-      <Command>$(PYTHON2_CMD) ..\udis86\scripts\ud_itab.py ..\udis86\docs\x86\optable.xml ..\udis86\libudis86</Command>
+      <Command>py -2 ..\udis86\scripts\ud_itab.py ..\udis86\docs\x86\optable.xml ..\udis86\libudis86 || python ..\udis86\scripts\ud_itab.py ..\udis86\docs\x86\optable.xml ..\udis86\libudis86</Command>
     </CustomBuildStep>
     <CustomBuildStep>
       <Message>Building udis86 optable</Message>
