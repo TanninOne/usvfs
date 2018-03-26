@@ -478,6 +478,10 @@ public:
         {
           result.m_Buffer = result.m_FileNode->path().wstring();
         }
+		wchar_t inIt = inPath[wcslen(inPath) - 1];
+        std::wstring::iterator outIt = result.m_Buffer.end() - 1;
+        if ((*outIt == L'\\' || *outIt == L'/') && !(inIt == L'\\' || inIt == L'/'))
+            result.m_Buffer.erase(outIt);
         if (result.m_Buffer.length() >= MAX_PATH && !ush::startswith(result.m_Buffer.c_str(), LR"(\\?\)"))
           result.m_Buffer = LR"(\\?\)" + result.m_Buffer;
         std::replace(result.m_Buffer.begin(), result.m_Buffer.end(), L'/', L'\\');
@@ -549,6 +553,11 @@ public:
     }
     else if (inPath)
       result.m_Buffer = inPath;
+    std::wstring::iterator it = result.m_Buffer.end() - 1;
+	wchar_t inIt = inPath[wcslen(inPath) - 1];
+	std::wstring::iterator outIt = result.m_Buffer.end() - 1;
+	if ((*outIt == L'\\' || *outIt == L'/') && !(inIt == L'\\' || inIt == L'/'))
+		result.m_Buffer.erase(outIt);
 
     if (inPath)
       result.m_FileName = result.m_Buffer.c_str();
@@ -840,47 +849,47 @@ namespace usvfs {
       bool isFile = virtAttr != INVALID_FILE_ATTRIBUTES && (virtAttr & FILE_ATTRIBUTE_DIRECTORY) == 0;
       m_isDir = virtAttr != INVALID_FILE_ATTRIBUTES && (virtAttr & FILE_ATTRIBUTE_DIRECTORY);
 
-      if (!m_isDir)
-      {
-        switch (dwCreationDisposition) {
-        case CREATE_ALWAYS:
-          open = Open::create;
-          if (isFile)
-            m_error = ERROR_ALREADY_EXISTS;
-          break;
+      switch (dwCreationDisposition) {
+      case CREATE_ALWAYS:
+        open = Open::create;
+        if (isFile || m_isDir)
+          m_error = ERROR_ALREADY_EXISTS;
+        break;
 
-        case CREATE_NEW:
-          if (isFile) {
-            m_error = ERROR_FILE_EXISTS;
-            return false;
-          }
-          else
-            open = Open::create;
-          break;
-
-        case OPEN_ALWAYS:
-          if (isFile)
-            m_error = ERROR_ALREADY_EXISTS;
-          else
-            open = Open::create;
-          break;
-
-        case TRUNCATE_EXISTING:
-          if ((dwDesiredAccess & GENERIC_WRITE) == 0) {
-            m_error = ERROR_INVALID_PARAMETER;
-            return false;
-          }
-          if (isFile)
-            open = Open::empty;
-          // if !isFile we let the OS create function set the error value
-          break;
+      case CREATE_NEW:
+        if (isFile || m_isDir) {
+          m_error = ERROR_FILE_EXISTS;
+          return false;
         }
+        else
+          open = Open::create;
+        break;
+
+      case OPEN_ALWAYS:
+        if (isFile || m_isDir)
+          m_error = ERROR_ALREADY_EXISTS;
+        else
+          open = Open::create;
+        break;
+
+      case TRUNCATE_EXISTING:
+        if ((dwDesiredAccess & GENERIC_WRITE) == 0) {
+          m_error = ERROR_INVALID_PARAMETER;
+          return false;
+        }
+        if (isFile || m_isDir)
+          open = Open::empty;
+        // if !isFile we let the OS create function set the error value
+        break;
       }
 
       if (m_isDir && pathIsDirectory(lpFileName))
         m_reroute = RerouteW::noReroute(lpFileName);
       else
         m_reroute = RerouteW::create(context, callContext, lpFileName);
+
+      if (m_reroute.wasRerouted() && open == Open::create && pathIsDirectory(m_reroute.fileName()))
+          m_reroute = RerouteW::createNew(context, callContext, lpFileName, m_directlyAvailable, lpSecurityAttributes);
 
       if (!m_isDir && !isFile && !m_reroute.wasRerouted() && (open == Open::create || open == Open::empty))
       {
@@ -935,7 +944,7 @@ namespace usvfs {
     bool wasRerouted() const { return m_reroute.wasRerouted(); }
     LPCWSTR fileName() const { return m_reroute.fileName(); }
 
-    void insertMapping(const usvfs::HookContext::Ptr &context) { m_reroute.insertMapping(context); }
+    void insertMapping(const usvfs::HookContext::Ptr &context, bool directory = false) { m_reroute.insertMapping(context, directory); }
 
   private:
     DWORD m_error = ERROR_SUCCESS;
@@ -1254,16 +1263,12 @@ BOOL WINAPI usvfs::hook_DeleteFileW(LPCWSTR lpFileName)
   return res;
 }
 
-void updateMoveFileFlags(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName,
-  const RerouteW& readReroute, const usvfs::CreateRerouter& writeReroute, DWORD& newFlags)
+BOOL rewriteChangedDrives(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName,
+  const RerouteW& readReroute, const usvfs::CreateRerouter& writeReroute, DWORD newFlags)
 {
-  // if original source and destination were on the same drive but after the reroute
-  // they are on different drives, the move would have succeed before but will now fail
-  // unless MOVEFILE_COPY_ALLOWED is specified, so force this flag in this case:
-  if ((newFlags & MOVEFILE_COPY_ALLOWED) == 0 && (readReroute.wasRerouted() || writeReroute.wasRerouted())
+  return ((newFlags & MOVEFILE_COPY_ALLOWED) == 0 && (readReroute.wasRerouted() || writeReroute.wasRerouted())
     && pathesOnDifferentDrives(readReroute.fileName(), writeReroute.fileName())
-    && !pathesOnDifferentDrives(lpExistingFileName, lpNewFileName))
-    newFlags |= MOVEFILE_COPY_ALLOWED;
+    && !pathesOnDifferentDrives(lpExistingFileName, lpNewFileName));
 }
 
 BOOL WINAPI usvfs::hook_MoveFileA(LPCSTR lpExistingFileName,
@@ -1319,10 +1324,36 @@ BOOL WINAPI usvfs::hook_MoveFileW(LPCWSTR lpExistingFileName,
 
   if (callOriginal)
   {
-    updateMoveFileFlags(lpExistingFileName, lpNewFileName, readReroute, writeReroute, newFlags);
+    bool movedDrives = rewriteChangedDrives(lpExistingFileName, lpNewFileName, readReroute, writeReroute, newFlags);
+    if (movedDrives) newFlags |= MOVEFILE_COPY_ALLOWED;
+
+    bool isDirectory = pathIsDirectory(readReroute.fileName());
 
     PRE_REALCALL
-    if (newFlags)
+    if (isDirectory && movedDrives && newFlags) {
+      SHFILEOPSTRUCTW sf = { 0 };
+      sf.wFunc = FO_MOVE;
+      sf.hwnd = 0;
+      sf.fFlags = FOF_NOCONFIRMATION | FOF_NOCONFIRMMKDIR | FOF_NOERRORUI;
+      sf.pFrom = readReroute.fileName();
+      sf.pTo = writeReroute.fileName();
+      int shRes = ::SHFileOperationW(&sf);
+      switch (shRes) {
+      case 0x78:
+        callContext.updateLastError(ERROR_ACCESS_DENIED);
+        break;
+      case 0x7C:
+        callContext.updateLastError(ERROR_FILE_NOT_FOUND);
+        break;
+      case 0x7E:
+      case 0x80:
+        callContext.updateLastError(ERROR_FILE_EXISTS);
+        break;
+      default:
+        callContext.updateLastError(shRes);
+      }
+      res = shRes == 0;
+    } else if (newFlags)
       res = ::MoveFileExW(readReroute.fileName(), writeReroute.fileName(), newFlags);
     else
       res = ::MoveFileW(readReroute.fileName(), writeReroute.fileName());
@@ -1330,10 +1361,10 @@ BOOL WINAPI usvfs::hook_MoveFileW(LPCWSTR lpExistingFileName,
     writeReroute.updateResult(callContext, res);
 
     if (res) {
-      readReroute.removeMapping(READ_CONTEXT());
+      readReroute.removeMapping(READ_CONTEXT(), isDirectory);
 
       if (writeReroute.newReroute()) {
-        writeReroute.insertMapping(WRITE_CONTEXT());
+        writeReroute.insertMapping(WRITE_CONTEXT(), isDirectory);
       }
     }
 
@@ -1406,18 +1437,48 @@ BOOL WINAPI usvfs::hook_MoveFileExW(LPCWSTR lpExistingFileName,
 
   if (callOriginal)
   {
-    updateMoveFileFlags(lpExistingFileName, lpNewFileName, readReroute, writeReroute, newFlags);
+    bool movedDrives = rewriteChangedDrives(lpExistingFileName, lpNewFileName, readReroute, writeReroute, newFlags);
+    if (movedDrives) newFlags |= MOVEFILE_COPY_ALLOWED;
+
+    bool isDirectory = pathIsDirectory(readReroute.fileName());
 
     PRE_REALCALL
-    res = ::MoveFileExW(readReroute.fileName(), writeReroute.fileName(), newFlags);
+    if (isDirectory && movedDrives && newFlags & MOVEFILE_COPY_ALLOWED) {
+      SHFILEOPSTRUCTW sf = { 0 };
+      sf.wFunc = FO_MOVE;
+      sf.hwnd = 0;
+      sf.fFlags = FOF_NOCONFIRMATION | FOF_NOCONFIRMMKDIR | FOF_NOERRORUI;
+      sf.pFrom = readReroute.fileName();
+      sf.pTo = writeReroute.fileName();
+      int shRes = ::SHFileOperationW(&sf);
+      switch (shRes) {
+      case 0x78:
+        callContext.updateLastError(ERROR_ACCESS_DENIED);
+        break;
+      case 0x7C:
+        callContext.updateLastError(ERROR_FILE_NOT_FOUND);
+        break;
+      case 0x7E:
+      case 0x80:
+        callContext.updateLastError(ERROR_FILE_EXISTS);
+        break;
+      default:
+        callContext.updateLastError(shRes);
+      }
+      res = shRes == 0;
+    } else
+      res = ::MoveFileExW(readReroute.fileName(), writeReroute.fileName(), newFlags);
     POST_REALCALL
     writeReroute.updateResult(callContext, res);
 
     if (res) {
-      readReroute.removeMapping(READ_CONTEXT());
+      readReroute.removeMapping(READ_CONTEXT(), isDirectory);
 
       if (writeReroute.newReroute()) {
-        writeReroute.insertMapping(WRITE_CONTEXT());
+        spdlog::get("usvfs")->debug("The call was rerouted.");
+        if (isDirectory)
+          spdlog::get("usvfs")->debug("It's a directory!");
+        writeReroute.insertMapping(WRITE_CONTEXT(), isDirectory);
       }
     }
 
@@ -1489,30 +1550,57 @@ BOOL WINAPI usvfs::hook_MoveFileWithProgressW(LPCWSTR lpExistingFileName, LPCWST
 
   if (callOriginal)
   {
-    updateMoveFileFlags(lpExistingFileName, lpNewFileName, readReroute, writeReroute, newFlags);
+    bool movedDrives = rewriteChangedDrives(lpExistingFileName, lpNewFileName, readReroute, writeReroute, newFlags);
+    if (movedDrives) newFlags |= MOVEFILE_COPY_ALLOWED;
 
-    PRE_REALCALL
-    res = ::MoveFileWithProgressW(readReroute.fileName(), writeReroute.fileName(), lpProgressRoutine, lpData, newFlags);
-    POST_REALCALL
-    writeReroute.updateResult(callContext, res);
+	bool isDirectory = pathIsDirectory(readReroute.fileName());
 
-    if (res) {
-      readReroute.removeMapping(READ_CONTEXT());
+  PRE_REALCALL
+	if (isDirectory && movedDrives && newFlags & MOVEFILE_COPY_ALLOWED) {
+		SHFILEOPSTRUCTW sf = { 0 };
+		sf.wFunc = FO_MOVE;
+		sf.hwnd = 0;
+		sf.fFlags = FOF_NOCONFIRMATION | FOF_NOCONFIRMMKDIR | FOF_NOERRORUI;
+		sf.pFrom = readReroute.fileName();
+		sf.pTo = writeReroute.fileName();
+		int shRes = ::SHFileOperationW(&sf);
+		switch (shRes) {
+		case 0x78:
+			callContext.updateLastError(ERROR_ACCESS_DENIED);
+			break;
+		case 0x7C:
+			callContext.updateLastError(ERROR_FILE_NOT_FOUND);
+			break;
+		case 0x7E:
+		case 0x80:
+			callContext.updateLastError(ERROR_FILE_EXISTS);
+			break;
+		default:
+			callContext.updateLastError(shRes);
+		}
+		res = shRes == 0;
+	} else
+		res = ::MoveFileWithProgressW(readReroute.fileName(), writeReroute.fileName(), lpProgressRoutine, lpData, newFlags);
+  POST_REALCALL
+  writeReroute.updateResult(callContext, res);
 
-      if (writeReroute.newReroute()) {
-        writeReroute.insertMapping(WRITE_CONTEXT());
-      }
+  if (res) {
+    readReroute.removeMapping(READ_CONTEXT(), isDirectory);
+
+    if (writeReroute.newReroute()) {
+      writeReroute.insertMapping(WRITE_CONTEXT(), isDirectory);
     }
+  }
 
-    if (readReroute.wasRerouted() || writeReroute.wasRerouted() || writeReroute.changedError())
-      LOG_CALL()
-      .PARAMWRAP(readReroute.fileName())
-      .PARAMWRAP(writeReroute.fileName())
-      .PARAMWRAP(dwFlags)
-      .PARAMWRAP(newFlags)
-      .PARAM(res)
-      .PARAM(writeReroute.originalError())
-      .PARAM(callContext.lastError());
+  if (readReroute.wasRerouted() || writeReroute.wasRerouted() || writeReroute.changedError())
+    LOG_CALL()
+    .PARAMWRAP(readReroute.fileName())
+    .PARAMWRAP(writeReroute.fileName())
+    .PARAMWRAP(dwFlags)
+    .PARAMWRAP(newFlags)
+    .PARAM(res)
+    .PARAM(writeReroute.originalError())
+    .PARAM(callContext.lastError());
   }
 
   HOOK_END
