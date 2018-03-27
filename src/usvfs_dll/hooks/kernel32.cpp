@@ -1364,7 +1364,13 @@ BOOL WINAPI usvfs::hook_MoveFileW(LPCWSTR lpExistingFileName,
       readReroute.removeMapping(READ_CONTEXT(), isDirectory);
 
       if (writeReroute.newReroute()) {
-        writeReroute.insertMapping(WRITE_CONTEXT(), isDirectory);
+        if (isDirectory) {
+          unsigned int flags = LINKFLAG_RECURSIVE;
+          if (writeReroute.newReroute()) flags |= LINKFLAG_CREATETARGET;
+          VirtualLinkDirectoryStatic(writeReroute.fileName(), lpNewFileName, flags);
+        }
+        else
+          writeReroute.insertMapping(WRITE_CONTEXT());
       }
     }
 
@@ -1475,10 +1481,13 @@ BOOL WINAPI usvfs::hook_MoveFileExW(LPCWSTR lpExistingFileName,
       readReroute.removeMapping(READ_CONTEXT(), isDirectory);
 
       if (writeReroute.newReroute()) {
-        spdlog::get("usvfs")->debug("The call was rerouted.");
-        if (isDirectory)
-          spdlog::get("usvfs")->debug("It's a directory!");
-        writeReroute.insertMapping(WRITE_CONTEXT(), isDirectory);
+        if (isDirectory) {
+          unsigned int flags = LINKFLAG_RECURSIVE;
+          if (writeReroute.newReroute()) flags |= LINKFLAG_CREATETARGET;
+          VirtualLinkDirectoryStatic(writeReroute.fileName(), lpNewFileName, flags);
+        }
+        else
+          writeReroute.insertMapping(WRITE_CONTEXT());
       }
     }
 
@@ -1588,7 +1597,13 @@ BOOL WINAPI usvfs::hook_MoveFileWithProgressW(LPCWSTR lpExistingFileName, LPCWST
     readReroute.removeMapping(READ_CONTEXT(), isDirectory);
 
     if (writeReroute.newReroute()) {
-      writeReroute.insertMapping(WRITE_CONTEXT(), isDirectory);
+      if (isDirectory) {
+        unsigned int flags = LINKFLAG_RECURSIVE;
+        if (writeReroute.newReroute()) flags |= LINKFLAG_CREATETARGET;
+        VirtualLinkDirectoryStatic(writeReroute.fileName(), lpNewFileName, flags);
+      }
+      else
+        writeReroute.insertMapping(WRITE_CONTEXT());
     }
   }
 
