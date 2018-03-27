@@ -1983,13 +1983,16 @@ HANDLE WINAPI usvfs::hook_FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVEL
     finalPath /= p.filename().wstring();
   }
 
+  bool usedRewrite = false;
+
   PRE_REALCALL
   if (reroute.wasRerouted() || p.wstring().find(temp.wstring()) == std::string::npos) {
     res = ::FindFirstFileExW(lpFileName, fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
-    if (res == INVALID_HANDLE_VALUE && !finalPath.empty())
+    if (res == INVALID_HANDLE_VALUE && !finalPath.empty()) {
+      usedRewrite = true;
       res = ::FindFirstFileExW(finalPath.c_str(), fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
-  }
-  else {
+    }
+  } else {
     //Force the mutEXHook to match NtQueryDirectoryFile so it calls the non hooked NtQueryDirectoryFile.
     FunctionGroupLock lock(MutExHookGroup::FIND_FILES);
     res = ::FindFirstFileExW(lpFileName, fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
@@ -2003,7 +2006,10 @@ HANDLE WINAPI usvfs::hook_FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVEL
       = lpFileName;
   }
 
-  LOG_CALL().PARAMWRAP(p.c_str()).PARAMWRAP(finalPath.c_str()).PARAM(res).PARAM(callContext.lastError());
+  if (usedRewrite)
+    LOG_CALL().PARAMWRAP(lpFileName).PARAMWRAP(finalPath.c_str()).PARAM(res).PARAM(callContext.lastError());
+  else if (reroute.wasRerouted())
+    LOG_CALL().PARAMWRAP(lpFileName).PARAM(res).PARAM(callContext.lastError());
 
   HOOK_END
 
