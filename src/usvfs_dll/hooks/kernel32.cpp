@@ -1753,25 +1753,29 @@ BOOL WINAPI usvfs::hook_SetCurrentDirectoryW(LPCWSTR lpPathName)
   std::wstring finalRoute;
   BOOL found = FALSE;
 
-  WCHAR processDir[MAX_PATH];
-  if (::GetModuleFileNameW(NULL, processDir, MAX_PATH) != 0 && ::PathRemoveFileSpecW(processDir)) {
-    WCHAR processName[MAX_PATH];
-    ::GetModuleFileNameW(NULL, processName, MAX_PATH);
-    fs::path routedName = realPath / processName;
-    RerouteW rerouteTest = RerouteW::create(READ_CONTEXT(), callContext, routedName.wstring().c_str());
-    if (rerouteTest.wasRerouted()) {
-      std::wstring reroutedPath = rerouteTest.fileName();
-      if (routedName.wstring().find(processDir) != std::string::npos) {
-        fs::path finalPath(reroutedPath);
-        finalRoute = finalPath.parent_path().wstring();
-        found = TRUE;
+  if (fs::exists(realPath))
+    finalRoute = realPathStr;
+  else {
+    WCHAR processDir[MAX_PATH];
+    if (::GetModuleFileNameW(NULL, processDir, MAX_PATH) != 0 && ::PathRemoveFileSpecW(processDir)) {
+      WCHAR processName[MAX_PATH];
+      ::GetModuleFileNameW(NULL, processName, MAX_PATH);
+      fs::path routedName = realPath / processName;
+      RerouteW rerouteTest = RerouteW::create(READ_CONTEXT(), callContext, routedName.wstring().c_str());
+      if (rerouteTest.wasRerouted()) {
+        std::wstring reroutedPath = rerouteTest.fileName();
+        if (routedName.wstring().find(processDir) != std::string::npos) {
+          fs::path finalPath(reroutedPath);
+          finalRoute = finalPath.parent_path().wstring();
+          found = TRUE;
+        }
       }
     }
-  }
 
-  if (!found) {
-    RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, realPathStr.c_str());
-    finalRoute = reroute.fileName();
+    if (!found) {
+      RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, realPathStr.c_str());
+      finalRoute = reroute.fileName();
+    }
   }
 
   PRE_REALCALL
