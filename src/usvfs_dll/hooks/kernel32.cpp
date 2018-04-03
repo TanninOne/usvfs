@@ -1375,6 +1375,9 @@ BOOL WINAPI usvfs::hook_MoveFileW(LPCWSTR lpExistingFileName,
     else
       res = ::MoveFileW(readReroute.fileName(), writeReroute.fileName());
     POST_REALCALL
+
+    if (res) SetLastError(ERROR_SUCCESS);
+
     writeReroute.updateResult(callContext, res);
 
     if (res) {
@@ -1488,6 +1491,9 @@ BOOL WINAPI usvfs::hook_MoveFileExW(LPCWSTR lpExistingFileName,
     } else
       res = ::MoveFileExW(readReroute.fileName(), writeReroute.fileName(), newFlags);
     POST_REALCALL
+
+    if (res) SetLastError(ERROR_SUCCESS);
+
     writeReroute.updateResult(callContext, res);
 
     if (res) {
@@ -1600,6 +1606,9 @@ BOOL WINAPI usvfs::hook_MoveFileWithProgressW(LPCWSTR lpExistingFileName, LPCWST
 	} else
 		res = ::MoveFileWithProgressW(readReroute.fileName(), writeReroute.fileName(), lpProgressRoutine, lpData, newFlags);
   POST_REALCALL
+
+  if (res) SetLastError(ERROR_SUCCESS);
+
   writeReroute.updateResult(callContext, res);
 
   if (res) {
