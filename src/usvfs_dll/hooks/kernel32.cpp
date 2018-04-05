@@ -862,7 +862,7 @@ namespace usvfs {
 
       // Notice since we are calling our patched GetFileAttributesW here this will also check virtualized paths
       DWORD virtAttr = GetFileAttributesW(lpFileName);
-      m_directlyAvailable = virtAttr == INVALID_FILE_ATTRIBUTES && GetLastError() == ERROR_FILE_NOT_FOUND;
+      m_directlyAvailable = virtAttr == INVALID_FILE_ATTRIBUTES && (GetLastError() == ERROR_FILE_NOT_FOUND || GetLastError() == ERROR_PATH_NOT_FOUND);
       bool isFile = virtAttr != INVALID_FILE_ATTRIBUTES && (virtAttr & FILE_ATTRIBUTE_DIRECTORY) == 0;
       m_isDir = virtAttr != INVALID_FILE_ATTRIBUTES && (virtAttr & FILE_ATTRIBUTE_DIRECTORY);
 
