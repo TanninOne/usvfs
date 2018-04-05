@@ -1025,8 +1025,7 @@ HANDLE WINAPI usvfs::hook_CreateFileW(
         .PARAM(rerouter.originalError())
         .PARAM(rerouter.error());
     }
-  }
-  else {
+  } else {
     spdlog::get("hooks")->info(
       "hook_CreateFileW guaranteed failure, skipping original call: {}, disposition={}, access={}, error={}",
       ush::string_cast<std::string>(lpFileName, ush::CodePage::UTF8),
@@ -1381,7 +1380,7 @@ BOOL WINAPI usvfs::hook_MoveFileW(LPCWSTR lpExistingFileName,
     writeReroute.updateResult(callContext, res);
 
     if (res) {
-      readReroute.removeMapping(READ_CONTEXT(), isDirectory);
+      //readReroute.removeMapping(READ_CONTEXT(), isDirectory); // Leaving a ghost fixes some problems with apps expecting the file to be gone
 
       if (writeReroute.newReroute() && isDirectory) {
         RerouteW::addDirectoryMapping(WRITE_CONTEXT(), fs::path(lpNewFileName), fs::path(writeReroute.fileName()));
@@ -1497,7 +1496,7 @@ BOOL WINAPI usvfs::hook_MoveFileExW(LPCWSTR lpExistingFileName,
     writeReroute.updateResult(callContext, res);
 
     if (res) {
-      readReroute.removeMapping(READ_CONTEXT(), isDirectory);
+      //readReroute.removeMapping(READ_CONTEXT(), isDirectory); // Leaving a ghost fixes some problems with apps expecting the file to be gone
 
       if (writeReroute.newReroute() && isDirectory) {
         RerouteW::addDirectoryMapping(WRITE_CONTEXT(), fs::path(lpNewFileName), fs::path(writeReroute.fileName()));
@@ -1612,7 +1611,7 @@ BOOL WINAPI usvfs::hook_MoveFileWithProgressW(LPCWSTR lpExistingFileName, LPCWST
   writeReroute.updateResult(callContext, res);
 
   if (res) {
-    readReroute.removeMapping(READ_CONTEXT(), isDirectory);
+    //readReroute.removeMapping(READ_CONTEXT(), isDirectory); // Leaving a ghost fixes some problems with apps expecting the file to be gone
 
     if (writeReroute.newReroute() && isDirectory) {
       RerouteW::addDirectoryMapping(WRITE_CONTEXT(), fs::path(lpNewFileName), fs::path(writeReroute.fileName()));
@@ -2003,46 +2002,51 @@ HANDLE WINAPI usvfs::hook_FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVEL
     callContext.updateLastError();
     return res;
   }
-  // We need to do some trickery here, since we only want to use the hooked NtQueryDirectoryFile for rerouted locations we need to check if the Directory path has been routed instead of the full path.
-  fs::path originalPath(lpFileName);
-  if (::PathIsRelativeW(lpFileName)) {
-    DWORD len = MAX_PATH;
-    wchar_t *buffer = new wchar_t[len];
-    ::GetCurrentDirectoryW(len, buffer);
-    originalPath = fs::path(buffer) / originalPath;
-    delete[] buffer;
-  }
-  originalPath = originalPath.lexically_normal();
-  fs::path searchPath = originalPath.filename();
-  fs::path parentPath = originalPath.parent_path();
-  std::wstring findPath = parentPath.wstring();
-  while (findPath.find(L"*?<>\"", 0, 1) != std::wstring::npos) {
-    searchPath = parentPath.filename() / searchPath;
-    parentPath = parentPath.parent_path();
-    findPath = parentPath.wstring();
-  }
-  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, parentPath.wstring().c_str());
+
+  WCHAR appDataLocal[MAX_PATH];
+  ::SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, appDataLocal);
+  fs::path temp = fs::path(appDataLocal) / "Temp";
+
   fs::path finalPath;
-  if (reroute.wasRerouted()) {
-    finalPath = reroute.fileName();
-    finalPath /= searchPath.wstring();
-  }
+  RerouteW reroute;
+  fs::path originalPath(lpFileName);
 
   bool usedRewrite = false;
-
-  PRE_REALCALL
-  if (reroute.wasRerouted()) {
+  if (std::wstring(lpFileName).find(appDataLocal) != std::wstring::npos) {
+    PRE_REALCALL
+    //Force the mutEXHook to match NtQueryDirectoryFile so it calls the non hooked NtQueryDirectoryFile.
+    FunctionGroupLock lock(MutExHookGroup::FIND_FILES);
+    res = ::FindFirstFileExW(lpFileName, fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
+    POST_REALCALL
+  } else {
+    // We need to do some trickery here, since we only want to use the hooked NtQueryDirectoryFile for rerouted locations we need to check if the Directory path has been routed instead of the full path.
+    if (::PathIsRelativeW(lpFileName)) {
+      WCHAR buffer[MAX_PATH];
+      ::GetCurrentDirectoryW(MAX_PATH, buffer);
+      originalPath = fs::path(buffer) / originalPath;
+    }
+    originalPath = originalPath.lexically_normal();
+    fs::path searchPath = originalPath.filename();
+    fs::path parentPath = originalPath.parent_path();
+    std::wstring findPath = parentPath.wstring();
+    while (findPath.find(L"*?<>\"", 0, 1) != std::wstring::npos) {
+      searchPath = parentPath.filename() / searchPath;
+      parentPath = parentPath.parent_path();
+      findPath = parentPath.wstring();
+    }
+    reroute = RerouteW::create(READ_CONTEXT(), callContext, parentPath.wstring().c_str());
+    if (reroute.wasRerouted()) {
+      finalPath = reroute.fileName();
+      finalPath /= searchPath.wstring();
+    }
+    PRE_REALCALL
     res = ::FindFirstFileExW(originalPath.wstring().c_str(), fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
     if (res == INVALID_HANDLE_VALUE && !finalPath.empty()) {
       usedRewrite = true;
       res = ::FindFirstFileExW(finalPath.c_str(), fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
     }
-  } else {
-    //Force the mutEXHook to match NtQueryDirectoryFile so it calls the non hooked NtQueryDirectoryFile.
-    FunctionGroupLock lock(MutExHookGroup::FIND_FILES);
-    res = ::FindFirstFileExW(lpFileName, fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
+    POST_REALCALL
   }
-  POST_REALCALL
 
   if (res != INVALID_HANDLE_VALUE) {
   // store the original search path for use during iteration
