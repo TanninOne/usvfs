@@ -2003,24 +2003,36 @@ HANDLE WINAPI usvfs::hook_FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVEL
     callContext.updateLastError();
     return res;
   }
-
   // We need to do some trickery here, since we only want to use the hooked NtQueryDirectoryFile for rerouted locations we need to check if the Directory path has been routed instead of the full path.
-  fs::path p(lpFileName);
-  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, (p.parent_path().wstring()).c_str());
-  WCHAR appDataLocal[MAX_PATH];
-  ::SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, appDataLocal);
-  fs::path temp = fs::path(appDataLocal) / "Temp";
+  fs::path originalPath(lpFileName);
+  if (::PathIsRelativeW(lpFileName)) {
+    DWORD len = MAX_PATH;
+    wchar_t *buffer = new wchar_t[len];
+    ::GetCurrentDirectoryW(len, buffer);
+    originalPath = fs::path(buffer) / originalPath;
+    delete[] buffer;
+  }
+  originalPath = originalPath.lexically_normal();
+  fs::path searchPath = originalPath.filename();
+  fs::path parentPath = originalPath.parent_path();
+  std::wstring findPath = parentPath.wstring();
+  while (findPath.find(L"*?<>\"", 0, 1) != std::wstring::npos) {
+    searchPath = parentPath.filename() / searchPath;
+    parentPath = parentPath.parent_path();
+    findPath = parentPath.wstring();
+  }
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, parentPath.wstring().c_str());
   fs::path finalPath;
   if (reroute.wasRerouted()) {
     finalPath = reroute.fileName();
-    finalPath /= p.filename().wstring();
+    finalPath /= searchPath.wstring();
   }
 
   bool usedRewrite = false;
 
   PRE_REALCALL
-  if (reroute.wasRerouted() || p.wstring().find(temp.wstring()) == std::string::npos) {
-    res = ::FindFirstFileExW(lpFileName, fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
+  if (reroute.wasRerouted()) {
+    res = ::FindFirstFileExW(originalPath.wstring().c_str(), fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
     if (res == INVALID_HANDLE_VALUE && !finalPath.empty()) {
       usedRewrite = true;
       res = ::FindFirstFileExW(finalPath.c_str(), fInfoLevelId, lpFindFileData, fSearchOp, lpSearchFilter, dwAdditionalFlags);
@@ -2042,7 +2054,7 @@ HANDLE WINAPI usvfs::hook_FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVEL
   if (usedRewrite)
     LOG_CALL().PARAMWRAP(lpFileName).PARAMWRAP(finalPath.c_str()).PARAM(res).PARAM(callContext.lastError());
   else if (reroute.wasRerouted())
-    LOG_CALL().PARAMWRAP(lpFileName).PARAM(res).PARAM(callContext.lastError());
+    LOG_CALL().PARAMWRAP(lpFileName).PARAMWRAP(originalPath.wstring().c_str()).PARAM(res).PARAM(callContext.lastError());
 
   HOOK_END
 
