@@ -458,7 +458,11 @@ public:
     else if (inPath[0] == L'\0' || inPath[1] == L':') {
       return inPath;
     }
-    return winapi::wide::getFullPathName(inPath).first;
+    WCHAR currentDirectory[MAX_PATH];
+    ::GetCurrentDirectoryW(MAX_PATH, currentDirectory);
+    fs::path finalPath = fs::path(currentDirectory) / inPath;
+    return finalPath;
+    //return winapi::wide::getFullPathName(inPath).first;
   }
 
   static fs::path canonizePath(const fs::path& inPath)
@@ -1118,7 +1122,9 @@ BOOL WINAPI usvfs::hook_GetFileAttributesExW(
     return res;
   }
 
-  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
+  fs::path canonicalFile = RerouteW::canonizePath(RerouteW::absolutePath(lpFileName));
+
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, canonicalFile.c_str());
 
   PRE_REALCALL
   res = ::GetFileAttributesExW(reroute.fileName(), fInfoLevelId,
@@ -1135,7 +1141,7 @@ BOOL WINAPI usvfs::hook_GetFileAttributesExW(
   if (!res && fixedError == ERROR_PATH_NOT_FOUND)
   {
     // first query original file parent (if we rerouted it):
-    fs::path originalParent = fs::path(lpFileName).parent_path();
+    fs::path originalParent = canonicalFile.parent_path();
     WIN32_FILE_ATTRIBUTE_DATA parentAttr;
     if (reroute.wasRerouted()
       && ::GetFileAttributesExW(originalParent.c_str(), GetFileExInfoStandard, &parentAttr)
@@ -1185,8 +1191,11 @@ DWORD WINAPI usvfs::hook_GetFileAttributesW(LPCWSTR lpFileName)
     return res;
   }
 
-  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, lpFileName);
+  fs::path canonicalFile = RerouteW::canonizePath(RerouteW::absolutePath(lpFileName));
 
+  RerouteW reroute = RerouteW::create(READ_CONTEXT(), callContext, canonicalFile.c_str());
+
+  if (reroute.wasRerouted())
   PRE_REALCALL
   res = ::GetFileAttributesW(reroute.fileName());
   POST_REALCALL
@@ -1201,7 +1210,7 @@ DWORD WINAPI usvfs::hook_GetFileAttributesW(LPCWSTR lpFileName)
   if (res == INVALID_FILE_ATTRIBUTES && fixedError == ERROR_PATH_NOT_FOUND)
   {
     // first query original file parent (if we rerouted it):
-    fs::path originalParent = fs::path(lpFileName).parent_path();
+    fs::path originalParent = canonicalFile.parent_path();
     DWORD attr;
     if (reroute.wasRerouted()
       && (attr = ::GetFileAttributesW(originalParent.c_str())) != INVALID_FILE_ATTRIBUTES
@@ -2057,7 +2066,7 @@ HANDLE WINAPI usvfs::hook_FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVEL
 
   if (usedRewrite)
     LOG_CALL().PARAMWRAP(lpFileName).PARAMWRAP(finalPath.c_str()).PARAM(res).PARAM(callContext.lastError());
-  else if (reroute.wasRerouted())
+  if (reroute.wasRerouted())
     LOG_CALL().PARAMWRAP(lpFileName).PARAMWRAP(originalPath.wstring().c_str()).PARAM(res).PARAM(callContext.lastError());
 
   HOOK_END

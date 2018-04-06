@@ -591,6 +591,8 @@ void gatherVirtualEntries(const UnicodeString &dirName,
                                           FileName->Buffer, ush::CodePage::UTF8)
                                     : "*.*";
 
+    boost::replace_all(searchPattern, "\"", ".");
+
     for (const auto &subNode : node->find(searchPattern)) {
       if (((subNode->data().linkTarget.length() > 0) || subNode->isDirectory())
           && !subNode->hasFlag(usvfs::shared::FLAG_DUMMY)) {
