@@ -2012,6 +2012,9 @@ HANDLE WINAPI usvfs::hook_FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVEL
     return res;
   }
 
+  WCHAR appDataLocal[MAX_PATH];
+  ::SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, appDataLocal);
+  fs::path appDataLocalTemp = fs::path(appDataLocal) / "Temp";
   WCHAR *tempPath = new WCHAR[MAX_PATH];
   ::GetTempPathW(MAX_PATH, tempPath);
   std::wstring tempPathStr(tempPath);
@@ -2023,7 +2026,8 @@ HANDLE WINAPI usvfs::hook_FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVEL
 
   bool usedRewrite = false;
 
-  if (std::wstring(lpFileName).find(tempPathStr) != std::wstring::npos) {
+  if (std::wstring(lpFileName).find(appDataLocalTemp.wstring()) != std::wstring::npos ||
+      std::wstring(lpFileName).find(tempPathStr) != std::wstring::npos) {
     PRE_REALCALL
     //Force the mutEXHook to match NtQueryDirectoryFile so it calls the non hooked NtQueryDirectoryFile.
     FunctionGroupLock lock(MutExHookGroup::FIND_FILES);
