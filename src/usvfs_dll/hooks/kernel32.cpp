@@ -19,6 +19,7 @@
 
 #if 1
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 namespace fs = boost::filesystem;
 #else
 namespace fs = std::tr2::sys;
@@ -2012,12 +2013,11 @@ HANDLE WINAPI usvfs::hook_FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVEL
     return res;
   }
 
-  WCHAR appDataLocal[MAX_PATH];
-  ::SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, appDataLocal);
-  fs::path appDataLocalTemp = fs::path(appDataLocal) / "Temp";
   WCHAR *tempPath = new WCHAR[MAX_PATH];
   ::GetTempPathW(MAX_PATH, tempPath);
+  ::GetLongPathNameW(tempPath, tempPath, MAX_PATH);
   std::wstring tempPathStr(tempPath);
+  tempPathStr.pop_back(); // Remove trailing slash
   delete[] tempPath;
 
   fs::path finalPath;
@@ -2026,8 +2026,8 @@ HANDLE WINAPI usvfs::hook_FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVEL
 
   bool usedRewrite = false;
 
-  if (std::wstring(lpFileName).find(appDataLocalTemp.wstring()) != std::wstring::npos ||
-      std::wstring(lpFileName).find(tempPathStr) != std::wstring::npos) {
+  
+  if (boost::algorithm::icontains(lpFileName, tempPathStr)) {
     PRE_REALCALL
     //Force the mutEXHook to match NtQueryDirectoryFile so it calls the non hooked NtQueryDirectoryFile.
     FunctionGroupLock lock(MutExHookGroup::FIND_FILES);
@@ -2070,6 +2070,7 @@ HANDLE WINAPI usvfs::hook_FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVEL
       = lpFileName;
   }
 
+  LOG_CALL().PARAMWRAP(lpFileName).PARAMWRAP(tempPathStr.c_str());
   LOG_CALL().PARAMWRAP(lpFileName).PARAMWRAP(originalPath.c_str()).PARAM(res).PARAM(callContext.lastError());
   if (usedRewrite)
     LOG_CALL().PARAMWRAP(lpFileName).PARAMWRAP(finalPath.c_str()).PARAM(res).PARAM(callContext.lastError());
