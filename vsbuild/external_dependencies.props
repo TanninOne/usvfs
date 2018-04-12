@@ -5,6 +5,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros">
     <BOOST_PATH Condition="'$(BOOST_PATH)'==''">..\..\boost_1_66_0</BOOST_PATH>
+    <BOOST_PATH Condition="'$(BOOST_PATH)'!=''">$(BOOST_PATH)</BOOST_PATH>
     <GTEST_PATH Condition="'$(GTEST_PATH)'==''">..\..\googletest</GTEST_PATH>
   </PropertyGroup>
   <PropertyGroup />
