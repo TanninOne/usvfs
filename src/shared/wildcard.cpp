@@ -182,10 +182,13 @@ LPCSTR usvfs::shared::wildcard::PartialMatch(LPCSTR pszString, LPCSTR pszMatch)
       // in cmd.exe there seems to be no difference between <something>* and <something>*.*
       std::string temp(pszMatch, pszMatch + len - 2);
       LPCSTR pos = InnerMatch(pszString, temp.c_str());
-      if (*pos == '\0') {
-        return pszMatch + strlen(pszMatch);
-      } else {
-        return pszMatch + (pos - temp.c_str());
+      if (pos != nullptr) {
+        if (*pos == '\0') {
+          return pszMatch + strlen(pszMatch);
+        }
+        else {
+          return pszMatch + (pos - temp.c_str());
+        }
       }
     }
     return InnerMatch(pszString, pszMatch);

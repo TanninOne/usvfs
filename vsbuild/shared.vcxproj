@@ -125,6 +125,7 @@
     <ClCompile Include="..\src\shared\shmlogger.cpp" />
     <ClCompile Include="..\src\shared\stringcast_win.cpp" />
     <ClCompile Include="..\src\shared\stringutils.cpp" />
+    <ClCompile Include="..\src\shared\test_helpers.cpp" />
     <ClCompile Include="..\src\shared\unicodestring.cpp" />
     <ClCompile Include="..\src\shared\wildcard.cpp" />
     <ClCompile Include="..\src\shared\winapi.cpp" />
@@ -145,6 +146,7 @@
     <ClInclude Include="..\src\shared\stringcast_basic.h" />
     <ClInclude Include="..\src\shared\stringcast_win.h" />
     <ClInclude Include="..\src\shared\stringutils.h" />
+    <ClInclude Include="..\src\shared\test_helpers.h" />
     <ClInclude Include="..\src\shared\unicodestring.h" />
     <ClInclude Include="..\src\shared\wildcard.h" />
     <ClInclude Include="..\src\shared\winapi.h" />

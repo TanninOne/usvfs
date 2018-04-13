@@ -25,7 +25,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include "windows_sane.h"
 #include "ntdll_declarations.h"
 #include <cassert>
-
+#include <string>
 
 
 namespace usvfs {
@@ -37,54 +37,43 @@ class UnicodeString {
   friend std::ostream &operator<<(std::ostream &os, const UnicodeString &str);
 public:
 
-  UnicodeString();
+  UnicodeString() : m_Buffer(1) { update(); }
 
-  explicit UnicodeString(HANDLE fileHandle);
+  UnicodeString(const std::wstring& string);
+  UnicodeString(LPCWSTR string, size_t length = std::string::npos);
 
-  explicit UnicodeString(LPCSTR string);
+  UnicodeString(const UnicodeString& other) : m_Buffer(other.m_Buffer) { update(); }
+  UnicodeString(UnicodeString&& other) : m_Buffer(std::move(other.m_Buffer)) { update(); }
 
-  explicit UnicodeString(LPCWSTR string, size_t length = std::string::npos);
+  UnicodeString& operator=(const std::wstring& string);
+
+  UnicodeString& operator=(const UnicodeString& other) { m_Buffer = other.m_Buffer; update(); return *this; }
+  UnicodeString& operator=(UnicodeString&& other) { m_Buffer = std::move(other.m_Buffer); update(); return *this; }
 
   /**
    * @brief convert to a WinNt Api-style unicode string. This is only valid as long
    *        as the string isn't modified
    */
-  explicit operator PUNICODE_STRING();
+  explicit operator PUNICODE_STRING() { return &m_Data; }
 
   /**
    * @brief convert to a Win32 Api-style unicode string. This is only valid as long
    *        as the string isn't modified
    */
-  explicit operator LPCWSTR() const;
+  explicit operator LPCWSTR() const { return m_Data.Buffer; }
 
   /**
    * @return length of the string in 16-bit words (not including zero termination)
    */
-  size_t size() const;
+  size_t size() const { return m_Buffer.size() - 1; }
 
-  wchar_t operator[] (size_t pos) { return m_Buffer[pos]; }
-
-  void resize(size_t minSize);
+  wchar_t operator[](size_t pos) const { return m_Buffer[pos]; }
 
   UnicodeString &appendPath(PUNICODE_STRING path);
 
-  UnicodeString subString(size_t offset, size_t length = std::string::npos) {
-    assert(offset < m_Buffer.size());
-    if (length == std::string::npos) {
-      length = m_Buffer.size() - offset;
-    }
-    return UnicodeString(&m_Buffer[offset], length);
-  }
-
-  void set(LPCWSTR path);
-
-  void setFromHandle(HANDLE fileHandle);
-
 private:
-
   void update();
 
-private:
   UNICODE_STRING m_Data;
   std::vector<wchar_t> m_Buffer;
 };
