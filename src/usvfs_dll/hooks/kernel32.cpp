@@ -22,7 +22,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 namespace fs = boost::filesystem;
 #else
-namespace fs = std::tr2::sys;
+namespace fs = std::sys;
 #include <filesystem>
 #endif
 
@@ -194,7 +194,7 @@ static inline WCHAR pathNameDriveLetter(LPCWSTR path)
 }
 
 // returns false also in case we fail to determine the drive letter of the path
-static inline bool pathesOnDifferentDrives(LPCWSTR path1, LPCWSTR path2)
+static inline bool pathsOnDifferentDrives(LPCWSTR path1, LPCWSTR path2)
 {
   WCHAR drive1 = pathNameDriveLetter(path1);
   WCHAR drive2 = pathNameDriveLetter(path2);
@@ -1290,11 +1290,11 @@ BOOL WINAPI usvfs::hook_DeleteFileW(LPCWSTR lpFileName)
 }
 
 BOOL rewriteChangedDrives(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName,
-  const RerouteW& readReroute, const usvfs::CreateRerouter& writeReroute, DWORD newFlags)
+  const RerouteW& readReroute, const usvfs::CreateRerouter& writeReroute)
 {
-  return ((newFlags & MOVEFILE_COPY_ALLOWED) == 0 && (readReroute.wasRerouted() || writeReroute.wasRerouted())
-    && pathesOnDifferentDrives(readReroute.fileName(), writeReroute.fileName())
-    && !pathesOnDifferentDrives(lpExistingFileName, lpNewFileName));
+  return ((readReroute.wasRerouted() || writeReroute.wasRerouted())
+    && pathsOnDifferentDrives(readReroute.fileName(), writeReroute.fileName())
+    && !pathsOnDifferentDrives(lpExistingFileName, lpNewFileName));
 }
 
 BOOL WINAPI usvfs::hook_MoveFileA(LPCSTR lpExistingFileName,
@@ -1350,13 +1350,13 @@ BOOL WINAPI usvfs::hook_MoveFileW(LPCWSTR lpExistingFileName,
 
   if (callOriginal)
   {
-    bool movedDrives = rewriteChangedDrives(lpExistingFileName, lpNewFileName, readReroute, writeReroute, newFlags);
+    bool movedDrives = rewriteChangedDrives(lpExistingFileName, lpNewFileName, readReroute, writeReroute);
     if (movedDrives) newFlags |= MOVEFILE_COPY_ALLOWED;
 
     bool isDirectory = pathIsDirectory(readReroute.fileName());
 
     PRE_REALCALL
-    if (isDirectory && movedDrives && newFlags) {
+    if (isDirectory && movedDrives) {
       SHFILEOPSTRUCTW sf = { 0 };
       sf.wFunc = FO_MOVE;
       sf.hwnd = 0;
@@ -1468,13 +1468,12 @@ BOOL WINAPI usvfs::hook_MoveFileExW(LPCWSTR lpExistingFileName,
 
   if (callOriginal)
   {
-    bool movedDrives = rewriteChangedDrives(lpExistingFileName, lpNewFileName, readReroute, writeReroute, newFlags);
-    if (movedDrives) newFlags |= MOVEFILE_COPY_ALLOWED;
+    bool movedDrives = rewriteChangedDrives(lpExistingFileName, lpNewFileName, readReroute, writeReroute);
 
     bool isDirectory = pathIsDirectory(readReroute.fileName());
 
     PRE_REALCALL
-    if (isDirectory && movedDrives && newFlags & MOVEFILE_COPY_ALLOWED) {
+    if (isDirectory && movedDrives) {
       SHFILEOPSTRUCTW sf = { 0 };
       sf.wFunc = FO_MOVE;
       sf.hwnd = 0;
@@ -1583,13 +1582,13 @@ BOOL WINAPI usvfs::hook_MoveFileWithProgressW(LPCWSTR lpExistingFileName, LPCWST
 
   if (callOriginal)
   {
-    bool movedDrives = rewriteChangedDrives(lpExistingFileName, lpNewFileName, readReroute, writeReroute, newFlags);
+    bool movedDrives = rewriteChangedDrives(lpExistingFileName, lpNewFileName, readReroute, writeReroute);
     if (movedDrives) newFlags |= MOVEFILE_COPY_ALLOWED;
 
 	bool isDirectory = pathIsDirectory(readReroute.fileName());
 
   PRE_REALCALL
-	if (isDirectory && movedDrives && newFlags & MOVEFILE_COPY_ALLOWED) {
+	if (isDirectory && movedDrives) {
 		SHFILEOPSTRUCTW sf = { 0 };
 		sf.wFunc = FO_MOVE;
 		sf.hwnd = 0;
