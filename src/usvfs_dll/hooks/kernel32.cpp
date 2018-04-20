@@ -1392,10 +1392,11 @@ BOOL WINAPI usvfs::hook_MoveFileW(LPCWSTR lpExistingFileName,
     if (res) {
       //readReroute.removeMapping(READ_CONTEXT(), isDirectory); // Leaving a ghost fixes some problems with apps expecting the file to be gone
 
-      if (writeReroute.newReroute() && isDirectory) {
-        RerouteW::addDirectoryMapping(WRITE_CONTEXT(), fs::path(lpNewFileName), fs::path(writeReroute.fileName()));
-      } else {
-        writeReroute.insertMapping(WRITE_CONTEXT());
+      if (writeReroute.newReroute()) {
+        if (isDirectory)
+          RerouteW::addDirectoryMapping(WRITE_CONTEXT(), fs::path(lpNewFileName), fs::path(writeReroute.fileName()));
+        else
+          writeReroute.insertMapping(WRITE_CONTEXT());
       }
     }
 
@@ -1507,10 +1508,11 @@ BOOL WINAPI usvfs::hook_MoveFileExW(LPCWSTR lpExistingFileName,
     if (res) {
       //readReroute.removeMapping(READ_CONTEXT(), isDirectory); // Leaving a ghost fixes some problems with apps expecting the file to be gone
 
-      if (writeReroute.newReroute() && isDirectory) {
-        RerouteW::addDirectoryMapping(WRITE_CONTEXT(), fs::path(lpNewFileName), fs::path(writeReroute.fileName()));
-      } else {
-        writeReroute.insertMapping(WRITE_CONTEXT());
+      if (writeReroute.newReroute()) {
+        if (isDirectory)
+          RerouteW::addDirectoryMapping(WRITE_CONTEXT(), fs::path(lpNewFileName), fs::path(writeReroute.fileName()));
+        else
+          writeReroute.insertMapping(WRITE_CONTEXT());
       }
     }
 
@@ -1622,10 +1624,11 @@ BOOL WINAPI usvfs::hook_MoveFileWithProgressW(LPCWSTR lpExistingFileName, LPCWST
   if (res) {
     //readReroute.removeMapping(READ_CONTEXT(), isDirectory); // Leaving a ghost fixes some problems with apps expecting the file to be gone
 
-    if (writeReroute.newReroute() && isDirectory) {
-      RerouteW::addDirectoryMapping(WRITE_CONTEXT(), fs::path(lpNewFileName), fs::path(writeReroute.fileName()));
-    } else {
-      writeReroute.insertMapping(WRITE_CONTEXT());
+    if (writeReroute.newReroute()) {
+      if (isDirectory)
+        RerouteW::addDirectoryMapping(WRITE_CONTEXT(), fs::path(lpNewFileName), fs::path(writeReroute.fileName()));
+      else
+        writeReroute.insertMapping(WRITE_CONTEXT());
     }
   }
 
