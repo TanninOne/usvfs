@@ -485,28 +485,31 @@ public:
       const auto& lookupPath = canonizePath(absolutePath(inPath));
       result.m_RealPath = lookupPath.wstring();
 
-      const usvfs::RedirectionTreeContainer &table
-        = inverse ? context->inverseTable() : context->redirectionTable();
-      result.m_FileNode = table->findNode(lookupPath);
+      result.m_Buffer = k32DeleteTracker.lookup(result.m_RealPath);
+      bool found = !result.m_Buffer.empty();
+      if (found)
+        spdlog::get("hooks")->info("Rerouting file open to location of deleted file: {}",
+          ush::string_cast<std::string>(result.m_Buffer));
+      else {
+        const usvfs::RedirectionTreeContainer &table
+          = inverse ? context->inverseTable() : context->redirectionTable();
+        result.m_FileNode = table->findNode(lookupPath);
 
-      if (result.m_FileNode.get()
-        && (!result.m_FileNode->data().linkTarget.empty() || result.m_FileNode->isDirectory()))
-      {
-        if (!result.m_FileNode->data().linkTarget.empty()) {
-          result.m_Buffer = string_cast<std::wstring>(
-            result.m_FileNode->data().linkTarget.c_str(), CodePage::UTF8);
-        }
-        else
+        if (result.m_FileNode.get()
+          && (!result.m_FileNode->data().linkTarget.empty() || result.m_FileNode->isDirectory()))
         {
-          result.m_Buffer = result.m_FileNode->path().wstring();
+          if (!result.m_FileNode->data().linkTarget.empty()) {
+            result.m_Buffer = string_cast<std::wstring>(
+              result.m_FileNode->data().linkTarget.c_str(), CodePage::UTF8);
+          }
+          else
+          {
+            result.m_Buffer = result.m_FileNode->path().wstring();
+          }
+          found = true;
         }
-		wchar_t inIt = inPath[wcslen(inPath) - 1];
-        std::wstring::iterator outIt = result.m_Buffer.end() - 1;
-        if ((*outIt == L'\\' || *outIt == L'/') && !(inIt == L'\\' || inIt == L'/'))
-            result.m_Buffer.erase(outIt);
-        if (result.m_Buffer.length() >= MAX_PATH && !ush::startswith(result.m_Buffer.c_str(), LR"(\\?\)"))
-          result.m_Buffer = LR"(\\?\)" + result.m_Buffer;
-        std::replace(result.m_Buffer.begin(), result.m_Buffer.end(), L'/', L'\\');
+      }
+      if (found) {
         result.m_Rerouted = true;
       }
       else
@@ -514,6 +517,14 @@ public:
     }
     else if (inPath)
       result.m_Buffer = inPath;
+
+    wchar_t inIt = inPath[wcslen(inPath) - 1];
+    std::wstring::iterator outIt = result.m_Buffer.end() - 1;
+    if ((*outIt == L'\\' || *outIt == L'/') && !(inIt == L'\\' || inIt == L'/'))
+      result.m_Buffer.erase(outIt);
+    if (result.m_Buffer.length() >= MAX_PATH && !ush::startswith(result.m_Buffer.c_str(), LR"(\\?\)"))
+      result.m_Buffer = LR"(\\?\)" + result.m_Buffer;
+    std::replace(result.m_Buffer.begin(), result.m_Buffer.end(), L'/', L'\\');
 
     if (inPath)
       result.m_FileName = result.m_Buffer.c_str();
@@ -576,10 +587,10 @@ public:
     else if (inPath)
       result.m_Buffer = inPath;
     std::wstring::iterator it = result.m_Buffer.end() - 1;
-	wchar_t inIt = inPath[wcslen(inPath) - 1];
-	std::wstring::iterator outIt = result.m_Buffer.end() - 1;
-	if ((*outIt == L'\\' || *outIt == L'/') && !(inIt == L'\\' || inIt == L'/'))
-		result.m_Buffer.erase(outIt);
+    wchar_t inIt = inPath[wcslen(inPath) - 1];
+    std::wstring::iterator outIt = result.m_Buffer.end() - 1;
+    if ((*outIt == L'\\' || *outIt == L'/') && !(inIt == L'\\' || inIt == L'/'))
+      result.m_Buffer.erase(outIt);
 
     if (inPath)
       result.m_FileName = result.m_Buffer.c_str();
@@ -859,14 +870,17 @@ HANDLE WINAPI usvfs::hook_CreateFileA(
 namespace usvfs {
   class CreateRerouter {
   public:
-    bool rereouteCreate(const usvfs::HookContext::ConstPtr &context, const usvfs::HookCallContext &callContext,
+    bool rerouteCreate(const usvfs::HookContext::ConstPtr &context, const usvfs::HookCallContext &callContext,
       LPCWSTR lpFileName, DWORD& dwCreationDisposition, DWORD dwDesiredAccess, LPSECURITY_ATTRIBUTES lpSecurityAttributes)
     {
       enum class Open { existing, create, empty };
       Open open = Open::existing;
 
+      std::wstring finalName = k32DeleteTracker.lookup(lpFileName);
+      LPCWSTR finalNameCStr = finalName.size() != 0 ? finalName.c_str() : lpFileName;
+
       // Notice since we are calling our patched GetFileAttributesW here this will also check virtualized paths
-      DWORD virtAttr = GetFileAttributesW(lpFileName);
+      DWORD virtAttr = GetFileAttributesW(finalNameCStr);
       m_directlyAvailable = virtAttr == INVALID_FILE_ATTRIBUTES && (GetLastError() == ERROR_FILE_NOT_FOUND || GetLastError() == ERROR_PATH_NOT_FOUND);
       bool isFile = virtAttr != INVALID_FILE_ATTRIBUTES && (virtAttr & FILE_ATTRIBUTE_DIRECTORY) == 0;
       m_isDir = virtAttr != INVALID_FILE_ATTRIBUTES && (virtAttr & FILE_ATTRIBUTE_DIRECTORY);
@@ -905,8 +919,8 @@ namespace usvfs {
         break;
       }
 
-      if (m_isDir && pathIsDirectory(lpFileName))
-        m_reroute = RerouteW::noReroute(lpFileName);
+      if (m_isDir && pathIsDirectory(finalNameCStr))
+        m_reroute = RerouteW::noReroute(finalNameCStr);
       else
         m_reroute = RerouteW::create(context, callContext, lpFileName);
 
@@ -930,7 +944,7 @@ namespace usvfs {
     bool rerouteNew(const usvfs::HookContext::ConstPtr &context, usvfs::HookCallContext &callContext, LPCWSTR lpFileName, bool replaceExisting, const char* hookName)
     {
       DWORD disposition = replaceExisting ? CREATE_ALWAYS : CREATE_NEW;
-      if (!rereouteCreate(context, callContext, lpFileName, disposition, GENERIC_WRITE, nullptr)) {
+      if (!rerouteCreate(context, callContext, lpFileName, disposition, GENERIC_WRITE, nullptr)) {
         spdlog::get("hooks")->info(
           "{} guaranteed failure, skipping original call: {}, replaceExisting={}, error={}",
           hookName, ush::string_cast<std::string>(lpFileName, ush::CodePage::UTF8), replaceExisting ? "true" : "false", error());
@@ -996,7 +1010,7 @@ HANDLE WINAPI usvfs::hook_CreateFileW(
 
   DWORD originalDisposition = dwCreationDisposition;
   CreateRerouter rerouter;
-  if (rerouter.rereouteCreate(READ_CONTEXT(), callContext, lpFileName, dwCreationDisposition, dwDesiredAccess, lpSecurityAttributes))
+  if (rerouter.rerouteCreate(READ_CONTEXT(), callContext, lpFileName, dwCreationDisposition, dwDesiredAccess, lpSecurityAttributes))
   {
     PRE_REALCALL
       res = ::CreateFileW(rerouter.fileName(), dwDesiredAccess, dwShareMode,
@@ -1062,7 +1076,7 @@ HANDLE WINAPI usvfs::hook_CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAccess,
 
   DWORD originalDisposition = dwCreationDisposition;
   CreateRerouter rerouter;
-  if (rerouter.rereouteCreate(READ_CONTEXT(), callContext, lpFileName, dwCreationDisposition, dwDesiredAccess,
+  if (rerouter.rerouteCreate(READ_CONTEXT(), callContext, lpFileName, dwCreationDisposition, dwDesiredAccess,
                         pCreateExParams ? pCreateExParams->lpSecurityAttributes : nullptr))
   {
     PRE_REALCALL
@@ -1390,7 +1404,7 @@ BOOL WINAPI usvfs::hook_MoveFileW(LPCWSTR lpExistingFileName,
     writeReroute.updateResult(callContext, res);
 
     if (res) {
-      //readReroute.removeMapping(READ_CONTEXT(), isDirectory); // Leaving a ghost fixes some problems with apps expecting the file to be gone
+      readReroute.removeMapping(READ_CONTEXT(), isDirectory); // Updating the rerouteCreate to check deleted file entries should make this okay
 
       if (writeReroute.newReroute()) {
         if (isDirectory)
@@ -1506,7 +1520,7 @@ BOOL WINAPI usvfs::hook_MoveFileExW(LPCWSTR lpExistingFileName,
     writeReroute.updateResult(callContext, res);
 
     if (res) {
-      //readReroute.removeMapping(READ_CONTEXT(), isDirectory); // Leaving a ghost fixes some problems with apps expecting the file to be gone
+      readReroute.removeMapping(READ_CONTEXT(), isDirectory); // Updating the rerouteCreate to check deleted file entries should make this okay
 
       if (writeReroute.newReroute()) {
         if (isDirectory)
@@ -1622,7 +1636,7 @@ BOOL WINAPI usvfs::hook_MoveFileWithProgressW(LPCWSTR lpExistingFileName, LPCWST
   writeReroute.updateResult(callContext, res);
 
   if (res) {
-    //readReroute.removeMapping(READ_CONTEXT(), isDirectory); // Leaving a ghost fixes some problems with apps expecting the file to be gone
+    readReroute.removeMapping(READ_CONTEXT(), isDirectory); // Updating the rerouteCreate to check deleted file entries should make this okay
 
     if (writeReroute.newReroute()) {
       if (isDirectory)
