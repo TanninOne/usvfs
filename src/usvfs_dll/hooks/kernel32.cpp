@@ -1983,27 +1983,34 @@ DWORD WINAPI usvfs::hook_GetModuleFileNameW(HMODULE hModule,
   res = ::GetModuleFileNameW(hModule, lpFilename, nSize);
   POST_REALCALL
   if ((res != 0) && callContext.active()) {
-    RerouteW reroute
-        = RerouteW::create(READ_CONTEXT(), callContext, lpFilename, true);
-    if (reroute.wasRerouted()) {
-      DWORD reroutedSize = static_cast<DWORD>(reroute.buffer().size());
-      if (reroutedSize >= nSize) {
-        callContext.updateLastError(ERROR_INSUFFICIENT_BUFFER);
-        reroutedSize = nSize - 1;
-      }
-      // res can't be bigger than nSize-1 at this point
-      if (reroutedSize > 0) {
-        if (reroutedSize < res) {
-          // zero out the string windows has previously written to
-          memset(lpFilename, '\0', std::min(res, nSize) * sizeof(wchar_t));
-        }
-        // this truncates the string if the buffer is too small
-        ush::wcsncpy_sz(lpFilename, reroute.fileName(), reroutedSize + 1);
-      }
-      res = reroutedSize;
+    std::vector<WCHAR> buf;
+    // If GetModuleFileNameW failed because the buffer is not large enough this complicates matters
+    // because we are dealing with incomplete information (consider for example the case that we
+    // have a long real path which will be routed to a short virtual so the call should actually
+    // succeed in such a case).
+    // To solve this we simply use our own buffer to find the complete module path:
+    DWORD full_res = res;
+    size_t buf_size = nSize;
+    while (full_res == buf_size) {
+      buf_size = std::max(static_cast<size_t>(MAX_PATH), buf_size * 2);
+      buf.resize(buf_size);
+      full_res = ::GetModuleFileNameW(hModule, buf.data(), buf_size);
     }
 
+    RerouteW reroute
+        = RerouteW::create(READ_CONTEXT(), callContext, buf.empty() ? lpFilename : buf.data(), true);
     if (reroute.wasRerouted()) {
+      DWORD reroutedSize = static_cast<DWORD>(wcslen(reroute.fileName()));
+      if (reroutedSize >= nSize) {
+        reroutedSize = nSize - 1;
+        callContext.updateLastError(ERROR_INSUFFICIENT_BUFFER);
+        res = nSize;
+      }
+      else
+        res = reroutedSize;
+      memcpy(lpFilename, reroute.fileName(), reroutedSize * sizeof(lpFilename[0]));
+      lpFilename[reroutedSize] = 0;
+
       LOG_CALL()
           .PARAM(hModule)
           .addParam("lpFilename", usvfs::log::Wrap<LPCWSTR>(
