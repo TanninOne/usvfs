@@ -64,13 +64,20 @@ typedef MyBoost::error_info<struct tag_message, DWORD> ex_win_errcode;
 //#endif // _MSC_VER
 typedef MyBoost::error_info<struct tag_message, std::string> ex_msg;
 
-struct incompatibility_error : virtual MyBoost::exception, virtual std::exception {};
-struct usage_error : virtual MyBoost::exception, virtual std::exception {};
-struct data_error : virtual MyBoost::exception, virtual std::exception {};
-struct file_not_found_error : virtual MyBoost::exception, virtual std::exception {};
-struct timeout_error : virtual MyBoost::exception, virtual std::exception {};
-struct unknown_error : virtual MyBoost::exception, virtual std::exception {};
-struct node_missing_error : virtual MyBoost::exception, virtual std::exception {};
+struct std_boost_exception : virtual MyBoost::exception, virtual std::exception
+{
+  const char* what() const noexcept override {
+    return MyBoost::diagnostic_information_what(*this);
+  }
+};
+
+struct incompatibility_error : std_boost_exception {};
+struct usage_error : std_boost_exception {};
+struct data_error : std_boost_exception {};
+struct file_not_found_error : std_boost_exception {};
+struct timeout_error : std_boost_exception {};
+struct unknown_error : std_boost_exception {};
+struct node_missing_error : std_boost_exception {};
 
 
 
