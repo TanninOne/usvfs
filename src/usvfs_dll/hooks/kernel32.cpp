@@ -487,10 +487,11 @@ public:
 
       result.m_Buffer = k32DeleteTracker.lookup(result.m_RealPath);
       bool found = !result.m_Buffer.empty();
-      if (found)
+      if (found) {
         spdlog::get("hooks")->info("Rerouting file open to location of deleted file: {}",
           ush::string_cast<std::string>(result.m_Buffer));
-      else {
+        result.m_NewReroute = true;
+      } else {
         const usvfs::RedirectionTreeContainer &table
           = inverse ? context->inverseTable() : context->redirectionTable();
         result.m_FileNode = table->findNode(lookupPath);
