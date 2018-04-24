@@ -511,20 +511,18 @@ public:
       }
       if (found) {
         result.m_Rerouted = true;
+
+        wchar_t inIt = inPath[wcslen(inPath) - 1];
+        std::wstring::iterator outIt = result.m_Buffer.end() - 1;
+        if ((*outIt == L'\\' || *outIt == L'/') && !(inIt == L'\\' || inIt == L'/'))
+          result.m_Buffer.erase(outIt);
+        std::replace(result.m_Buffer.begin(), result.m_Buffer.end(), L'/', L'\\');
       }
       else
         result.m_Buffer = inPath;
     }
     else if (inPath)
       result.m_Buffer = inPath;
-
-    wchar_t inIt = inPath[wcslen(inPath) - 1];
-    std::wstring::iterator outIt = result.m_Buffer.end() - 1;
-    if ((*outIt == L'\\' || *outIt == L'/') && !(inIt == L'\\' || inIt == L'/'))
-      result.m_Buffer.erase(outIt);
-    if (result.m_Buffer.length() >= MAX_PATH && !ush::startswith(result.m_Buffer.c_str(), LR"(\\?\)"))
-      result.m_Buffer = LR"(\\?\)" + result.m_Buffer;
-    std::replace(result.m_Buffer.begin(), result.m_Buffer.end(), L'/', L'\\');
 
     if (inPath)
       result.m_FileName = result.m_Buffer.c_str();
@@ -567,16 +565,22 @@ public:
 
       if (found)
       {
-        if (createPath)
+        if (createPath) {
           try {
             usvfs::FunctionGroupLock lock(usvfs::MutExHookGroup::ALL_GROUPS);
             result.m_PathCreated =
               createFakePath(fs::path(result.m_Buffer).parent_path(), securityAttributes);
-          } catch (const std::exception &e) {
+          }
+          catch (const std::exception &e) {
             spdlog::get("hooks")->error("failed to create {}: {}",
               ush::string_cast<std::string>(result.m_Buffer), e.what());
           }
+        }
 
+        wchar_t inIt = inPath[wcslen(inPath) - 1];
+        std::wstring::iterator outIt = result.m_Buffer.end() - 1;
+        if ((*outIt == L'\\' || *outIt == L'/') && !(inIt == L'\\' || inIt == L'/'))
+          result.m_Buffer.erase(outIt);
         std::replace(result.m_Buffer.begin(), result.m_Buffer.end(), L'/', L'\\');
         result.m_Rerouted = true;
         result.m_NewReroute = true;
@@ -586,11 +590,6 @@ public:
     }
     else if (inPath)
       result.m_Buffer = inPath;
-    std::wstring::iterator it = result.m_Buffer.end() - 1;
-    wchar_t inIt = inPath[wcslen(inPath) - 1];
-    std::wstring::iterator outIt = result.m_Buffer.end() - 1;
-    if ((*outIt == L'\\' || *outIt == L'/') && !(inIt == L'\\' || inIt == L'/'))
-      result.m_Buffer.erase(outIt);
 
     if (inPath)
       result.m_FileName = result.m_Buffer.c_str();
@@ -876,12 +875,8 @@ namespace usvfs {
       enum class Open { existing, create, empty };
       Open open = Open::existing;
 
-      std::wstring finalName = k32DeleteTracker.lookup(lpFileName);
-      LPCWSTR finalNameCStr = finalName.size() != 0 ? finalName.c_str() : lpFileName;
-
       // Notice since we are calling our patched GetFileAttributesW here this will also check virtualized paths
-      DWORD virtAttr = GetFileAttributesW(finalNameCStr);
-      m_directlyAvailable = virtAttr == INVALID_FILE_ATTRIBUTES && (GetLastError() == ERROR_FILE_NOT_FOUND || GetLastError() == ERROR_PATH_NOT_FOUND);
+      DWORD virtAttr = GetFileAttributesW(lpFileName);
       bool isFile = virtAttr != INVALID_FILE_ATTRIBUTES && (virtAttr & FILE_ATTRIBUTE_DIRECTORY) == 0;
       m_isDir = virtAttr != INVALID_FILE_ATTRIBUTES && (virtAttr & FILE_ATTRIBUTE_DIRECTORY);
 
@@ -919,17 +914,17 @@ namespace usvfs {
         break;
       }
 
-      if (m_isDir && pathIsDirectory(finalNameCStr))
-        m_reroute = RerouteW::noReroute(finalNameCStr);
+      if (m_isDir && pathIsDirectory(lpFileName))
+        m_reroute = RerouteW::noReroute(lpFileName);
       else
         m_reroute = RerouteW::create(context, callContext, lpFileName);
 
       if (m_reroute.wasRerouted() && open == Open::create && pathIsDirectory(m_reroute.fileName()))
-          m_reroute = RerouteW::createNew(context, callContext, lpFileName, m_directlyAvailable, lpSecurityAttributes);
+          m_reroute = RerouteW::createNew(context, callContext, lpFileName, true, lpSecurityAttributes);
 
       if (!m_isDir && !isFile && !m_reroute.wasRerouted() && (open == Open::create || open == Open::empty))
       {
-        m_reroute = RerouteW::createNew(context, callContext, lpFileName, m_directlyAvailable, lpSecurityAttributes);
+        m_reroute = RerouteW::createNew(context, callContext, lpFileName, true, lpSecurityAttributes);
 
         bool newFile = !m_reroute.wasRerouted() && pathDirectlyAvailable(m_reroute.fileName());
         if (newFile && open == Open::empty)
