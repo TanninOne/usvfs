@@ -1,7 +1,7 @@
 # usvfs
 
 [![License](http://img.shields.io/:license-gpl-blue.svg)](http://www.gnu.org/licenses/gpl-3.0.en.html)
-[![Build status](https://ci.appveyor.com/api/projects/status/5xwl7y8yuu7ctkhu?svg=true)](https://ci.appveyor.com/project/TanninOne/usvfs)
+[![Build status](https://ci.appveyor.com/api/projects/status/rfc2xe8mo9775smo?svg=true)](https://ci.appveyor.com/project/Modorganizer2/usvfs)
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/8941/badge.svg)](https://scan.coverity.com/projects/8941)
 
 USVFS (short for User Space Virtual File System) aims to allow windows applications to create file or directory links that
