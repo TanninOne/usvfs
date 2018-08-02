@@ -459,11 +459,14 @@ public:
     else if (inPath[0] == L'\0' || inPath[1] == L':') {
       return inPath;
     }
+    else if (inPath[0] == L'\\' || inPath[0] == L'/') {
+      return fs::path(winapi::wide::getFullPathName(inPath).first);
+    }
     WCHAR currentDirectory[MAX_PATH];
     ::GetCurrentDirectoryW(MAX_PATH, currentDirectory);
     fs::path finalPath = fs::path(currentDirectory) / inPath;
     return finalPath;
-    //return winapi::wide::getFullPathName(inPath).first;
+    //winapi::wide::getFullPathName(inPath).first;
   }
 
   static fs::path canonizePath(const fs::path& inPath)
